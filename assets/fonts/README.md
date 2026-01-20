@@ -1,0 +1,1 @@
+# Font Files Required\n\nDownload Noto Sans Ethiopic fonts from Google Fonts:\nhttps://fonts.google.com/noto/specimen/Noto+Sans+Ethiopic\n\nPlace the following files in this directory:\n- NotoSansEthiopic-Regular.ttf\n- NotoSansEthiopic-Medium.ttf\n- NotoSansEthiopic-SemiBold.ttf\n- NotoSansEthiopic-Bold.ttf

@@ -1,0 +1,10 @@
+# Placeholder for assets directory
+
+Add the following image files to this directory:
+- icon.png (1024x1024) - App icon
+- splash.png (1284x2778) - Splash screen
+- adaptive-icon.png (1024x1024) - Android adaptive icon
+- favicon.png (48x48) - Web favicon
+
+You can use any image editor to create these, or use placeholder images.
+The app will work without them in Expo Go, but they're needed for production builds.

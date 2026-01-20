@@ -1,0 +1,126 @@
+export const COLORS = {
+  light: {
+    primary: '#006633',
+    primaryLight: '#008844',
+    primaryDark: '#004422',
+    gold: '#FFD700',
+    goldLight: '#FFE44D',
+    red: '#DC2626',
+    redLight: '#EF4444',
+    white: '#FFFFFF',
+    black: '#000000',
+    gray: {
+      50: '#F9FAFB',
+      100: '#F3F4F6',
+      200: '#E5E7EB',
+      300: '#D1D5DB',
+      400: '#9CA3AF',
+      500: '#6B7280',
+      600: '#4B5563',
+      700: '#374151',
+      800: '#1F2937',
+      900: '#111827',
+    },
+    background: '#F9FAFB',
+    surface: '#FFFFFF',
+    surfaceSecondary: '#F3F4F6',
+    text: '#1F2937',
+    textSecondary: '#6B7280',
+    textTertiary: '#9CA3AF',
+    border: '#E5E7EB',
+    success: '#10B981',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    info: '#3B82F6',
+  },
+  dark: {
+    primary: '#00CC66',
+    primaryLight: '#00FF80',
+    primaryDark: '#009944',
+    gold: '#FFD700',
+    goldLight: '#FFE44D',
+    red: '#EF4444',
+    redLight: '#F87171',
+    white: '#FFFFFF',
+    black: '#000000',
+    gray: {
+      50: '#1F2937',
+      100: '#374151',
+      200: '#4B5563',
+      300: '#6B7280',
+      400: '#9CA3AF',
+      500: '#D1D5DB',
+      600: '#E5E7EB',
+      700: '#F3F4F6',
+      800: '#F9FAFB',
+      900: '#FFFFFF',
+    },
+    background: '#0F172A',
+    surface: '#1E293B',
+    surfaceSecondary: '#334155',
+    text: '#F9FAFB',
+    textSecondary: '#94A3B8',
+    textTertiary: '#64748B',
+    border: '#334155',
+    success: '#10B981',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    info: '#3B82F6',
+  },
+};
+
+export const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+};
+
+export const FONT_SIZES = {
+  xs: 12,
+  sm: 14,
+  md: 16,
+  lg: 18,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+  display: 40,
+};
+
+export const BORDER_RADIUS = {
+  sm: 4,
+  md: 8,
+  lg: 12,
+  xl: 16,
+  xxl: 24,
+  full: 9999,
+};
+
+export const SHADOWS = {
+  sm: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  md: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  lg: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+};
+
+export type ColorScheme = 'light' | 'dark';
+export type ThemeColors = typeof COLORS.light;
