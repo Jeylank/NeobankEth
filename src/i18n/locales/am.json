@@ -38,7 +38,18 @@
     "bankAccounts": "የባንክ ሂሳቦች",
     "telebirr": "ቴሌብር",
     "kyc": "KYC",
-    "referFriend": "ጓደኛ ጋብዝ"
+    "referFriend": "ጓደኛ ጋብዝ",
+    "features": {
+      "title": "የምናቀርበው",
+      "sendMoney": "ገንዘብ ላክ",
+      "sendMoneyDesc": "ፈጣን ዝውውር ወደ ኢትዮጵያ",
+      "payBills": "ክፍያዎች ክፈል",
+      "payBillsDesc": "ኤሌክትሪክ፣ ውሃ፣ ስልክ እና ሌሎች",
+      "multiCurrency": "ብዙ ምንዛሬዎች",
+      "multiCurrencyDesc": "USD፣ ETB፣ EUR፣ GBP ዋሌቶች",
+      "localLanguages": "የአካባቢ ቋንቋዎች",
+      "localLanguagesDesc": "አማርኛ፣ ኦሮሚፋ፣ ትግርኛ"
+    }
   },
   "transactions": {
     "title": "ግብይቶች",

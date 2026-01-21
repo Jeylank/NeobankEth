@@ -48,3 +48,6 @@ Copy `.env.example` to `.env` and configure:
 - Removed NativeWind babel plugin for Metro compatibility
 - Added NotoSansEthiopic variable font files
 - Switched to static build for stable preview (no hot reload flickering)
+- Added Forgot Password functionality on login screen
+- Added Tigrinya (ትግርኛ) language support
+- Added "What We Offer" features showcase on dashboard

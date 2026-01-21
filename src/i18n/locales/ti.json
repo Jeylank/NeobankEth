@@ -38,7 +38,18 @@
     "bankAccounts": "ናይ ባንክ ሒሳባት",
     "telebirr": "ቴሌብር",
     "kyc": "KYC",
-    "referFriend": "ዓርኪ ዓድም"
+    "referFriend": "ዓርኪ ዓድም",
+    "features": {
+      "title": "ዝንህቦ ኣገልግሎት",
+      "sendMoney": "ገንዘብ ስደድ",
+      "sendMoneyDesc": "ቅልጡፍ ምስግጋር ናብ ኢትዮጵያ",
+      "payBills": "ክፍሊታት ክፈል",
+      "payBillsDesc": "ኤሌክትሪክ፣ ማይ፣ ተለፎን ወዘተ",
+      "multiCurrency": "ብዙሕ ገንዘብ",
+      "multiCurrencyDesc": "USD፣ ETB፣ EUR፣ GBP ዋሌታት",
+      "localLanguages": "ናይ ከባቢ ቋንቋታት",
+      "localLanguagesDesc": "ኣማርኛ፣ ኦሮሚፋ፣ ትግርኛ"
+    }
   },
   "transactions": {
     "title": "ግብይቲታት",

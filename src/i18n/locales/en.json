@@ -38,7 +38,18 @@
     "bankAccounts": "Bank Accounts",
     "telebirr": "Telebirr",
     "kyc": "KYC",
-    "referFriend": "Refer Friend"
+    "referFriend": "Refer Friend",
+    "features": {
+      "title": "What We Offer",
+      "sendMoney": "Send Money",
+      "sendMoneyDesc": "Fast remittance to Ethiopia",
+      "payBills": "Pay Bills",
+      "payBillsDesc": "Electric, water, phone & more",
+      "multiCurrency": "Multi-Currency",
+      "multiCurrencyDesc": "USD, ETB, EUR, GBP wallets",
+      "localLanguages": "Local Languages",
+      "localLanguagesDesc": "Amharic, Oromifa, Tigrinya"
+    }
   },
   "transactions": {
     "title": "Transactions",

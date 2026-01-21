@@ -38,7 +38,18 @@
     "bankAccounts": "Herrega Baankii",
     "telebirr": "Telebirr",
     "kyc": "KYC",
-    "referFriend": "Hiriyaa Affeeruu"
+    "referFriend": "Hiriyaa Affeeruu",
+    "features": {
+      "title": "Waan Dhiyeessinu",
+      "sendMoney": "Maallaqa Ergi",
+      "sendMoneyDesc": "Dabarsaa ariifataa gara Itoophiyaa",
+      "payBills": "Kafaltii Kafali",
+      "payBillsDesc": "Ibsaa, bishaan, bilbila fi kan biroo",
+      "multiCurrency": "Sharafa Hedduu",
+      "multiCurrencyDesc": "USD, ETB, EUR, GBP waaleetii",
+      "localLanguages": "Afaanota Naannoo",
+      "localLanguagesDesc": "Amaariffaa, Oromiffaa, Tigrinya"
+    }
   },
   "transactions": {
     "title": "Daldalawwan",

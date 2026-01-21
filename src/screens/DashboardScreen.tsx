@@ -158,6 +158,13 @@ export default function DashboardScreen() {
     { icon: 'help-circle', labelKey: 'profile.support', screen: 'Support', color: '#6B7280' },
   ];
 
+  const appFeatures = [
+    { icon: 'send', title: t('dashboard.features.sendMoney'), desc: t('dashboard.features.sendMoneyDesc'), color: COLORS.primary },
+    { icon: 'flash', title: t('dashboard.features.payBills'), desc: t('dashboard.features.payBillsDesc'), color: '#EF4444' },
+    { icon: 'wallet', title: t('dashboard.features.multiCurrency'), desc: t('dashboard.features.multiCurrencyDesc'), color: '#3B82F6' },
+    { icon: 'language', title: t('dashboard.features.localLanguages'), desc: t('dashboard.features.localLanguagesDesc'), color: '#8B5CF6' },
+  ];
+
   return (
     <ScrollView
       style={styles.container}
@@ -176,6 +183,21 @@ export default function DashboardScreen() {
           <View style={[styles.accentStripe, { backgroundColor: '#006633' }]} />
           <View style={[styles.accentStripe, { backgroundColor: '#FFD700' }]} />
           <View style={[styles.accentStripe, { backgroundColor: '#FF0000' }]} />
+        </View>
+      </View>
+
+      <View style={styles.featuresSection}>
+        <Text style={styles.featuresTitle}>{t('dashboard.features.title')}</Text>
+        <View style={styles.featuresGrid}>
+          {appFeatures.map((feature, index) => (
+            <View key={index} style={styles.featureCard}>
+              <View style={[styles.featureIcon, { backgroundColor: feature.color + '15' }]}>
+                <Ionicons name={feature.icon as any} size={24} color={feature.color} />
+              </View>
+              <Text style={styles.featureTitle}>{feature.title}</Text>
+              <Text style={styles.featureDesc}>{feature.desc}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
@@ -569,6 +591,51 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 20,
+  },
+  featuresSection: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  featuresTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 12,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  featureCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    width: '48%',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  featureIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  featureDesc: {
+    fontSize: 12,
+    color: COLORS.gray,
   },
   walletsScroll: {
     marginTop: 8,
