@@ -6,6 +6,12 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  ConfirmationResult,
+  PhoneAuthProvider,
+  signInWithCredential,
+  linkWithCredential,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -52,6 +58,51 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+let confirmationResult: ConfirmationResult | null = null;
+let recaptchaVerifier: RecaptchaVerifier | null = null;
+
+export const phoneUtils = {
+  formatEthiopianNumber: (phoneNumber: string): string => {
+    let cleaned = phoneNumber.replace(/\D/g, '');
+    
+    if (cleaned.startsWith('251')) {
+      return '+' + cleaned;
+    }
+    
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+    
+    if (cleaned.length === 9 && (cleaned.startsWith('9') || cleaned.startsWith('7'))) {
+      return '+251' + cleaned;
+    }
+    
+    return '+251' + cleaned;
+  },
+  
+  validateEthiopianNumber: (phoneNumber: string): { valid: boolean; error?: string } => {
+    const formatted = phoneUtils.formatEthiopianNumber(phoneNumber);
+    const regex = /^\+251[79]\d{8}$/;
+    
+    if (!regex.test(formatted)) {
+      return { 
+        valid: false, 
+        error: 'Please enter a valid Ethiopian phone number (9 digits starting with 9 or 7)' 
+      };
+    }
+    
+    return { valid: true };
+  },
+  
+  getDisplayFormat: (phoneNumber: string): string => {
+    const formatted = phoneUtils.formatEthiopianNumber(phoneNumber);
+    if (formatted.length === 13) {
+      return `${formatted.slice(0, 4)} ${formatted.slice(4, 6)} ${formatted.slice(6, 9)} ${formatted.slice(9)}`;
+    }
+    return formatted;
+  }
+};
+
 export const firebaseAuth = {
   signIn: (email: string, password: string) => 
     signInWithEmailAndPassword(auth, email, password),
@@ -72,6 +123,90 @@ export const firebaseAuth = {
       return await user.getIdToken();
     }
     return null;
+  },
+
+  initRecaptcha: (containerId: string) => {
+    if (typeof window !== 'undefined') {
+      try {
+        recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+          size: 'invisible',
+          callback: () => {},
+          'expired-callback': () => {
+            console.log('reCAPTCHA expired');
+          }
+        });
+        return recaptchaVerifier;
+      } catch (error) {
+        console.error('reCAPTCHA init error:', error);
+        return null;
+      }
+    }
+    return null;
+  },
+
+  sendPhoneVerification: async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const formatted = phoneUtils.formatEthiopianNumber(phoneNumber);
+      const validation = phoneUtils.validateEthiopianNumber(phoneNumber);
+      
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
+      }
+
+      if (!recaptchaVerifier) {
+        recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+        });
+      }
+
+      confirmationResult = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Phone verification error:', error);
+      
+      if (error.code === 'auth/invalid-phone-number') {
+        return { success: false, error: 'Invalid phone number format' };
+      }
+      if (error.code === 'auth/too-many-requests') {
+        return { success: false, error: 'Too many requests. Please try again later.' };
+      }
+      if (error.code === 'auth/quota-exceeded') {
+        return { success: false, error: 'SMS quota exceeded. Please try again later or use email login.' };
+      }
+      
+      return { 
+        success: false, 
+        error: 'Failed to send verification code. Please try email login or contact support.' 
+      };
+    }
+  },
+
+  verifyPhoneCode: async (code: string): Promise<{ success: boolean; user?: FirebaseUser; error?: string }> => {
+    try {
+      if (!confirmationResult) {
+        return { success: false, error: 'No verification in progress. Please request a new code.' };
+      }
+
+      const result = await confirmationResult.confirm(code);
+      confirmationResult = null;
+      return { success: true, user: result.user };
+    } catch (error: any) {
+      console.error('Code verification error:', error);
+      
+      if (error.code === 'auth/invalid-verification-code') {
+        return { success: false, error: 'Invalid verification code. Please check and try again.' };
+      }
+      if (error.code === 'auth/code-expired') {
+        return { success: false, error: 'Verification code expired. Please request a new one.' };
+      }
+      
+      return { success: false, error: 'Verification failed. Please try again.' };
+    }
+  },
+
+  resendPhoneCode: async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
+    recaptchaVerifier = null;
+    return firebaseAuth.sendPhoneVerification(phoneNumber);
   },
 };
 

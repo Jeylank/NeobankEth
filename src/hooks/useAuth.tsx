@@ -9,6 +9,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  signInWithPhone: (user: FirebaseUser) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,6 +61,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithPhone = async (firebaseUser: FirebaseUser) => {
+    setIsLoading(true);
+    try {
+      setUser(firebaseUser);
+      const token = await firebaseUser.getIdToken();
+      await secureStorage.setItemAsync('authToken', token);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -69,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        signInWithPhone,
       }}
     >
       {children}

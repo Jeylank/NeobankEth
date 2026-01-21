@@ -52,3 +52,4 @@ Copy `.env.example` to `.env` and configure:
 - Added Tigrinya (ትግርኛ) language support
 - Added "What We Offer" features showcase on dashboard
 - Implemented KYC ID document scanning/upload with Firebase Storage integration
+- Added phone number authentication with +251 Ethiopian number pre-validation
