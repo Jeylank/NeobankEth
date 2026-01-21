@@ -14,7 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { kycApi } from '../services/api';
+import { useTranslation } from 'react-i18next';
+import { kycStorage, firebaseAuth, KYCUploadProgress } from '../services/firebase';
 
 const COLORS = {
   primary: '#006633',
@@ -36,6 +37,7 @@ const DOCUMENT_TYPES = [
 ];
 
 export default function KYCScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [documentType, setDocumentType] = useState('');
@@ -46,20 +48,37 @@ export default function KYCScreen() {
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [backImage, setBackImage] = useState<string | null>(null);
   const [selfieImage, setSelfieImage] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<KYCUploadProgress>({});
+
+  const currentUser = firebaseAuth.getCurrentUser();
 
   const { data: kycStatus, isLoading } = useQuery({
-    queryKey: ['kyc-status'],
-    queryFn: () => kycApi.getStatus(),
+    queryKey: ['kyc-status', currentUser?.uid],
+    queryFn: async () => {
+      if (!currentUser?.uid) return null;
+      return kycStorage.getKYCStatus(currentUser.uid);
+    },
+    enabled: !!currentUser?.uid,
   });
 
   const submitMutation = useMutation({
-    mutationFn: (data: any) => kycApi.submit(data),
+    mutationFn: async (data: any) => {
+      if (!currentUser?.uid) throw new Error('Please sign in to submit KYC');
+      return kycStorage.submitKYCDocuments(
+        currentUser.uid,
+        data,
+        (progress) => setUploadProgress(progress)
+      );
+    },
     onSuccess: () => {
-      Alert.alert('Success', 'KYC verification submitted! We will review your documents within 24-48 hours.');
+      Alert.alert(
+        t('kyc.successTitle') || 'Success',
+        t('kyc.successMessage') || 'KYC verification submitted! We will review your documents within 24-48 hours.'
+      );
       queryClient.invalidateQueries({ queryKey: ['kyc-status'] });
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to submit KYC');
+      Alert.alert(t('common.error') || 'Error', error.message || 'Failed to submit KYC');
     },
   });
 
@@ -437,7 +456,7 @@ export default function KYCScreen() {
           
           {step < 4 ? (
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-              <Text style={styles.nextButtonText}>Continue</Text>
+              <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
               <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
             </TouchableOpacity>
           ) : (
@@ -447,11 +466,32 @@ export default function KYCScreen() {
               disabled={submitMutation.isPending}
             >
               {submitMutation.isPending ? (
-                <ActivityIndicator color={COLORS.white} />
+                <View style={styles.uploadingContainer}>
+                  <ActivityIndicator color={COLORS.white} />
+                  <Text style={styles.uploadingText}>
+                    {t('kyc.uploading') || 'Uploading documents...'}
+                  </Text>
+                  {(uploadProgress.front || uploadProgress.selfie) && (
+                    <View style={styles.uploadProgressWrapper}>
+                      <View style={styles.uploadProgressBar}>
+                        <View 
+                          style={[
+                            styles.uploadProgressFill, 
+                            { width: `${Math.round((
+                              (uploadProgress.front || 0) + 
+                              (uploadProgress.back || 0) + 
+                              (uploadProgress.selfie || 0)
+                            ) / (backImage ? 3 : 2))}%` }
+                          ]} 
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={20} color={COLORS.white} />
-                  <Text style={styles.submitButtonText}>Submit for Verification</Text>
+                  <Text style={styles.submitButtonText}>{t('kyc.submit') || 'Submit for Verification'}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -687,6 +727,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginBottom: 4,
+  },
+  uploadingContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  uploadingText: {
+    color: COLORS.white,
+    fontSize: 14,
+    marginTop: 8,
+  },
+  uploadProgressWrapper: {
+    width: '100%',
+    marginTop: 8,
+  },
+  uploadProgressBar: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  uploadProgressFill: {
+    height: '100%',
+    backgroundColor: COLORS.white,
+    borderRadius: 2,
   },
   actions: {
     flexDirection: 'row',

@@ -51,3 +51,4 @@ Copy `.env.example` to `.env` and configure:
 - Added Forgot Password functionality on login screen
 - Added Tigrinya (ትግርኛ) language support
 - Added "What We Offer" features showcase on dashboard
+- Implemented KYC ID document scanning/upload with Firebase Storage integration
