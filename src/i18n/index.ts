@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import en from './locales/en.json';
 import am from './locales/am.json';
 import om from './locales/om.json';
+import ti from './locales/ti.json';
 
 const LANGUAGE_KEY = 'app_language';
 
@@ -13,12 +14,14 @@ export const languages = [
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'am', name: 'Amharic', nativeName: 'አማርኛ' },
   { code: 'om', name: 'Oromifa', nativeName: 'Afaan Oromoo' },
+  { code: 'ti', name: 'Tigrinya', nativeName: 'ትግርኛ' },
 ];
 
 const resources = {
   en: { translation: en },
   am: { translation: am },
   om: { translation: om },
+  ti: { translation: ti },
 };
 
 const initI18n = async () => {
@@ -26,7 +29,7 @@ const initI18n = async () => {
   
   if (!savedLanguage) {
     const deviceLanguage = Localization.locale.split('-')[0];
-    savedLanguage = ['en', 'am', 'om'].includes(deviceLanguage) ? deviceLanguage : 'en';
+    savedLanguage = ['en', 'am', 'om', 'ti'].includes(deviceLanguage) ? deviceLanguage : 'en';
   }
 
   await i18n.use(initReactI18next).init({
