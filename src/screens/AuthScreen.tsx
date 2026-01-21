@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { biometricService } from '../services/biometric';
+import { sendPasswordResetEmail, getAuth } from 'firebase/auth';
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -60,6 +61,21 @@ export default function AuthScreen() {
       Alert.alert('Error', error.message || 'Biometric authentication failed');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Email Required', 'Please enter your email address to reset your password.');
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert('Password Reset', 'A password reset link has been sent to your email address.');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send password reset email');
     }
   };
 
@@ -152,6 +168,15 @@ export default function AuthScreen() {
               </Text>
             )}
           </TouchableOpacity>
+
+          {isLogin && (
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={handleForgotPassword}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          )}
 
           {isLogin && biometricAvailable && biometricEnabled && (
             <>
@@ -303,6 +328,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 12,
+  },
+  forgotPasswordButton: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  forgotPasswordText: {
+    color: '#006633',
+    fontSize: 14,
   },
   switchButton: {
     marginTop: 20,
