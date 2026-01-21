@@ -17,9 +17,11 @@ NeoBanker is an Expo React Native mobile banking application with web support. I
 - `assets/fonts/` - Custom Ethiopic fonts
 
 ## Running the App
-The app runs on port 5000 using Expo for web:
+The app runs on port 5000 using a static build for stability:
 ```
-npm run web
+npm run web          # Builds and serves static files
+npm run web:dev      # Development mode with hot reload (less stable)
+npm run build:web    # Build only (outputs to dist/)
 ```
 
 ## Environment Variables Required
@@ -45,3 +47,4 @@ Copy `.env.example` to `.env` and configure:
 - Configured Expo web to run on port 5000
 - Removed NativeWind babel plugin for Metro compatibility
 - Added NotoSansEthiopic variable font files
+- Switched to static build for stable preview (no hot reload flickering)
