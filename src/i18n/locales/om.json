@@ -22,8 +22,16 @@
     "to": "Gara"
   },
   "dashboard": {
-    "totalBalance": "Baay'ina Waliigalaa",
-    "myWallets": "Waaleetii Koo",
+    "transactionSummary": "Cuunfaa Daldalaa",
+    "moneySent": "Maallaqa Ergame",
+    "moneyDelivered": "Ga'e",
+    "pendingDelivery": "Eegamu Irra",
+    "completed": "Xummurame",
+    "completedDesc": "Daldalaan ga'e",
+    "processing": "Hojjetamu Irra",
+    "processingDesc": "Hojjetamu irra jira",
+    "initiated": "Eegalame",
+    "initiatedDesc": "Michuuf eegamu",
     "fxRates": "Gatii Jijjiirraa",
     "liveRates": "Gatii Jijjiirraa Kallattii",
     "quickActions": "Tarkaanfii Ariifataa",
@@ -264,5 +272,10 @@
     "fillAllFields": "Mee iddoo hunda guuti",
     "passwordsNoMatch": "Jechoonni icciitii wal hin simatan",
     "authFailed": "Mirkaneessun hin milkoofne"
+  },
+  "legal": {
+    "disclaimer": "Habeshare plaaatfoorma teknooloojii dha. Tajaajilli maallaqa dhaabbilee faayinaansii hayyama qaban Itoophiyaa keessaatiin ni kennama.",
+    "fundsDisclaimer": "Maallaqni dhaabbilee faayinaansii hayyama qaban Itoophiyaa keessaatiin ni raawwatama.",
+    "ratesProvided": "Gatiin michuudhaan dhiyaate"
   }
 }

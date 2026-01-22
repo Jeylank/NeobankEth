@@ -22,8 +22,16 @@
     "to": "To"
   },
   "dashboard": {
-    "totalBalance": "Total Balance",
-    "myWallets": "My Wallets",
+    "transactionSummary": "Transaction Summary",
+    "moneySent": "Money Sent",
+    "moneyDelivered": "Delivered",
+    "pendingDelivery": "Pending",
+    "completed": "Completed",
+    "completedDesc": "Transactions delivered",
+    "processing": "Processing",
+    "processingDesc": "Being processed",
+    "initiated": "Initiated",
+    "initiatedDesc": "Awaiting partner",
     "fxRates": "FX Rates",
     "liveRates": "Live Exchange Rates",
     "quickActions": "Quick Actions",
@@ -264,5 +272,10 @@
     "fillAllFields": "Please fill in all fields",
     "passwordsNoMatch": "Passwords do not match",
     "authFailed": "Authentication failed"
+  },
+  "legal": {
+    "disclaimer": "Habeshare is a technology platform. Money services are provided by licensed financial institutions in Ethiopia.",
+    "fundsDisclaimer": "Funds are processed by licensed financial institutions in Ethiopia.",
+    "ratesProvided": "Rates provided by partner"
   }
 }

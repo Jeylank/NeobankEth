@@ -1,7 +1,7 @@
-# NeoBanker Mobile App
+# Habeshare Mobile App
 
 ## Overview
-NeoBanker is an Expo React Native mobile banking application with web support. It provides features like authentication, remittance tracking, bill payments, bank account management, and more.
+Habeshare is an Expo React Native mobile banking application with web support, following a NON-CUSTODIAL PARTNER MODEL. Habeshare does NOT hold user funds - all funds are held and processed by licensed financial institutions in Ethiopia. It provides features like authentication, remittance tracking, bill payments, and KYC verification with multi-language support for Ethiopian languages.
 
 ## Project Structure
 - `App.tsx` - Main application entry point
@@ -53,3 +53,6 @@ Copy `.env.example` to `.env` and configure:
 - Added "What We Offer" features showcase on dashboard
 - Implemented KYC ID document scanning/upload with Firebase Storage integration
 - Added phone number authentication with +251 Ethiopian number pre-validation
+- Rebranded from NeoBanker to Habeshare with non-custodial partner model
+- Replaced wallet balances with transaction status summary (Money Sent, Delivered, Pending)
+- Added regulatory disclaimers throughout the app

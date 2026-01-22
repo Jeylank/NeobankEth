@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { balanceApi, transactionsApi, savingsApi, exchangeRatesApi } from '../services/api';
+import { transactionsApi, savingsApi, exchangeRatesApi } from '../services/api';
 import { useNavigation } from '@react-navigation/native';
 import '../i18n';
 
@@ -26,12 +26,12 @@ const COLORS = {
   text: '#1F2937',
 };
 
-const MOCK_WALLETS = [
-  { currency: 'USD', symbol: '$', amount: 2450.00, flag: '🇺🇸' },
-  { currency: 'ETB', symbol: 'Br', amount: 125000.00, flag: '🇪🇹' },
-  { currency: 'EUR', symbol: '€', amount: 850.00, flag: '🇪🇺' },
-  { currency: 'GBP', symbol: '£', amount: 420.00, flag: '🇬🇧' },
-];
+const MOCK_TRANSACTION_SUMMARY = {
+  moneySent: 2450.00,
+  moneyDelivered: 2100.00,
+  pendingDelivery: 350.00,
+  totalTransactions: 12,
+};
 
 const MOCK_RATES = {
   USD: { ETB: 56.50, lastUpdated: new Date().toISOString() },
@@ -47,29 +47,12 @@ export default function DashboardScreen() {
   const [fxAmount, setFxAmount] = useState('100');
   const [fxFromCurrency, setFxFromCurrency] = useState('USD');
 
-  const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance } = useQuery({
-    queryKey: ['balance'],
-    queryFn: () => balanceApi.getBalance(),
-  });
-
   const { data: ratesData, refetch: refetchRates } = useQuery({
     queryKey: ['exchange-rates'],
     queryFn: () => exchangeRatesApi.getRates(),
   });
 
-  const { data: multiCurrencyData, refetch: refetchMultiCurrency } = useQuery({
-    queryKey: ['multi-currency-balance'],
-    queryFn: () => balanceApi.getMultiCurrencyBalance(),
-  });
-
-  const wallets = multiCurrencyData?.balances?.length
-    ? multiCurrencyData.balances.map((b: any) => ({
-        currency: b.currency,
-        symbol: b.symbol || (b.currency === 'ETB' ? 'Br' : '$'),
-        amount: b.amount,
-        flag: b.currency === 'ETB' ? '🇪🇹' : b.currency === 'USD' ? '🇺🇸' : b.currency === 'EUR' ? '🇪🇺' : b.currency === 'GBP' ? '🇬🇧' : '💵',
-      }))
-    : MOCK_WALLETS;
+  const transactionSummary = MOCK_TRANSACTION_SUMMARY;
 
   const { data: transactionsData, isLoading: txLoading, refetch: refetchTx } = useQuery({
     queryKey: ['transactions', 'recent'],
@@ -85,7 +68,7 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refetchBalance(), refetchTx(), refetchSavings(), refetchRates(), refetchMultiCurrency()]);
+    await Promise.all([refetchTx(), refetchSavings(), refetchRates()]);
     setRefreshing(false);
   };
 
@@ -170,15 +153,26 @@ export default function DashboardScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>{t('dashboard.totalBalance')}</Text>
-        {balanceLoading ? (
-          <ActivityIndicator color={COLORS.white} size="large" />
-        ) : (
-          <Text style={styles.balanceAmount}>
-            {formatCurrency(balanceData?.balance || 0)}
-          </Text>
-        )}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>Habeshare</Text>
+        <Text style={styles.summarySubtitle}>{t('dashboard.transactionSummary')}</Text>
+        <View style={styles.summaryGrid}>
+          <View style={styles.summaryItem}>
+            <Ionicons name="arrow-up-circle" size={24} color="#10B981" />
+            <Text style={styles.summaryAmount}>{formatCurrency(transactionSummary.moneySent)}</Text>
+            <Text style={styles.summaryLabel}>{t('dashboard.moneySent')}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+            <Text style={styles.summaryAmount}>{formatCurrency(transactionSummary.moneyDelivered)}</Text>
+            <Text style={styles.summaryLabel}>{t('dashboard.moneyDelivered')}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Ionicons name="time" size={24} color="#F59E0B" />
+            <Text style={styles.summaryAmount}>{formatCurrency(transactionSummary.pendingDelivery)}</Text>
+            <Text style={styles.summaryLabel}>{t('dashboard.pendingDelivery')}</Text>
+          </View>
+        </View>
         <View style={styles.flagAccent}>
           <View style={[styles.accentStripe, { backgroundColor: '#006633' }]} />
           <View style={[styles.accentStripe, { backgroundColor: '#FFD700' }]} />
@@ -201,26 +195,31 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('dashboard.myWallets')}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletsScroll}>
-          {wallets.map((wallet: any, index: number) => (
-            <View key={index} style={styles.walletCard}>
-              <View style={styles.walletHeader}>
-                <Text style={styles.walletFlag}>{wallet.flag}</Text>
-                <Text style={styles.walletCurrency}>{wallet.currency}</Text>
-              </View>
-              <Text style={styles.walletAmount}>
-                {wallet.symbol}{wallet.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </Text>
-              {wallet.currency !== 'ETB' && (
-                <Text style={styles.walletEtbValue}>
-                  ≈ Br {(wallet.amount * getETBRate(wallet.currency)).toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                </Text>
-              )}
-            </View>
-          ))}
-        </ScrollView>
+      <View style={styles.statusCards}>
+        <View style={[styles.statusCard, { borderLeftColor: '#10B981' }]}>
+          <View style={styles.statusHeader}>
+            <Ionicons name="checkmark-done-circle" size={20} color="#10B981" />
+            <Text style={styles.statusTitle}>{t('dashboard.completed')}</Text>
+          </View>
+          <Text style={styles.statusCount}>8</Text>
+          <Text style={styles.statusDesc}>{t('dashboard.completedDesc')}</Text>
+        </View>
+        <View style={[styles.statusCard, { borderLeftColor: '#3B82F6' }]}>
+          <View style={styles.statusHeader}>
+            <Ionicons name="sync-circle" size={20} color="#3B82F6" />
+            <Text style={styles.statusTitle}>{t('dashboard.processing')}</Text>
+          </View>
+          <Text style={styles.statusCount}>2</Text>
+          <Text style={styles.statusDesc}>{t('dashboard.processingDesc')}</Text>
+        </View>
+        <View style={[styles.statusCard, { borderLeftColor: '#F59E0B' }]}>
+          <View style={styles.statusHeader}>
+            <Ionicons name="hourglass" size={20} color="#F59E0B" />
+            <Text style={styles.statusTitle}>{t('dashboard.initiated')}</Text>
+          </View>
+          <Text style={styles.statusCount}>2</Text>
+          <Text style={styles.statusDesc}>{t('dashboard.initiatedDesc')}</Text>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -401,6 +400,15 @@ export default function DashboardScreen() {
         )}
       </View>
 
+      <View style={styles.disclaimerSection}>
+        <View style={styles.disclaimerBox}>
+          <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+          <Text style={styles.disclaimerText}>
+            {t('legal.disclaimer')}
+          </Text>
+        </View>
+      </View>
+
       <View style={styles.bottomPadding} />
     </ScrollView>
   );
@@ -411,22 +419,96 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.lightGray,
   },
-  balanceCard: {
+  summaryCard: {
     backgroundColor: COLORS.primary,
     margin: 16,
-    padding: 24,
+    padding: 20,
     borderRadius: 16,
     alignItems: 'center',
   },
-  balanceLabel: {
+  summaryTitle: {
+    color: COLORS.white,
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  summarySubtitle: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  summaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  summaryAmount: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  summaryLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  statusCards: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    gap: 8,
+  },
+  statusCard: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 3,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 8,
   },
-  balanceAmount: {
-    color: COLORS.white,
-    fontSize: 36,
+  statusTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  statusCount: {
+    fontSize: 24,
     fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  statusDesc: {
+    fontSize: 10,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+  disclaimerSection: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  disclaimerBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 8,
+    gap: 10,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 11,
+    color: COLORS.text,
+    lineHeight: 16,
   },
   flagAccent: {
     flexDirection: 'row',

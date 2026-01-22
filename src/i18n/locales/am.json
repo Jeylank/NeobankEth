@@ -22,8 +22,16 @@
     "to": "ወደ"
   },
   "dashboard": {
-    "totalBalance": "ጠቅላላ ቀሪ ሂሳብ",
-    "myWallets": "የኔ ዋሌቶች",
+    "transactionSummary": "የግብይት ማጠቃለያ",
+    "moneySent": "የተላከ ገንዘብ",
+    "moneyDelivered": "የደረሰ",
+    "pendingDelivery": "በመጠባበቅ ላይ",
+    "completed": "ተጠናቅቋል",
+    "completedDesc": "የደረሱ ግብይቶች",
+    "processing": "በሂደት ላይ",
+    "processingDesc": "በመሰራት ላይ",
+    "initiated": "ተጀምሯል",
+    "initiatedDesc": "አጋር እየጠበቀ",
     "fxRates": "የምንዛሬ ተመኖች",
     "liveRates": "የቀጥታ ምንዛሬ ዋጋዎች",
     "quickActions": "ፈጣን እርምጃዎች",
@@ -264,5 +272,10 @@
     "fillAllFields": "እባክዎ ሁሉንም ቦታዎች ይሙሉ",
     "passwordsNoMatch": "የይለፍ ቃሎች አይዛመዱም",
     "authFailed": "ማረጋገጥ አልተሳካም"
+  },
+  "legal": {
+    "disclaimer": "ሀበሻሸር የቴክኖሎጂ መድረክ ነው። የገንዘብ አገልግሎቶች በኢትዮጵያ በተፈቀዱ የፋይናንስ ተቋማት ይሰጣሉ።",
+    "fundsDisclaimer": "ገንዘብ በኢትዮጵያ በተፈቀዱ የፋይናንስ ተቋማት ይከናወናል።",
+    "ratesProvided": "ዋጋዎች በአጋር የቀረቡ"
   }
 }

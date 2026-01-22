@@ -1,0 +1,73 @@
+Build a mobile-first neobank-style application called “Habeshare” using React (or React Native with Expo).
+
+IMPORTANT REGULATORY CONSTRAINT:
+This app must follow a NON-CUSTODIAL PARTNER MODEL.
+Habeshare must NOT hold user funds.
+All funds are held and processed by licensed financial institutions in Ethiopia.
+
+CORE PRINCIPLES:
+- Habeshare is a technology and orchestration platform
+- Display transaction status and history, not stored wallet balances
+- All money movement is executed by licensed partners via backend APIs
+
+FEATURES TO IMPLEMENT:
+
+1) USER AUTHENTICATION
+- Firebase Authentication
+- Phone number login (OTP) for Ethiopian users
+- Email login for diaspora users
+- Language support: English, Amharic, Oromifa
+
+2) HOME / DASHBOARD
+- Show “Recent Transactions”
+- Show statuses: Initiated, Processing, Completed, Failed
+- DO NOT show “wallet balance”
+- Replace with:
+  - “Money sent”
+  - “Money delivered”
+  - “Pending delivery”
+
+3) SEND MONEY (REMITTANCE FLOW)
+- User enters amount and destination (bank / mobile wallet)
+- Show transparent fees and FX rate (label as “Provided by partner”)
+- Confirmation screen must include disclaimer:
+  “Funds are processed by licensed financial institutions in Ethiopia.”
+
+4) BILL PAYMENTS
+- Bill categories (Electricity, Telecom, Internet, Education)
+- User inputs account number and amount
+- App submits request to backend
+- Show bill payment status (Pending / Paid / Failed)
+
+5) TRANSACTION HISTORY
+- Full transaction list with:
+  - Partner reference ID
+  - Status
+  - Date
+  - Amount
+- No ability to edit or reverse from app
+
+6) LEGAL & DISCLOSURES (MANDATORY)
+- Footer text:
+  “Habeshare is a technology platform. Money services are provided by licensed financial institutions.”
+- Display disclaimer on:
+  - Wallet screen
+  - Payment confirmation screen
+  - Terms & Conditions page
+
+7) REMOVE / DO NOT IMPLEMENT
+- No stored wallet balance
+- No interest or savings features
+- No internal instant P2P wallet transfers
+- No FX rate setting controls
+
+UI STYLE:
+- Clean fintech UI
+- Dark + Light mode
+- Professional, bank-grade look
+- Trust-focused wording (no “bank account” language)
+
+OUTPUT:
+- Fully functional frontend app
+- Clear separation between UI and backend API calls
+- Ready to connect to partner-based backend

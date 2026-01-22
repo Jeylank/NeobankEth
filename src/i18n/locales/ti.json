@@ -22,8 +22,16 @@
     "to": "ናብ"
   },
   "dashboard": {
-    "totalBalance": "ጠቕላላ ቀሪ ሒሳብ",
-    "myWallets": "ናተይ ዋሌታት",
+    "transactionSummary": "ጽማቕ ግብይቲ",
+    "moneySent": "ዝተላእከ ገንዘብ",
+    "moneyDelivered": "ዝበጽሐ",
+    "pendingDelivery": "ይጽበ ኣሎ",
+    "completed": "ተዛዚሙ",
+    "completedDesc": "ዝበጽሐ ግብይቲ",
+    "processing": "ይስራሕ ኣሎ",
+    "processingDesc": "ይሰርሕ ኣሎ",
+    "initiated": "ተጀሚሩ",
+    "initiatedDesc": "መሻርኽ ይጽበ",
     "fxRates": "ዋጋ ምንዛሪ",
     "liveRates": "ቀጥታ ዋጋ ምንዛሪ",
     "quickActions": "ቅልጡፍ ስጉምትታት",
@@ -264,5 +272,10 @@
     "fillAllFields": "በጃኻ ኩሉ ቦታታት ምልኣ",
     "passwordsNoMatch": "ምስጢራዊ ቃላት ኣይተሳማምዑን",
     "authFailed": "መረጋገጺ ኣይሰሰረሐን"
+  },
+  "legal": {
+    "disclaimer": "ሃበሻሸር ናይ ቴክኖሎጂ መድረኽ እዩ። ኣገልግሎት ገንዘብ ብኢትዮጵያ ብዝተፈቕዱ ናይ ፋይናንስ ትካላት ይወሃብ።",
+    "fundsDisclaimer": "ገንዘብ ብኢትዮጵያ ብዝተፈቕዱ ናይ ፋይናንስ ትካላት ይፍጸም።",
+    "ratesProvided": "ዋጋታት ብመሻርኽ ዝቐረበ"
   }
 }
