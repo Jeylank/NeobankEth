@@ -37,7 +37,7 @@ export const biometricService = {
 
   authenticate: async (promptMessage?: string): Promise<boolean> => {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: promptMessage || 'Authenticate to access NeoBanker',
+      promptMessage: promptMessage || 'Authenticate to access Habeshare',
       cancelLabel: 'Cancel',
       disableDeviceFallback: false,
       fallbackLabel: 'Use Password',
