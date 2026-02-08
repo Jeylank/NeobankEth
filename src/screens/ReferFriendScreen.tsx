@@ -50,7 +50,7 @@ export default function ReferFriendScreen() {
   });
 
   const referralCode = referralData?.code || 'LOADING...';
-  const referralLink = `https://neobanker.app/invite/${referralCode}`;
+  const referralLink = `https://habeshare.com/invite/${referralCode}`;
   const totalReferred = referralData?.totalReferred || 0;
   const totalEarnings = referralData?.totalEarnings || 0;
   const pendingRewards = referralData?.pendingRewards || 0;
@@ -68,8 +68,8 @@ export default function ReferFriendScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Join NeoBanker and get 100 ETB bonus! Use my referral code: ${referralCode}\n\nDownload now: ${referralLink}`,
-        title: 'Join NeoBanker',
+        message: `Join Habeshare and get 100 ETB bonus! Use my referral code: ${referralCode}\n\nDownload now: ${referralLink}`,
+        title: 'Join Habeshare',
       });
     } catch (error) {
       console.error('Share error:', error);

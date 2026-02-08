@@ -30,7 +30,7 @@ const COLORS = {
 const FAQ_ITEMS = [
   {
     question: 'How do I add money to my account?',
-    answer: 'You can add money using Chapa, Telebirr, or bank transfer. Go to the Dashboard and tap "Add Funds" to see all available options.',
+    answer: 'You can add money using Chapa, Telebirr, or direct transfer. Go to the Dashboard and tap "Add Funds" to see all available options.',
   },
   {
     question: 'How long do international transfers take?',
@@ -46,7 +46,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Is my money safe?',
-    answer: 'Yes! We use bank-level security and encryption to protect your account. Your funds are held in regulated financial institutions.',
+    answer: 'Yes! We use industry-leading security and encryption to protect your account. Your funds are held by regulated financial institutions in Ethiopia.',
   },
   {
     question: 'How do I reset my password?',
@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
 ];
 
 const CONTACT_OPTIONS = [
-  { id: 'email', label: 'Email Support', icon: 'mail' as const, value: 'support@neobanker.com' },
+  { id: 'email', label: 'Email Support', icon: 'mail' as const, value: 'support@habeshare.com' },
   { id: 'phone', label: 'Phone Support', icon: 'call' as const, value: '+251 911 123 456' },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'logo-whatsapp' as const, value: '+251 911 123 456' },
 ];

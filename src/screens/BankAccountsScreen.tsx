@@ -34,7 +34,7 @@ const BANK_TYPES = [
   { id: 'dashen', name: 'Dashen Bank', icon: 'business' },
   { id: 'abyssinia', name: 'Bank of Abyssinia', icon: 'business' },
   { id: 'nib', name: 'Nib International Bank', icon: 'business' },
-  { id: 'other', name: 'Other Bank', icon: 'business' },
+  { id: 'other', name: 'Other Institution', icon: 'business' },
 ];
 
 export default function BankAccountsScreen() {
@@ -54,24 +54,24 @@ export default function BankAccountsScreen() {
     mutationFn: (data: { bankName: string; accountNumber: string; accountName: string }) =>
       bankAccountsApi.add(data),
     onSuccess: () => {
-      Alert.alert('Success', 'Bank account added successfully!');
+      Alert.alert('Success', 'Account added successfully!');
       setModalVisible(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to add bank account');
+      Alert.alert('Error', error.message || 'Failed to add account');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => bankAccountsApi.delete(id),
     onSuccess: () => {
-      Alert.alert('Success', 'Bank account removed');
+      Alert.alert('Success', 'Account removed');
       queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to remove bank account');
+      Alert.alert('Error', error.message || 'Failed to remove account');
     },
   });
 
@@ -102,7 +102,7 @@ export default function BankAccountsScreen() {
 
   const handleDeleteAccount = (id: number, bankName: string) => {
     Alert.alert(
-      'Remove Bank Account',
+      'Remove Account',
       `Are you sure you want to remove ${bankName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -120,8 +120,8 @@ export default function BankAccountsScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Bank Accounts</Text>
-          <Text style={styles.subtitle}>Manage your connected bank accounts</Text>
+          <Text style={styles.title}>Linked Accounts</Text>
+          <Text style={styles.subtitle}>Manage your connected accounts</Text>
         </View>
 
         <TouchableOpacity
@@ -129,7 +129,7 @@ export default function BankAccountsScreen() {
           onPress={() => setModalVisible(true)}
         >
           <Ionicons name="add-circle" size={24} color={COLORS.primary} />
-          <Text style={styles.addButtonText}>Add New Bank Account</Text>
+          <Text style={styles.addButtonText}>Add New Account</Text>
         </TouchableOpacity>
 
         <View style={styles.accountsSection}>
@@ -166,9 +166,9 @@ export default function BankAccountsScreen() {
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="wallet-outline" size={48} color={COLORS.textSecondary} />
-              <Text style={styles.emptyTitle}>No Bank Accounts</Text>
+              <Text style={styles.emptyTitle}>No Linked Accounts</Text>
               <Text style={styles.emptyText}>
-                Add a bank account to start sending and receiving money
+                Add an account to start sending and receiving money
               </Text>
             </View>
           )}
@@ -184,14 +184,14 @@ export default function BankAccountsScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Bank Account</Text>
+              <Text style={styles.modalTitle}>Add Account</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Select Bank</Text>
+              <Text style={styles.inputLabel}>Select Institution</Text>
               <View style={styles.bankGrid}>
                 {BANK_TYPES.map((bank) => (
                   <TouchableOpacity

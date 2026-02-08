@@ -170,7 +170,7 @@ class ReceiptService {
 <body>
   <div class="receipt">
     <div class="header">
-      <div class="logo">🏦 NeoBanker</div>
+      <div class="logo">💸 Habeshare</div>
       <div class="subtitle">${typeLabels[data.type] || 'Transaction'} Receipt</div>
       <div class="status-badge">${data.status}</div>
     </div>
@@ -218,7 +218,7 @@ class ReceiptService {
       ` : ''}
       ${data.recipientBank ? `
       <div class="detail-row">
-        <span class="detail-label">Bank</span>
+        <span class="detail-label">Institution</span>
         <span class="detail-value">${data.recipientBank}</span>
       </div>
       ` : ''}
@@ -257,7 +257,7 @@ class ReceiptService {
     <div class="footer">
       <div class="ref-number">Ref: ${data.referenceNumber}</div>
       <div class="footer-note">
-        Thank you for using NeoBanker!<br/>
+        Thank you for using Habeshare!<br/>
         Keep this receipt for your records.
       </div>
       <div class="ethiopian-flag">

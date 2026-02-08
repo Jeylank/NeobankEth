@@ -106,7 +106,7 @@ export default function RootNavigator() {
         <>
           <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
           <Stack.Screen name="BillPayments" component={BillPaymentsScreen} options={{ title: 'Pay Bills' }} />
-          <Stack.Screen name="BankAccounts" component={BankAccountsScreen} options={{ title: 'Bank Accounts' }} />
+          <Stack.Screen name="BankAccounts" component={BankAccountsScreen} options={{ title: 'Linked Accounts' }} />
           <Stack.Screen name="ChapaPayment" component={ChapaPaymentScreen} options={{ title: 'Chapa Payment' }} />
           <Stack.Screen name="TelebirrPayment" component={TelebirrPaymentScreen} options={{ title: 'Telebirr Payment' }} />
           <Stack.Screen name="KYC" component={KYCScreen} options={{ title: 'Identity Verification' }} />

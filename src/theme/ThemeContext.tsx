@@ -14,7 +14,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = '@neobanker_theme';
+const THEME_STORAGE_KEY = '@habeshare_theme';
 
 interface ThemeProviderProps {
   children: ReactNode;

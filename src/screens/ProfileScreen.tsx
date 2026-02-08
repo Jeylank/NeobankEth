@@ -322,8 +322,8 @@ export default function ProfileScreen() {
           <View style={[styles.stripe, { backgroundColor: '#FFD700' }]} />
           <View style={[styles.stripe, { backgroundColor: '#FF0000' }]} />
         </View>
-        <Text style={styles.appVersion}>NeoBanker v1.0.0</Text>
-        <Text style={styles.footerText}>Ethiopian Digital Banking</Text>
+        <Text style={styles.appVersion}>Habeshare v1.0.0</Text>
+        <Text style={styles.footerText}>Habeshare Global</Text>
       </View>
 
       <View style={styles.bottomPadding} />

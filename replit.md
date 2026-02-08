@@ -56,3 +56,6 @@ Copy `.env.example` to `.env` and configure:
 - Rebranded from NeoBanker to Habeshare with non-custodial partner model
 - Replaced wallet balances with transaction status summary (Money Sent, Delivered, Pending)
 - Added regulatory disclaimers throughout the app
+- Removed all "Bank/Banking" terminology for regulatory compliance (replaced with Finance, Linked Accounts, Direct Transfer, etc.)
+- Removed all NeoBanker references, replaced with Habeshare branding
+- Updated tagline to "Habeshare Global" and footer to "Secure Services for the Ethiopian Diaspora"

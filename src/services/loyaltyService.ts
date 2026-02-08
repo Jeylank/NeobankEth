@@ -110,7 +110,7 @@ class LoyaltyService {
       const referralCode = this.generateReferralCode(userId);
       const defaultInfo: ReferralInfo = {
         referralCode,
-        referralLink: `https://neobanker.app/ref/${referralCode}`,
+        referralLink: `https://habeshare.com/ref/${referralCode}`,
         totalReferrals: 0,
         successfulReferrals: 0,
         pendingReferrals: 0,

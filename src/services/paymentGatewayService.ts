@@ -107,19 +107,19 @@ class PaymentGatewayService {
     telebirr: {
       provider: 'telebirr',
       apiBaseUrl: 'https://api.telebirr.com',
-      callbackUrl: 'https://neobanker.app/webhooks/telebirr',
+      callbackUrl: 'https://habeshare.com/webhooks/telebirr',
       isTestMode: true,
     },
     chapa: {
       provider: 'chapa',
       apiBaseUrl: 'https://api.chapa.co',
-      callbackUrl: 'https://neobanker.app/webhooks/chapa',
+      callbackUrl: 'https://habeshare.com/webhooks/chapa',
       isTestMode: true,
     },
     santimpay: {
       provider: 'santimpay',
       apiBaseUrl: 'https://api.santimpay.com',
-      callbackUrl: 'https://neobanker.app/webhooks/santimpay',
+      callbackUrl: 'https://habeshare.com/webhooks/santimpay',
       isTestMode: true,
     },
   };
