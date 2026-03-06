@@ -15,7 +15,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { familyWalletService } from '../services/familyWalletService';
+import { firestoreFamilyWalletService } from '../services/firestoreFamilyWallet';
+import { useAuth } from '../hooks/useAuth';
 import type { FamilyMember, MonthlyAllocation } from '../types';
 
 const COLORS = {
@@ -60,9 +61,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function FamilyWalletScreen() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [sentThisMonth, setSentThisMonth] = useState<MonthlyAllocation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
@@ -78,20 +81,25 @@ export default function FamilyWalletScreen() {
   const [formAmount, setFormAmount] = useState('');
   const [formCurrency, setFormCurrency] = useState<FamilyMember['currency']>('USD');
 
+  const userId = user?.uid;
+
   const loadData = useCallback(async () => {
+    if (!userId) return;
+    setError(null);
     try {
       const [membersData, sentData] = await Promise.all([
-        familyWalletService.getFamilyMembers(),
-        familyWalletService.getSentThisMonth(),
+        firestoreFamilyWalletService.getFamilyMembers(userId),
+        firestoreFamilyWalletService.getSentThisMonth(userId),
       ]);
       setMembers(membersData);
       setSentThisMonth(sentData);
-    } catch (error) {
-      console.error('Failed to load family wallet data:', error);
+    } catch (err) {
+      console.error('Failed to load family wallet data:', err);
+      setError(t('common.error'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId, t]);
 
   useEffect(() => {
     loadData();
@@ -142,6 +150,7 @@ export default function FamilyWalletScreen() {
   };
 
   const handleSaveForm = async () => {
+    if (!userId) return;
     if (!formName.trim() || !formPhone.trim() || !formAmount.trim()) {
       Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
@@ -154,7 +163,7 @@ export default function FamilyWalletScreen() {
 
     try {
       if (editingMember) {
-        await familyWalletService.updateFamilyMember(editingMember.id, {
+        await firestoreFamilyWalletService.updateFamilyMember(userId, editingMember.id, {
           name: formName.trim(),
           relationship: formRelationship,
           phone: formPhone.trim(),
@@ -165,8 +174,8 @@ export default function FamilyWalletScreen() {
         });
         Alert.alert(t('common.success'), t('familyWallet.memberUpdated'));
       } else {
-        await familyWalletService.addFamilyMember({
-          userId: '1',
+        await firestoreFamilyWalletService.addFamilyMember(userId, {
+          userId,
           name: formName.trim(),
           relationship: formRelationship,
           phone: formPhone.trim(),
@@ -182,21 +191,23 @@ export default function FamilyWalletScreen() {
       setShowAddModal(false);
       resetForm();
       await loadData();
-    } catch (error) {
+    } catch (err) {
       Alert.alert(t('common.error'), t('common.error'));
     }
   };
 
   const handleToggleStatus = async (member: FamilyMember) => {
+    if (!userId) return;
     try {
-      await familyWalletService.toggleMemberStatus(member.id);
+      await firestoreFamilyWalletService.toggleMemberStatus(userId, member.id);
       await loadData();
-    } catch (error) {
+    } catch (err) {
       Alert.alert(t('common.error'), t('common.error'));
     }
   };
 
   const handleDelete = (member: FamilyMember) => {
+    if (!userId) return;
     Alert.alert(
       t('familyWallet.confirmDelete'),
       t('familyWallet.deleteMsg', { name: member.name }),
@@ -207,10 +218,10 @@ export default function FamilyWalletScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await familyWalletService.deleteFamilyMember(member.id);
+              await firestoreFamilyWalletService.deleteFamilyMember(userId, member.id);
               Alert.alert(t('common.success'), t('familyWallet.memberDeleted'));
               await loadData();
-            } catch (error) {
+            } catch (err) {
               Alert.alert(t('common.error'), t('common.error'));
             }
           },
@@ -225,15 +236,15 @@ export default function FamilyWalletScreen() {
   };
 
   const handleConfirmSend = async () => {
-    if (!sendingMember) return;
+    if (!sendingMember || !userId) return;
     setSending(true);
     try {
-      await familyWalletService.sendFamilySupport(sendingMember.id);
+      await firestoreFamilyWalletService.sendFamilySupport(userId, sendingMember);
       setShowSendModal(false);
       setSendingMember(null);
       Alert.alert(t('common.success'), t('familyWallet.supportSent'));
       await loadData();
-    } catch (error) {
+    } catch (err) {
       Alert.alert(t('common.error'), t('common.error'));
     } finally {
       setSending(false);
@@ -258,6 +269,28 @@ export default function FamilyWalletScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={COLORS.error} />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setLoading(true);
+              setError(null);
+              loadData();
+            }}
+          >
+            <Ionicons name="refresh" size={18} color={COLORS.white} />
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -1257,6 +1290,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  errorText: {
+    fontSize: 16,
+    color: COLORS.error,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 20,
+    paddingHorizontal: 32,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  retryButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
   bottomPadding: {
     height: 40,

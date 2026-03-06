@@ -1,3 +1,7 @@
+/**
+ * @deprecated Use firestoreFamilyWallet.ts instead. This AsyncStorage-based
+ * service is kept for reference only.
+ */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { FamilyMember, FamilyWallet, MonthlyAllocation } from '../types';
 
