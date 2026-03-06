@@ -59,3 +59,4 @@ Copy `.env.example` to `.env` and configure:
 - Removed all "Bank/Banking" terminology for regulatory compliance (replaced with Finance, Linked Accounts, Direct Transfer, etc.)
 - Removed all NeoBanker references, replaced with Habeshare branding
 - Updated tagline to "Habeshare Global" and footer to "Secure Services for the Ethiopian Diaspora"
+- Added Family Wallet feature: manage monthly support for family members in Ethiopia with allocation tracking, donut chart, Send Now, and full i18n support

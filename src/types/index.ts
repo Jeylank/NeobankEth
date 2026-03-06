@@ -58,3 +58,38 @@ export interface ApiError {
   message: string;
   status?: number;
 }
+
+export interface FamilyMember {
+  id: string;
+  userId: string;
+  name: string;
+  relationship: 'mother' | 'father' | 'brother' | 'sister' | 'spouse' | 'other';
+  phone: string;
+  payoutMethod: 'telebirr' | 'direct_transfer' | 'cash_pickup';
+  monthlyAmount: number;
+  currency: 'EUR' | 'USD' | 'GBP';
+  status: 'active' | 'paused';
+  nextPayoutDate: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FamilyWallet {
+  id: string;
+  userId: string;
+  members: FamilyMember[];
+  totalMonthlyBudget: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MonthlyAllocation {
+  memberId: string;
+  memberName: string;
+  amount: number;
+  currency: string;
+  status: 'planned' | 'sent' | 'failed';
+  sentAt?: string;
+}

@@ -1,0 +1,115 @@
+Add a new feature to my React/TypeScript fintech app called "Family Wallet" for diaspora users.
+
+Goal:
+A diaspora user can create a family wallet, add family members (mother, brother, sister, etc.), and allocate monthly support amounts to each person.
+
+Important product rules:
+- This is a non-custodial partner-model app.
+- Do NOT use words like “bank account” or imply deposits.
+- Use wording like “Family Wallet”, “Monthly Support”, “Allocation”, “Recipient”.
+- Clean mobile-first fintech UI.
+- Keep the existing Habeshare brand style.
+
+Please implement the following:
+
+1. New navigation item:
+- Add "Family Wallet" to the user dashboard/sidebar/menu.
+
+2. Family Wallet overview screen:
+- Title: "Family Wallet"
+- Subtitle: "Manage support for your family in Ethiopia"
+- Show summary cards:
+  - Total Monthly Support
+  - Number of Family Members
+  - Next Scheduled Support Date
+- Add button: "Add Family Member"
+
+3. Add Family Member form:
+Fields:
+- Full Name
+- Relationship (Mother, Father, Brother, Sister, Spouse, Other)
+- Phone Number
+- Preferred Payout Method (Bank, Telebirr, Cash Pickup)
+- Optional note
+- Monthly Support Amount
+- Currency selector (EUR, USD, GBP)
+Buttons:
+- Save Member
+- Cancel
+
+4. Family Members list:
+Each member card should show:
+- Name
+- Relationship
+- Phone number
+- Monthly support amount
+- Payout method
+- Status badge (Active / Paused)
+Actions:
+- Edit
+- Pause
+- Delete
+- Send Now
+
+5. Monthly allocation logic:
+- Let the user set a monthly recurring support amount for each member.
+- Show total combined monthly obligation.
+- Show a warning if the total exceeds a configurable monthly budget.
+- Add a simple “next payout date” field.
+
+6. Send Now flow:
+- Add a button to manually send support now for a selected family member.
+- This should connect to existing remittance flow if available.
+- If remittance flow is not connected yet, create a placeholder function and confirmation modal.
+
+7. Data model:
+Create frontend types/interfaces for:
+- FamilyWallet
+- FamilyMember
+- MonthlyAllocation
+Suggested fields:
+- id
+- userId
+- name
+- relationship
+- phone
+- payoutMethod
+- monthlyAmount
+- currency
+- status
+- nextPayoutDate
+- createdAt
+- updatedAt
+
+8. State management:
+- Store sample data locally for now if backend is not ready.
+- If backend exists, prepare API service methods:
+  - getFamilyWallet()
+  - addFamilyMember()
+  - updateFamilyMember()
+  - deleteFamilyMember()
+  - sendFamilySupport()
+
+9. UI/UX requirements:
+- Mobile-first responsive layout
+- Simple fintech cards
+- Green primary actions
+- Clear section spacing
+- Professional typography
+- Empty state when no family members exist:
+  "Start supporting your family more easily by adding your first family member."
+
+10. Nice-to-have:
+- Add a donut/progress chart for allocation split by family member
+- Add a “Planned this month” vs “Sent this month” summary
+- Add an “Upcoming support” section
+
+11. Deliverables:
+- New Family Wallet screen
+- Add Family Member modal or page
+- Family member cards/list
+- TypeScript models
+- Service layer stubs
+- Dummy seeded data for preview
+
+Please generate complete React/TypeScript code and integrate it into the existing app structure.

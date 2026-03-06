@@ -21,6 +21,7 @@ import RemittanceTrackingScreen from '../screens/RemittanceTrackingScreen';
 import ReferFriendScreen from '../screens/ReferFriendScreen';
 import LanguageScreen from '../screens/LanguageScreen';
 import InsightsScreen from '../screens/InsightsScreen';
+import FamilyWalletScreen from '../screens/FamilyWalletScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -115,6 +116,7 @@ export default function RootNavigator() {
           <Stack.Screen name="ReferFriend" component={ReferFriendScreen} options={{ title: 'Refer a Friend' }} />
           <Stack.Screen name="Language" component={LanguageScreen} options={{ title: 'Language' }} />
           <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: 'Insights' }} />
+          <Stack.Screen name="FamilyWallet" component={FamilyWalletScreen} options={{ title: 'Family Wallet' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

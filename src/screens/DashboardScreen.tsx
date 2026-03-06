@@ -139,6 +139,7 @@ export default function DashboardScreen() {
     { icon: 'card', labelKey: 'dashboard.kyc', screen: 'KYC', color: '#F59E0B' },
     { icon: 'gift', labelKey: 'dashboard.referFriend', screen: 'ReferFriend', color: '#EC4899' },
     { icon: 'help-circle', labelKey: 'profile.support', screen: 'Support', color: '#6B7280' },
+    { icon: 'people', labelKey: 'dashboard.familyWallet', screen: 'FamilyWallet', color: '#EC4899' },
   ];
 
   const appFeatures = [
