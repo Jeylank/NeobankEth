@@ -81,10 +81,9 @@ export default function FamilyWalletScreen() {
   const [formAmount, setFormAmount] = useState('');
   const [formCurrency, setFormCurrency] = useState<FamilyMember['currency']>('USD');
 
-  const userId = user?.uid;
+  const userId = user?.uid ?? '';
 
   const loadData = useCallback(async () => {
-    if (!userId) return;
     setError(null);
     try {
       const [membersData, sentData] = await Promise.all([
@@ -150,7 +149,6 @@ export default function FamilyWalletScreen() {
   };
 
   const handleSaveForm = async () => {
-    if (!userId) return;
     if (!formName.trim() || !formPhone.trim() || !formAmount.trim()) {
       Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
@@ -197,7 +195,6 @@ export default function FamilyWalletScreen() {
   };
 
   const handleToggleStatus = async (member: FamilyMember) => {
-    if (!userId) return;
     try {
       await firestoreFamilyWalletService.toggleMemberStatus(userId, member.id);
       await loadData();
@@ -207,7 +204,6 @@ export default function FamilyWalletScreen() {
   };
 
   const handleDelete = (member: FamilyMember) => {
-    if (!userId) return;
     Alert.alert(
       t('familyWallet.confirmDelete'),
       t('familyWallet.deleteMsg', { name: member.name }),
@@ -236,7 +232,7 @@ export default function FamilyWalletScreen() {
   };
 
   const handleConfirmSend = async () => {
-    if (!sendingMember || !userId) return;
+    if (!sendingMember) return;
     setSending(true);
     try {
       await firestoreFamilyWalletService.sendFamilySupport(userId, sendingMember);

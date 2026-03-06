@@ -13,6 +13,7 @@ import {
   serverTimestamp,
 } from './firebase';
 import { remittanceApi } from './api';
+import { familyWalletService } from './familyWalletService';
 import type { FamilyMember, MonthlyAllocation } from '../types';
 
 export interface AuditLogEntry {
@@ -129,43 +130,80 @@ async function seedDevData(userId: string): Promise<FamilyMember[]> {
   return seeded;
 }
 
-class FirestoreFamilyWalletService {
-  async getFamilyMembers(userId: string): Promise<FamilyMember[]> {
-    const q = query(membersCollection(userId), orderBy('createdAt', 'asc'));
-    const snapshot = await getDocs(q);
+function isFirestoreAvailable(userId: string | undefined): boolean {
+  return !!userId;
+}
 
-    if (snapshot.empty && __DEV__) {
-      return seedDevData(userId);
+class FirestoreFamilyWalletService {
+  private useLocalFallback = false;
+
+  private shouldFallback(userId: string | undefined): boolean {
+    return this.useLocalFallback || !isFirestoreAvailable(userId);
+  }
+
+  private enableFallback(): void {
+    if (!this.useLocalFallback) {
+      console.warn('Firestore unavailable — using local storage fallback');
+      this.useLocalFallback = true;
+    }
+  }
+
+  async getFamilyMembers(userId: string): Promise<FamilyMember[]> {
+    if (this.shouldFallback(userId)) {
+      return familyWalletService.getFamilyMembers();
     }
 
-    return snapshot.docs.map((d) => ({
-      ...d.data(),
-      id: d.id,
-    })) as FamilyMember[];
+    try {
+      const q = query(membersCollection(userId), orderBy('createdAt', 'asc'));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty && __DEV__) {
+        return seedDevData(userId);
+      }
+
+      return snapshot.docs.map((d) => ({
+        ...d.data(),
+        id: d.id,
+      })) as FamilyMember[];
+    } catch (error) {
+      console.error('Firestore getFamilyMembers failed, using fallback:', error);
+      this.enableFallback();
+      return familyWalletService.getFamilyMembers();
+    }
   }
 
   async addFamilyMember(
     userId: string,
     data: Omit<FamilyMember, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<FamilyMember> {
-    const now = new Date().toISOString();
-    const memberData = {
-      ...data,
-      userId,
-      createdAt: now,
-      updatedAt: now,
-    };
-    const docRef = await addDoc(membersCollection(userId), memberData);
-    const newMember: FamilyMember = { ...memberData, id: docRef.id };
+    if (this.shouldFallback(userId)) {
+      return familyWalletService.addFamilyMember(data);
+    }
 
-    await addAuditLog(userId, 'member_added', docRef.id, data.name, {
-      relationship: data.relationship,
-      monthlyAmount: data.monthlyAmount,
-      currency: data.currency,
-      payoutMethod: data.payoutMethod,
-    });
+    try {
+      const now = new Date().toISOString();
+      const memberData = {
+        ...data,
+        userId,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const docRef = await addDoc(membersCollection(userId), memberData);
+      const newMember: FamilyMember = { ...memberData, id: docRef.id };
 
-    return newMember;
+      await addAuditLog(userId, 'member_added', docRef.id, data.name, {
+        relationship: data.relationship,
+        monthlyAmount: data.monthlyAmount,
+        currency: data.currency,
+        payoutMethod: data.payoutMethod,
+      });
+
+      return newMember;
+    } catch (error) {
+      console.error('Firestore addFamilyMember failed, using fallback:', error);
+      this.enableFallback();
+      return familyWalletService.addFamilyMember(data);
+    }
   }
 
   async updateFamilyMember(
@@ -173,69 +211,124 @@ class FirestoreFamilyWalletService {
     memberId: string,
     data: Partial<FamilyMember>
   ): Promise<FamilyMember> {
-    const ref = memberDoc(userId, memberId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      throw new Error('Family member not found');
+    if (this.shouldFallback(userId)) {
+      return familyWalletService.updateFamilyMember(memberId, data);
     }
 
-    const updates = {
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-    delete (updates as any).id;
-    await updateDoc(ref, updates);
+    try {
+      const ref = memberDoc(userId, memberId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        throw new Error('Family member not found');
+      }
 
-    const updated = { ...snap.data(), ...updates, id: memberId } as FamilyMember;
+      const updates = {
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+      delete (updates as any).id;
+      await updateDoc(ref, updates);
 
-    await addAuditLog(userId, 'member_updated', memberId, updated.name, {
-      updatedFields: Object.keys(data),
-    });
+      const updated = { ...snap.data(), ...updates, id: memberId } as FamilyMember;
 
-    return updated;
+      await addAuditLog(userId, 'member_updated', memberId, updated.name, {
+        updatedFields: Object.keys(data),
+      });
+
+      return updated;
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || error?.code === 'unavailable') {
+        console.error('Firestore updateFamilyMember failed, using fallback:', error);
+        this.enableFallback();
+        return familyWalletService.updateFamilyMember(memberId, data);
+      }
+      throw error;
+    }
   }
 
   async deleteFamilyMember(userId: string, memberId: string): Promise<void> {
-    const ref = memberDoc(userId, memberId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      throw new Error('Family member not found');
+    if (this.shouldFallback(userId)) {
+      return familyWalletService.deleteFamilyMember(memberId);
     }
-    const memberData = snap.data() as FamilyMember;
 
-    await deleteDoc(ref);
+    try {
+      const ref = memberDoc(userId, memberId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        throw new Error('Family member not found');
+      }
+      const memberData = snap.data() as FamilyMember;
 
-    await addAuditLog(userId, 'member_deleted', memberId, memberData.name, {
-      relationship: memberData.relationship,
-      monthlyAmount: memberData.monthlyAmount,
-    });
+      await deleteDoc(ref);
+
+      await addAuditLog(userId, 'member_deleted', memberId, memberData.name, {
+        relationship: memberData.relationship,
+        monthlyAmount: memberData.monthlyAmount,
+      });
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || error?.code === 'unavailable') {
+        console.error('Firestore deleteFamilyMember failed, using fallback:', error);
+        this.enableFallback();
+        return familyWalletService.deleteFamilyMember(memberId);
+      }
+      throw error;
+    }
   }
 
   async toggleMemberStatus(userId: string, memberId: string): Promise<FamilyMember> {
-    const ref = memberDoc(userId, memberId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      throw new Error('Family member not found');
+    if (this.shouldFallback(userId)) {
+      return familyWalletService.toggleMemberStatus(memberId);
     }
 
-    const current = snap.data() as FamilyMember;
-    const newStatus = current.status === 'active' ? 'paused' : 'active';
-    const updates = {
-      status: newStatus,
-      updatedAt: new Date().toISOString(),
-    };
-    await updateDoc(ref, updates);
+    try {
+      const ref = memberDoc(userId, memberId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        throw new Error('Family member not found');
+      }
 
-    const action: AuditLogEntry['action'] = newStatus === 'paused' ? 'member_paused' : 'member_resumed';
-    await addAuditLog(userId, action, memberId, current.name, {
-      previousStatus: current.status,
-      newStatus,
-    });
+      const current = snap.data() as FamilyMember;
+      const newStatus = current.status === 'active' ? 'paused' : 'active';
+      const updates = {
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      };
+      await updateDoc(ref, updates);
 
-    return { ...current, ...updates, id: memberId } as FamilyMember;
+      const action: AuditLogEntry['action'] = newStatus === 'paused' ? 'member_paused' : 'member_resumed';
+      await addAuditLog(userId, action, memberId, current.name, {
+        previousStatus: current.status,
+        newStatus,
+      });
+
+      return { ...current, ...updates, id: memberId } as FamilyMember;
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || error?.code === 'unavailable') {
+        console.error('Firestore toggleMemberStatus failed, using fallback:', error);
+        this.enableFallback();
+        return familyWalletService.toggleMemberStatus(memberId);
+      }
+      throw error;
+    }
   }
 
   async sendFamilySupport(userId: string, member: FamilyMember): Promise<MonthlyAllocation> {
+    if (this.shouldFallback(userId)) {
+      try {
+        await remittanceApi.initiateTransfer({
+          amount: member.monthlyAmount,
+          fromCurrency: member.currency,
+          toCurrency: 'ETB',
+          beneficiaryId: 0,
+          description: `Family Support: ${member.name}${member.note ? ' - ' + member.note : ''}`,
+          payoutMethod: PAYOUT_METHOD_MAP[member.payoutMethod],
+        });
+      } catch (transferError) {
+        console.warn('Remittance API unavailable, recording locally:', transferError);
+      }
+      return familyWalletService.sendFamilySupport(member.id);
+    }
+
     const allocation: MonthlyAllocation = {
       memberId: member.id,
       memberName: member.name,
@@ -258,11 +351,15 @@ class FirestoreFamilyWalletService {
       allocation.status = 'failed';
       const now = new Date();
       const sentKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
-      await addDoc(sentCollection(userId), {
-        ...allocation,
-        monthKey: sentKey,
-        createdAt: serverTimestamp(),
-      });
+      try {
+        await addDoc(sentCollection(userId), {
+          ...allocation,
+          monthKey: sentKey,
+          createdAt: serverTimestamp(),
+        });
+      } catch (fsError) {
+        console.error('Failed to record failed allocation to Firestore:', fsError);
+      }
 
       await addAuditLog(userId, 'support_sent', member.id, member.name, {
         amount: member.monthlyAmount,
@@ -276,48 +373,62 @@ class FirestoreFamilyWalletService {
 
     const now = new Date();
     const sentKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
-    await addDoc(sentCollection(userId), {
-      ...allocation,
-      monthKey: sentKey,
-      createdAt: serverTimestamp(),
-    });
+    try {
+      await addDoc(sentCollection(userId), {
+        ...allocation,
+        monthKey: sentKey,
+        createdAt: serverTimestamp(),
+      });
 
-    const ref = memberDoc(userId, member.id);
-    await updateDoc(ref, {
-      nextPayoutDate: getNextPayoutDate(),
-      updatedAt: new Date().toISOString(),
-    });
+      const ref = memberDoc(userId, member.id);
+      await updateDoc(ref, {
+        nextPayoutDate: getNextPayoutDate(),
+        updatedAt: new Date().toISOString(),
+      });
 
-    await addAuditLog(userId, 'support_sent', member.id, member.name, {
-      amount: member.monthlyAmount,
-      currency: member.currency,
-      payoutMethod: member.payoutMethod,
-      status: 'sent',
-    });
+      await addAuditLog(userId, 'support_sent', member.id, member.name, {
+        amount: member.monthlyAmount,
+        currency: member.currency,
+        payoutMethod: member.payoutMethod,
+        status: 'sent',
+      });
+    } catch (fsError) {
+      console.error('Firestore post-send recording failed:', fsError);
+    }
 
     return allocation;
   }
 
   async getSentThisMonth(userId: string): Promise<MonthlyAllocation[]> {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (this.shouldFallback(userId)) {
+      return familyWalletService.getSentThisMonth();
+    }
 
-    const q = query(
-      sentCollection(userId),
-      where('monthKey', '==', monthKey)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => {
-      const data = d.data();
-      return {
-        memberId: data.memberId,
-        memberName: data.memberName,
-        amount: data.amount,
-        currency: data.currency,
-        status: data.status,
-        sentAt: data.sentAt,
-      };
-    });
+    try {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const q = query(
+        sentCollection(userId),
+        where('monthKey', '==', monthKey)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          memberId: data.memberId,
+          memberName: data.memberName,
+          amount: data.amount,
+          currency: data.currency,
+          status: data.status,
+          sentAt: data.sentAt,
+        };
+      });
+    } catch (error) {
+      console.error('Firestore getSentThisMonth failed, using fallback:', error);
+      this.enableFallback();
+      return familyWalletService.getSentThisMonth();
+    }
   }
 }
 
