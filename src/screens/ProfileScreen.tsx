@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { authApi, balanceApi } from '../services/api';
 import { biometricService } from '../services/biometric';
 import { firebaseAuth } from '../services/firebase';
@@ -31,7 +32,8 @@ const COLORS = {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
-  const { user, signOut, isLoading: authLoading } = useAuth();
+  const { user, signOut, isLoading: authLoading, isAdmin } = useAuth();
+  const { t } = useTranslation();
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricType, setBiometricType] = useState<string>('Biometric');
@@ -192,6 +194,12 @@ export default function ProfileScreen() {
         { icon: 'shield-checkmark-outline', label: 'Security Settings', action: () => navigation.navigate('SecuritySettings') },
       ],
     },
+    ...(isAdmin ? [{
+      section: t('admin.administration'),
+      items: [
+        { icon: 'shield-checkmark', label: t('admin.adminConsole'), action: () => navigation.navigate('AdminConsole' as never) },
+      ],
+    }] : []),
     {
       section: 'Support',
       items: [

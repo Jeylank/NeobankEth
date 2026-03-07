@@ -1,0 +1,356 @@
+Build a full admin-only "Habeshare Operations Console" for my fintech/remittance platform.
+
+Important:
+- This is NOT for normal users.
+- It must be admin-only.
+- Keep the existing Habeshare design system and navigation style.
+- Add both frontend dashboards and backend admin API integrations.
+- Use React/TypeScript on the frontend and existing backend services/APIs where possible.
+- Do not break any existing user-facing flows.
+
+Create these 5 admin dashboards:
+
+1. Payout Monitoring Dashboard
+2. Fraud Alerts Dashboard
+3. Support Tickets Dashboard
+4. Dispute Handling Dashboard
+5. Liquidity Monitoring Dashboard
+
+--------------------------------
+ACCESS CONTROL
+--------------------------------
+
+- Only authenticated users with admin role can access this console.
+- Add role guard for all admin routes/screens.
+- If non-admin user opens admin area, redirect or show access denied.
+
+--------------------------------
+ADMIN NAVIGATION
+--------------------------------
+
+Create a new admin section with sidebar items:
+
+- Overview
+- Payout Monitoring
+- Fraud Alerts
+- Support Tickets
+- Disputes
+- Liquidity
+
+If there is already an admin portal, integrate these items there.
+If not, create a dedicated AdminConsole layout.
+
+--------------------------------
+1) OVERVIEW DASHBOARD
+--------------------------------
+
+Create a top-level admin overview screen.
+
+Show cards for:
+- Total transactions today
+- Completed payouts today
+- Failed payouts today
+- Pending payouts
+- Open fraud alerts
+- Open support tickets
+- Open disputes
+- Available liquidity
+
+Add small charts if possible:
+- payouts over time
+- fraud alerts by day
+- support tickets by status
+
+Use clean fintech cards and summary widgets.
+
+--------------------------------
+2) PAYOUT MONITORING DASHBOARD
+--------------------------------
+
+Create screen:
+AdminPayoutMonitoringScreen.tsx
+
+Display:
+- total payouts
+- completed
+- failed
+- processing
+- retrying
+
+Add searchable/filterable table with columns:
+- txId
+- userId
+- provider
+- providerRef
+- amount
+- currency
+- payoutStatus
+- retryCount
+- createdAt
+- updatedAt
+
+Add filters:
+- provider
+- status
+- date range
+
+Backend integration:
+GET /api/admin/payouts
+
+Expected response fields:
+- txId
+- userId
+- provider
+- providerRef
+- amount
+- currency
+- payoutStatus
+- retryCount
+- createdAt
+- updatedAt
+
+--------------------------------
+3) FRAUD ALERTS DASHBOARD
+--------------------------------
+
+Create screen:
+AdminFraudAlertsScreen.tsx
+
+Display table/cards for fraud alerts with:
+- alertId
+- txId
+- userId
+- riskScore
+- reason
+- status
+- createdAt
+
+Add status filters:
+- review_required
+- approved
+- blocked
+- frozen
+
+Add admin actions:
+- Approve transaction
+- Block transaction
+- Freeze account
+
+Show confirmation modal before action.
+
+Backend integration:
+GET /api/admin/fraud-alerts
+POST /api/admin/fraud-alerts/:id/approve
+POST /api/admin/fraud-alerts/:id/block
+POST /api/admin/fraud-alerts/:id/freeze
+
+--------------------------------
+4) SUPPORT TICKETS DASHBOARD
+--------------------------------
+
+Create screen:
+AdminSupportTicketsScreen.tsx
+
+Display:
+- open tickets
+- in review
+- resolved
+- closed
+
+Table fields:
+- ticketId
+- userId
+- txId
+- issueType
+- message
+- status
+- priority
+- createdAt
+
+Admin actions:
+- set status to in_review
+- resolve ticket
+- close ticket
+
+Add ticket details side panel/modal showing:
+- full message
+- related transaction
+- user reference
+- timestamps
+
+Backend integration:
+GET /api/admin/support-tickets
+POST /api/admin/support-tickets/:id/status
+
+--------------------------------
+5) DISPUTE HANDLING DASHBOARD
+--------------------------------
+
+Create screen:
+AdminDisputesScreen.tsx
+
+Display:
+- disputeId
+- txId
+- userId
+- reason
+- status
+- resolution
+- createdAt
+
+Statuses:
+- open
+- investigating
+- resolved
+- rejected
+- refunded
+
+Admin actions:
+- investigate
+- refund
+- reject dispute
+- resolve dispute
+
+Add dispute detail modal with:
+- linked transaction
+- payout status
+- providerRef
+- audit log summary if available
+
+Backend integration:
+GET /api/admin/disputes
+POST /api/admin/disputes/:id/status
+POST /api/admin/disputes/:id/refund
+
+--------------------------------
+6) LIQUIDITY MONITORING DASHBOARD
+--------------------------------
+
+Create screen:
+AdminLiquidityScreen.tsx
+
+Display summary cards:
+- total settlement balance
+- pending payouts
+- reserved balance
+- available liquidity
+
+Show balances by currency:
+- EUR
+- USD
+- GBP
+- ETB if relevant
+
+Show provider/settlement breakdown:
+- Stripe
+- Chapa
+- Telebirr
+- Bank settlement
+- other partners if configured
+
+Display table:
+- provider
+- currency
+- availableBalance
+- reservedBalance
+- updatedAt
+
+Add warning banners if:
+- liquidity below threshold
+- pending payouts exceed available balance
+
+Backend integration:
+GET /api/admin/liquidity
+
+--------------------------------
+BACKEND ADMIN API SERVICE LAYER
+--------------------------------
+
+Create frontend admin service file:
+src/services/adminService.ts
+
+Implement methods:
+- getAdminOverview()
+- getPayouts(filters)
+- getFraudAlerts(filters)
+- approveFraudAlert(id)
+- blockFraudAlert(id)
+- freezeAccount(id)
+- getSupportTickets(filters)
+- updateSupportTicketStatus(id, status)
+- getDisputes(filters)
+- updateDisputeStatus(id, status)
+- refundDispute(id)
+- getLiquidity()
+
+Use existing auth token pattern.
+Handle loading, empty, and error states cleanly.
+
+--------------------------------
+UI / UX REQUIREMENTS
+--------------------------------
+
+- Use Habeshare admin styling
+- Professional fintech dashboard look
+- Responsive layout
+- Tables with sticky headers if possible
+- Status badges with color coding
+- Search + filter bars
+- Loading spinners / skeletons
+- Empty states
+- Error retry states
+
+Use clear status colors:
+- completed = green
+- processing = blue
+- failed = red
+- warning / review = amber
+
+--------------------------------
+I18N
+--------------------------------
+
+Add full translations for all new admin console text in:
+- English
+- Amharic
+- Oromifa
+- Tigrinya
+
+Do not leave hardcoded UI strings.
+
+--------------------------------
+SECURITY
+--------------------------------
+
+- Enforce admin-only access on frontend
+- Assume backend also enforces admin auth
+- Do not allow client-side financial mutations except through admin API endpoints
+- Add confirmation modals for destructive actions
+- Mask sensitive account references when appropriate
+
+--------------------------------
+OPTIONAL NICE-TO-HAVE
+--------------------------------
+
+If possible, add:
+- export CSV button for payouts
+- export CSV button for disputes
+- mini line chart for payout volume
+- unread badge for fraud alerts
+
+--------------------------------
+DELIVERABLES
+--------------------------------
+
+Generate:
+- AdminConsole layout / navigation
+- Overview dashboard
+- Payout monitoring screen
+- Fraud alerts screen
+- Support tickets screen
+- Disputes screen
+- Liquidity screen
+- adminService.ts
+- all route wiring and i18n keys
+
+Keep the existing app stable and integrate cleanly with the current project structure.

@@ -302,3 +302,109 @@ export interface FxConversion {
   fee: number;
   createdAt: string;
 }
+
+export interface AdminOverview {
+  totalTransactionsToday: number;
+  completedPayoutsToday: number;
+  failedPayoutsToday: number;
+  pendingPayouts: number;
+  openFraudAlerts: number;
+  openSupportTickets: number;
+  openDisputes: number;
+  availableLiquidity: number;
+  payoutsOverTime: { date: string; count: number }[];
+  fraudByDay: { date: string; count: number }[];
+  ticketsByStatus: { status: string; count: number }[];
+}
+
+export type FraudAlertStatus = 'review_required' | 'approved' | 'blocked' | 'frozen';
+
+export interface AdminPayout {
+  txId: string;
+  userId: string;
+  provider: string;
+  providerRef: string;
+  amount: number;
+  currency: string;
+  payoutStatus: string;
+  retryCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FraudAlert {
+  alertId: string;
+  txId: string;
+  userId: string;
+  riskScore: number;
+  reason: string;
+  status: FraudAlertStatus;
+  createdAt: string;
+}
+
+export type TicketStatus = 'open' | 'in_review' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface SupportTicket {
+  ticketId: string;
+  userId: string;
+  txId?: string;
+  issueType: string;
+  message: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  createdAt: string;
+}
+
+export type DisputeStatus = 'open' | 'investigating' | 'resolved' | 'rejected' | 'refunded';
+
+export interface Dispute {
+  disputeId: string;
+  txId: string;
+  userId: string;
+  reason: string;
+  status: DisputeStatus;
+  resolution?: string;
+  providerRef?: string;
+  payoutStatus?: string;
+  auditLog?: string[];
+  createdAt: string;
+}
+
+export interface LiquidityProvider {
+  provider: string;
+  currency: string;
+  availableBalance: number;
+  reservedBalance: number;
+  updatedAt: string;
+}
+
+export interface LiquidityData {
+  totalSettlement: number;
+  pendingPayouts: number;
+  reservedBalance: number;
+  availableLiquidity: number;
+  balanceByCurrency: { currency: string; amount: number }[];
+  providers: LiquidityProvider[];
+}
+
+export interface AdminPayoutFilters {
+  provider?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+}
+
+export interface AdminAlertFilters {
+  status?: FraudAlertStatus;
+}
+
+export interface AdminTicketFilters {
+  status?: TicketStatus;
+  priority?: TicketPriority;
+}
+
+export interface AdminDisputeFilters {
+  status?: DisputeStatus;
+}

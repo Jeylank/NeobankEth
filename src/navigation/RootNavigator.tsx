@@ -31,6 +31,13 @@ import WalletScreen from '../screens/WalletScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import TransparentFXScreen from '../screens/TransparentFXScreen';
 import SecuritySettingsScreen from '../screens/SecuritySettingsScreen';
+import AdminConsoleScreen from '../screens/admin/AdminConsoleScreen';
+import AdminOverviewScreen from '../screens/admin/AdminOverviewScreen';
+import AdminPayoutMonitoringScreen from '../screens/admin/AdminPayoutMonitoringScreen';
+import AdminFraudAlertsScreen from '../screens/admin/AdminFraudAlertsScreen';
+import AdminSupportTicketsScreen from '../screens/admin/AdminSupportTicketsScreen';
+import AdminDisputesScreen from '../screens/admin/AdminDisputesScreen';
+import AdminLiquidityScreen from '../screens/admin/AdminLiquidityScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -135,6 +142,13 @@ export default function RootNavigator() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
           <Stack.Screen name="TransparentFX" component={TransparentFXScreen} options={{ title: 'Transparent FX' }} />
           <Stack.Screen name="SecuritySettings" component={SecuritySettingsScreen} options={{ title: 'Security' }} />
+          <Stack.Screen name="AdminConsole" component={AdminConsoleScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AdminOverview" component={AdminOverviewScreen} options={{ title: 'Overview' }} />
+          <Stack.Screen name="AdminPayoutMonitoring" component={AdminPayoutMonitoringScreen} options={{ title: 'Payout Monitoring' }} />
+          <Stack.Screen name="AdminFraudAlerts" component={AdminFraudAlertsScreen} options={{ title: 'Fraud Alerts' }} />
+          <Stack.Screen name="AdminSupportTickets" component={AdminSupportTicketsScreen} options={{ title: 'Support Tickets' }} />
+          <Stack.Screen name="AdminDisputes" component={AdminDisputesScreen} options={{ title: 'Disputes' }} />
+          <Stack.Screen name="AdminLiquidity" component={AdminLiquidityScreen} options={{ title: 'Liquidity' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

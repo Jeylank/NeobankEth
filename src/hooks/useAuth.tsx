@@ -3,11 +3,13 @@ import { AppState } from 'react-native';
 import { secureStorage } from '../utils/storage';
 import { firebaseAuth, FirebaseUser } from '../services/firebase';
 import { SessionManager } from '../utils/security';
+import { authApi } from '../services/api';
 
 interface AuthContextType {
   user: FirebaseUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -19,8 +21,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const appState = useRef(AppState.currentState);
+
+  const fetchAdminRole = async () => {
+    try {
+      const profile = await authApi.getProfile();
+      setIsAdmin(profile.role === 'admin');
+    } catch {
+      setIsAdmin(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = firebaseAuth.onAuthChange(async (firebaseUser) => {
@@ -29,9 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = await firebaseUser.getIdToken();
         await secureStorage.setItemAsync('authToken', token);
         await SessionManager.recordActivity();
+        await fetchAdminRole();
       } else {
         await secureStorage.deleteItemAsync('authToken');
         await SessionManager.clearSession();
+        setIsAdmin(false);
       }
       setIsLoading(false);
     });
@@ -81,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await firebaseAuth.signOut();
       await secureStorage.deleteItemAsync('authToken');
+      setIsAdmin(false);
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(firebaseUser);
       const token = await firebaseUser.getIdToken();
       await secureStorage.setItemAsync('authToken', token);
+      await fetchAdminRole();
     } finally {
       setIsLoading(false);
     }
@@ -103,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isAdmin,
         signIn,
         signUp,
         signOut,
