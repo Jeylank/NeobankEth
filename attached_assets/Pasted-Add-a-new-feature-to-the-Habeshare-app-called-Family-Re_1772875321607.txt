@@ -1,0 +1,207 @@
+Add a new feature to the Habeshare app called "Family Request".
+
+Goal:
+Allow family members in Ethiopia to request financial support from diaspora users. The diaspora user receives a notification and can approve or decline the request.
+
+This feature should integrate with the existing transaction and payout system.
+
+--------------------------------
+FEATURE OVERVIEW
+--------------------------------
+
+Flow:
+
+Family member
+   ↓
+Create money request
+   ↓
+Diaspora user receives notification
+   ↓
+User approves or declines
+   ↓
+If approved → create payout transaction
+
+--------------------------------
+FIRESTORE DATA MODEL
+--------------------------------
+
+Create a new collection:
+
+money_requests
+
+Example document:
+
+{
+  id: string
+  requesterId: string
+  requesterName: string
+  receiverId: string
+  amount: number
+  currency: "ETB"
+  purpose: string
+  message: string
+  status: "pending" | "approved" | "declined"
+  createdAt: timestamp
+}
+
+--------------------------------
+SCREEN 1 — CREATE REQUEST
+--------------------------------
+
+Create a new screen:
+
+RequestMoneyScreen.tsx
+
+Fields:
+
+Requester Name
+Amount
+Currency (default ETB)
+Purpose dropdown:
+
+- School Fees
+- Electricity
+- Medical
+- Family Support
+- Other
+
+Optional message
+
+Button:
+Send Request
+
+On submit:
+
+Create Firestore document in money_requests.
+
+--------------------------------
+SCREEN 2 — REQUEST NOTIFICATIONS
+--------------------------------
+
+Create a new screen:
+
+FamilyRequestsScreen.tsx
+
+Display list of incoming requests for the logged-in user.
+
+Query:
+
+money_requests
+where receiverId == currentUserId
+orderBy createdAt desc
+
+Each request card shows:
+
+Requester name
+Purpose
+Amount
+Message
+Time
+
+Buttons:
+
+Approve
+Decline
+
+--------------------------------
+APPROVE REQUEST FLOW
+--------------------------------
+
+When user presses Approve:
+
+1. Update request status → approved
+2. Call existing payout API
+
+POST /api/payout
+
+Payload example:
+
+{
+  userId: currentUserId
+  amount: request.amount
+  currency: "EUR"
+  payoutMethod: "telebirr"
+  receiverName: request.requesterName
+}
+
+--------------------------------
+DECLINE REQUEST FLOW
+--------------------------------
+
+Update Firestore document:
+
+status = "declined"
+
+--------------------------------
+NOTIFICATIONS
+--------------------------------
+
+Add push notification support using Firebase Cloud Messaging.
+
+When a new request is created:
+
+Send notification to receiver:
+
+Title:
+Family Support Request
+
+Message:
+"Dawit Bekele requested 3000 ETB for school fees."
+
+--------------------------------
+NAVIGATION
+--------------------------------
+
+Add a new tab or menu item:
+
+Family Requests
+
+Screens:
+
+Create Request
+Incoming Requests
+
+--------------------------------
+UI DESIGN
+--------------------------------
+
+Use existing Habeshare design style.
+
+Request cards should display:
+
+Avatar
+Name
+Purpose
+Amount
+Message
+Action buttons
+
+--------------------------------
+SECURITY
+--------------------------------
+
+Ensure:
+
+Users can only read requests where:
+
+receiverId == currentUserId
+or
+requesterId == currentUserId
+
+Do not allow client to modify:
+
+status unless they are receiver.
+
+--------------------------------
+OUTPUT
+--------------------------------
+
+Generate:
+
+RequestMoneyScreen.tsx
+FamilyRequestsScreen.tsx
+Firestore service functions
+Request card UI component
+Notification trigger logic
+
+Integrate everything with the existing Habeshare project structure.
