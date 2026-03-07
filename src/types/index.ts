@@ -114,3 +114,40 @@ export interface MoneyRequest {
   createdAt: string;
   updatedAt: string;
 }
+
+export type ScheduleFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semester';
+export type ScheduleStatus = 'active' | 'paused' | 'cancelled';
+
+export interface RecurringSchedule {
+  id: string;
+  userId: string;
+  memberId: string;
+  memberName: string;
+  relationship: string;
+  amount: number;
+  currency: 'EUR' | 'USD' | 'GBP';
+  frequency: ScheduleFrequency;
+  payoutMethod: 'telebirr' | 'direct_transfer' | 'cash_pickup';
+  nextPayoutDate: string;
+  lastPayoutDate?: string;
+  lastPayoutStatus?: 'sent' | 'failed';
+  totalSent: number;
+  totalPayouts: number;
+  status: ScheduleStatus;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScheduleExecution {
+  id: string;
+  scheduleId: string;
+  memberId: string;
+  memberName: string;
+  amount: number;
+  currency: string;
+  status: 'queued' | 'processing' | 'sent' | 'failed';
+  transactionId?: string;
+  error?: string;
+  executedAt: string;
+}

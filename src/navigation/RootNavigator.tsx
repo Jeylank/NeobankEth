@@ -24,6 +24,7 @@ import InsightsScreen from '../screens/InsightsScreen';
 import FamilyWalletScreen from '../screens/FamilyWalletScreen';
 import FamilyRequestsScreen from '../screens/FamilyRequestsScreen';
 import RequestMoneyScreen from '../screens/RequestMoneyScreen';
+import RecurringSupportScreen from '../screens/RecurringSupportScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -121,6 +122,7 @@ export default function RootNavigator() {
           <Stack.Screen name="FamilyWallet" component={FamilyWalletScreen} options={{ title: 'Family Wallet' }} />
           <Stack.Screen name="FamilyRequests" component={FamilyRequestsScreen} options={{ title: 'Family Requests' }} />
           <Stack.Screen name="RequestMoney" component={RequestMoneyScreen} options={{ title: 'Request Support' }} />
+          <Stack.Screen name="RecurringSupport" component={RecurringSupportScreen} options={{ title: 'Recurring Support' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
