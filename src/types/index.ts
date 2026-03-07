@@ -19,7 +19,43 @@ export interface Transaction {
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
   recipientName?: string;
   recipientCountry?: string;
+  provider?: PayoutProvider;
+  providerRef?: string;
+  payoutStatus?: PayoutStatus;
+  retryCount?: number;
+  lastRetryAt?: string;
   createdAt: string;
+}
+
+export type PayoutProvider = 'CHAPA' | 'TELEBIRR' | 'BANK';
+export type PayoutStatus = 'INITIATED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'RETRYING';
+
+export interface PayoutTransaction {
+  id: string;
+  userId: string;
+  provider: PayoutProvider;
+  providerRef: string;
+  payoutStatus: PayoutStatus;
+  amount: number;
+  currency: string;
+  recipientAccount: string;
+  recipientName: string;
+  payoutMethod: 'bank_transfer' | 'mobile_wallet' | 'cash_pickup';
+  bankCode?: string;
+  retryCount: number;
+  maxRetries: number;
+  lastError?: string;
+  metadata?: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AccountValidationResult {
+  valid: boolean;
+  accountName?: string;
+  accountNumber?: string;
+  bankName?: string;
+  error?: string;
 }
 
 export interface SavingsGoal {

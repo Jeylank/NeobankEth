@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { payoutConnectors } from './payoutConnectors';
+import type { PayoutProvider as ConnectorProvider, PayoutTransaction } from '../types';
 
 type PaymentProvider = 'telebirr' | 'chapa' | 'santimpay';
 type PayoutMethod = 'bank_transfer' | 'mobile_wallet' | 'cash_pickup';
@@ -64,6 +66,7 @@ interface TransactionStatus {
   amount: number;
   currency: string;
   provider: PaymentProvider;
+  providerRef?: string;
   createdAt: string;
   updatedAt: string;
   message?: string;
@@ -175,41 +178,115 @@ class PaymentGatewayService {
   }
 
   async initiatePayout(provider: PaymentProvider, request: PayoutRequest): Promise<PayoutResponse> {
-    const transactionId = this.generateTransactionId(provider);
+    const connectorProvider = this.toConnectorProvider(provider);
 
-    const estimatedDelivery = this.calculateEstimatedDelivery(request.method);
+    try {
+      const result = await payoutConnectors.sendPayout({
+        userId: request.reference.split('-')[0] || 'unknown',
+        amount: request.amount,
+        currency: request.currency,
+        recipientAccount: request.accountNumber || request.recipientPhone || '',
+        recipientName: request.recipientName,
+        recipientPhone: request.recipientPhone,
+        payoutMethod: request.method,
+        bankCode: request.bankCode,
+        description: request.description,
+        metadata: { legacyReference: request.reference },
+      });
 
-    const response: PayoutResponse = {
-      success: true,
-      transactionId,
-      reference: request.reference,
-      status: 'processing',
-      provider,
-      message: `Payout initiated to ${request.recipientName}`,
-      estimatedDelivery,
-    };
+      const response: PayoutResponse = {
+        success: result.payoutStatus !== 'FAILED',
+        transactionId: result.id,
+        reference: request.reference,
+        status: result.payoutStatus === 'COMPLETED' ? 'completed'
+          : result.payoutStatus === 'FAILED' ? 'failed' : 'processing',
+        provider,
+        message: result.lastError || `Payout initiated to ${request.recipientName}`,
+        estimatedDelivery: this.calculateEstimatedDelivery(request.method),
+      };
 
-    await this.saveTransaction({
-      transactionId,
-      reference: request.reference,
-      status: 'processing',
-      amount: request.amount,
-      currency: request.currency,
-      provider,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      message: `Payout to ${request.recipientName} via ${request.method}`,
-    });
+      await this.saveTransaction({
+        transactionId: result.id,
+        reference: request.reference,
+        status: response.status as TransactionStatus['status'],
+        amount: request.amount,
+        currency: request.currency,
+        provider,
+        providerRef: result.providerRef,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        message: `Payout to ${request.recipientName} via ${request.method}`,
+      });
 
-    console.log(`Payout initiated via ${provider}:`, response);
-    return response;
+      console.log(`Payout initiated via ${provider} [${connectorProvider}]:`, response);
+      return response;
+    } catch (error: any) {
+      const fallbackId = this.generateTransactionId(provider);
+      const response: PayoutResponse = {
+        success: false,
+        transactionId: fallbackId,
+        reference: request.reference,
+        status: 'failed',
+        provider,
+        message: error.message || 'Payout failed',
+      };
+
+      await this.saveTransaction({
+        transactionId: fallbackId,
+        reference: request.reference,
+        status: 'failed',
+        amount: request.amount,
+        currency: request.currency,
+        provider,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        message: `FAILED: ${error.message}`,
+      });
+
+      return response;
+    }
+  }
+
+  private toConnectorProvider(provider: PaymentProvider): ConnectorProvider {
+    switch (provider) {
+      case 'chapa': return 'CHAPA';
+      case 'telebirr': return 'TELEBIRR';
+      default: return 'BANK';
+    }
   }
 
   async checkTransactionStatus(provider: PaymentProvider, transactionId: string): Promise<TransactionStatus> {
     const transactions = await this.getStoredTransactions();
     const transaction = transactions.find(t => t.transactionId === transactionId);
 
+    if (transaction && transaction.status !== 'processing') {
+      return transaction;
+    }
+
     if (transaction) {
+      if (transaction.providerRef) {
+        try {
+          const connectorProvider = this.toConnectorProvider(provider);
+          const liveStatus = await payoutConnectors.checkPayoutStatus(
+            connectorProvider,
+            transaction.providerRef
+          );
+
+          const mapped = liveStatus.payoutStatus === 'COMPLETED' ? 'completed' as const
+            : liveStatus.payoutStatus === 'FAILED' ? 'failed' as const
+            : 'processing' as const;
+
+          if (mapped !== transaction.status) {
+            transaction.status = mapped;
+            transaction.updatedAt = new Date().toISOString();
+            await this.updateStoredTransaction(transactionId, { status: mapped });
+          }
+
+          return transaction;
+        } catch {
+          return transaction;
+        }
+      }
       return transaction;
     }
 
@@ -224,6 +301,22 @@ class PaymentGatewayService {
       updatedAt: new Date().toISOString(),
       message: 'Transaction not found',
     };
+  }
+
+  private async updateStoredTransaction(
+    transactionId: string,
+    updates: Partial<TransactionStatus>
+  ): Promise<void> {
+    try {
+      const transactions = await this.getStoredTransactions();
+      const idx = transactions.findIndex(t => t.transactionId === transactionId);
+      if (idx >= 0) {
+        transactions[idx] = { ...transactions[idx], ...updates, updatedAt: new Date().toISOString() };
+        await AsyncStorage.setItem(this.TRANSACTIONS_KEY, JSON.stringify(transactions));
+      }
+    } catch (e) {
+      console.error('Failed to update stored transaction:', e);
+    }
   }
 
   async verifyPayment(provider: PaymentProvider, transactionId: string): Promise<boolean> {
@@ -355,6 +448,7 @@ class PaymentGatewayService {
 }
 
 export const paymentGatewayService = new PaymentGatewayService();
+export { payoutConnectors } from './payoutConnectors';
 export type { 
   PaymentProvider, 
   PayoutMethod, 
