@@ -196,3 +196,34 @@ export interface CircleContribution {
   period: string;
   createdAt: string;
 }
+
+export type CampaignCategory = 'medical' | 'funeral' | 'education' | 'emergency';
+export type CampaignStatus = 'active' | 'completed' | 'cancelled';
+
+export interface SupportCampaign {
+  id: string;
+  creatorId: string;
+  title: string;
+  description: string;
+  category: CampaignCategory;
+  beneficiary: string;
+  goalAmount: number;
+  raisedAmount: number;
+  currency: string;
+  contributorCount: number;
+  status: CampaignStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignContribution {
+  id: string;
+  campaignId: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'sent' | 'failed';
+  transactionId?: string;
+  createdAt: string;
+}
