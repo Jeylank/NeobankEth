@@ -96,6 +96,8 @@ export interface MonthlyAllocation {
 
 export type RequestPurpose = 'school_fees' | 'electricity' | 'medical' | 'family_support' | 'other';
 
+export type RequestStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'failed' | 'declined';
+
 export interface MoneyRequest {
   id: string;
   requesterId: string;
@@ -105,7 +107,10 @@ export interface MoneyRequest {
   currency: string;
   purpose: RequestPurpose;
   message?: string;
-  status: 'pending' | 'approved' | 'declined';
+  status: RequestStatus;
+  transactionId?: string;
+  approvedAt?: string;
+  approvedBy?: string;
   createdAt: string;
   updatedAt: string;
 }

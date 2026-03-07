@@ -72,8 +72,12 @@ export default function RequestMoneyScreen({ navigation }: any) {
       });
       Alert.alert(t('common.success'), t('familyRequest.requestSent'));
       navigation.goBack();
-    } catch (error) {
-      Alert.alert(t('common.error'), t('common.error'));
+    } catch (err: any) {
+      if (err?.message === 'OFFLINE') {
+        Alert.alert(t('common.error'), t('familyRequest.offlineAction'));
+      } else {
+        Alert.alert(t('common.error'), t('common.error'));
+      }
     } finally {
       setSubmitting(false);
     }

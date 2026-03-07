@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { moneyRequestsService } from '../services/firestoreMoneyRequests';
-import type { MoneyRequest, RequestPurpose } from '../types';
+import type { MoneyRequest, RequestPurpose, RequestStatus } from '../types';
 
 const COLORS = {
   primary: '#006633',
@@ -47,9 +47,12 @@ const PURPOSE_ICONS: Record<RequestPurpose, keyof typeof Ionicons.glyphMap> = {
   other: 'ellipsis-horizontal-circle-outline',
 };
 
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_COLORS: Record<RequestStatus, string> = {
   pending: COLORS.warning,
-  approved: COLORS.success,
+  approved: COLORS.blue,
+  processing: COLORS.blue,
+  completed: COLORS.success,
+  failed: COLORS.error,
   declined: COLORS.error,
 };
 
@@ -65,6 +68,7 @@ export default function FamilyRequestsScreen({ navigation }: any) {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
 
   const loadData = useCallback(async () => {
     setError(null);
@@ -75,6 +79,7 @@ export default function FamilyRequestsScreen({ navigation }: any) {
       ]);
       setIncoming(incomingData);
       setSent(sentData);
+      setIsOffline(moneyRequestsService.isOffline());
     } catch (err) {
       console.error('Failed to load requests:', err);
       setError(t('common.error'));
@@ -94,6 +99,8 @@ export default function FamilyRequestsScreen({ navigation }: any) {
   };
 
   const handleApprove = async (request: MoneyRequest) => {
+    if (request.status !== 'pending' || processingId) return;
+
     Alert.alert(
       t('familyRequest.confirmApprove'),
       t('familyRequest.approveMsg', { name: request.requesterName, amount: request.amount, currency: request.currency }),
@@ -104,11 +111,22 @@ export default function FamilyRequestsScreen({ navigation }: any) {
           onPress: async () => {
             setProcessingId(request.id);
             try {
-              await moneyRequestsService.approveRequest(request.id, userId);
-              Alert.alert(t('common.success'), t('familyRequest.approveSuccess'));
+              const result = await moneyRequestsService.approveRequest(request.id, userId);
+              if (result.status === 'failed') {
+                Alert.alert(t('common.error'), t('familyRequest.payoutFailed'));
+              } else {
+                Alert.alert(t('common.success'), t('familyRequest.approveSuccess'));
+              }
               await loadData();
-            } catch (err) {
-              Alert.alert(t('common.error'), t('common.error'));
+            } catch (err: any) {
+              if (err?.message === 'ALREADY_PROCESSED') {
+                Alert.alert(t('common.error'), t('familyRequest.alreadyProcessed'));
+                await loadData();
+              } else if (err?.message === 'OFFLINE') {
+                Alert.alert(t('common.error'), t('familyRequest.offlineAction'));
+              } else {
+                Alert.alert(t('common.error'), t('common.error'));
+              }
             } finally {
               setProcessingId(null);
             }
@@ -119,6 +137,8 @@ export default function FamilyRequestsScreen({ navigation }: any) {
   };
 
   const handleDecline = async (request: MoneyRequest) => {
+    if (request.status !== 'pending' || processingId) return;
+
     Alert.alert(
       t('familyRequest.confirmDecline'),
       t('familyRequest.declineMsg', { name: request.requesterName }),
@@ -133,8 +153,15 @@ export default function FamilyRequestsScreen({ navigation }: any) {
               await moneyRequestsService.declineRequest(request.id, userId);
               Alert.alert(t('common.success'), t('familyRequest.declineSuccess'));
               await loadData();
-            } catch (err) {
-              Alert.alert(t('common.error'), t('common.error'));
+            } catch (err: any) {
+              if (err?.message === 'ALREADY_PROCESSED') {
+                Alert.alert(t('common.error'), t('familyRequest.alreadyProcessed'));
+                await loadData();
+              } else if (err?.message === 'OFFLINE') {
+                Alert.alert(t('common.error'), t('familyRequest.offlineAction'));
+              } else {
+                Alert.alert(t('common.error'), t('common.error'));
+              }
             } finally {
               setProcessingId(null);
             }
@@ -188,6 +215,8 @@ export default function FamilyRequestsScreen({ navigation }: any) {
     const isProcessing = processingId === request.id;
     const isPending = request.status === 'pending';
     const isIncoming = activeTab === 'incoming';
+    const buttonsDisabled = !!processingId || isOffline;
+    const statusColor = STATUS_COLORS[request.status] || COLORS.textSecondary;
 
     return (
       <View key={request.id} style={styles.requestCard}>
@@ -203,9 +232,9 @@ export default function FamilyRequestsScreen({ navigation }: any) {
             <Text style={styles.requesterName}>{request.requesterName}</Text>
             <Text style={styles.purposeText}>{t(PURPOSE_I18N[request.purpose])}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[request.status] + '20' }]}>
-            <Text style={[styles.statusText, { color: STATUS_COLORS[request.status] }]}>
-              {t(`familyRequest.${request.status}`)}
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {t(`familyRequest.status_${request.status}`)}
             </Text>
           </View>
         </View>
@@ -217,6 +246,15 @@ export default function FamilyRequestsScreen({ navigation }: any) {
               {request.amount.toLocaleString()} {request.currency}
             </Text>
           </View>
+
+          {request.transactionId ? (
+            <View style={styles.txnRow}>
+              <Ionicons name="receipt-outline" size={14} color={COLORS.textSecondary} />
+              <Text style={styles.txnText}>
+                {t('familyRequest.transactionId')}: {request.transactionId}
+              </Text>
+            </View>
+          ) : null}
 
           {request.message ? (
             <View style={styles.messageBox}>
@@ -240,17 +278,19 @@ export default function FamilyRequestsScreen({ navigation }: any) {
             ) : (
               <>
                 <TouchableOpacity
-                  style={styles.declineButton}
+                  style={[styles.declineButton, buttonsDisabled && styles.buttonDisabled]}
                   onPress={() => handleDecline(request)}
+                  disabled={buttonsDisabled}
                 >
-                  <Ionicons name="close-circle-outline" size={18} color={COLORS.error} />
-                  <Text style={[styles.actionText, { color: COLORS.error }]}>
+                  <Ionicons name="close-circle-outline" size={18} color={buttonsDisabled ? COLORS.textSecondary : COLORS.error} />
+                  <Text style={[styles.actionText, { color: buttonsDisabled ? COLORS.textSecondary : COLORS.error }]}>
                     {t('familyRequest.decline')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.approveButton}
+                  style={[styles.approveButton, buttonsDisabled && styles.buttonDisabled]}
                   onPress={() => handleApprove(request)}
+                  disabled={buttonsDisabled}
                 >
                   <Ionicons name="checkmark-circle" size={18} color={COLORS.white} />
                   <Text style={styles.approveText}>{t('familyRequest.approve')}</Text>
@@ -277,6 +317,13 @@ export default function FamilyRequestsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Ionicons name="cloud-offline-outline" size={16} color={COLORS.warning} />
+          <Text style={styles.offlineBannerText}>{t('familyRequest.offlineBanner')}</Text>
+        </View>
+      )}
+
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'incoming' && styles.tabActive]}
@@ -288,7 +335,7 @@ export default function FamilyRequestsScreen({ navigation }: any) {
             color={activeTab === 'incoming' ? COLORS.primary : COLORS.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === 'incoming' && styles.tabTextActive]}>
-            {t('familyRequest.incoming')}
+            {t('familyRequest.supportRequests')}
           </Text>
           {incoming.filter(r => r.status === 'pending').length > 0 && (
             <View style={styles.badge}>
@@ -319,7 +366,7 @@ export default function FamilyRequestsScreen({ navigation }: any) {
       >
         {requests.length === 0 ? renderEmpty() : requests.map(renderRequestCard)}
 
-        {activeTab === 'incoming' && (
+        {activeTab === 'incoming' && !isOffline && (
           <TouchableOpacity
             style={styles.createButton}
             onPress={() => navigation.navigate('RequestMoney')}
@@ -348,6 +395,20 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  offlineBannerText: {
+    fontSize: 13,
+    color: '#92400E',
+    fontWeight: '500',
   },
   tabBar: {
     flexDirection: 'row',
@@ -460,6 +521,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
+  txnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  txnText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
   messageBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -510,6 +582,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: COLORS.primary,
     gap: 6,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   actionText: {
     fontSize: 14,
