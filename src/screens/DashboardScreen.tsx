@@ -142,6 +142,7 @@ export default function DashboardScreen() {
     { icon: 'people', labelKey: 'dashboard.familyWallet', screen: 'FamilyWallet', color: '#EC4899' },
     { icon: 'mail', labelKey: 'dashboard.familyRequests', screen: 'FamilyRequests', color: '#3B82F6' },
     { icon: 'repeat', labelKey: 'dashboard.recurringSupport', screen: 'RecurringSupport', color: '#059669' },
+    { icon: 'people-circle', labelKey: 'dashboard.familyCircle', screen: 'FamilyCircle', color: '#7C3AED' },
   ];
 
   const appFeatures = [

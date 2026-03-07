@@ -151,3 +151,48 @@ export interface ScheduleExecution {
   error?: string;
   executedAt: string;
 }
+
+export interface CircleMember {
+  id: string;
+  name: string;
+  location: string;
+  amount: number;
+  currency: 'EUR' | 'USD' | 'GBP';
+  status: 'active' | 'invited' | 'left';
+  joinedAt: string;
+}
+
+export interface CircleBeneficiary {
+  name: string;
+  relationship: string;
+  payoutMethod: 'telebirr' | 'direct_transfer' | 'cash_pickup';
+  phone: string;
+}
+
+export interface FamilyCircle {
+  id: string;
+  userId: string;
+  name: string;
+  members: CircleMember[];
+  beneficiary: CircleBeneficiary;
+  totalTarget: number;
+  currency: string;
+  totalContributed: number;
+  frequency: 'monthly' | 'quarterly';
+  status: 'active' | 'paused' | 'completed';
+  nextPayoutDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CircleContribution {
+  id: string;
+  circleId: string;
+  memberId: string;
+  memberName: string;
+  amount: number;
+  currency: string;
+  status: 'pledged' | 'sent' | 'failed';
+  period: string;
+  createdAt: string;
+}
