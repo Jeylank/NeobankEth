@@ -153,7 +153,7 @@ export default function ProfileScreen() {
       items: [
         { icon: 'person-outline', label: 'Personal Information', action: () => {} },
         { icon: 'card-outline', label: 'KYC Verification', action: () => navigation.navigate('KYC') },
-        { icon: 'notifications-outline', label: 'Notifications', action: () => {} },
+        { icon: 'notifications-outline', label: 'Notifications', action: () => navigation.navigate('Notifications') },
       ],
     },
     {
@@ -184,6 +184,12 @@ export default function ProfileScreen() {
         { icon: 'language-outline', label: 'Language', action: () => navigation.navigate('Language') },
         { icon: 'cash-outline', label: 'Currency', value: 'USD' },
         { icon: 'moon-outline', label: 'Dark Mode', value: 'Off' },
+      ],
+    },
+    {
+      section: 'Security',
+      items: [
+        { icon: 'shield-checkmark-outline', label: 'Security Settings', action: () => navigation.navigate('SecuritySettings') },
       ],
     },
     {

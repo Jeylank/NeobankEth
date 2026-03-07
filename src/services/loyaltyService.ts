@@ -126,7 +126,7 @@ class LoyaltyService {
   }
 
   private generateReferralCode(userId: number): string {
-    const prefix = 'NB';
+    const prefix = 'HS';
     const userPart = userId.toString().padStart(4, '0').slice(-4);
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
     return `${prefix}${userPart}${random}`;

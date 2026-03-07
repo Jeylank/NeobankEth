@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
+import { useTranslation } from 'react-i18next';
 import { referralApi } from '../services/api';
 
 const COLORS = {
@@ -29,6 +30,7 @@ const COLORS = {
 };
 
 export default function ReferFriendScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
 
@@ -40,12 +42,12 @@ export default function ReferFriendScreen() {
   const inviteMutation = useMutation({
     mutationFn: (email: string) => referralApi.invite(email),
     onSuccess: () => {
-      Alert.alert('Success', 'Invitation sent successfully!');
+      Alert.alert(t('common.success'), t('referral.inviteSent'));
       setEmail('');
       queryClient.invalidateQueries({ queryKey: ['referral'] });
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to send invitation');
+      Alert.alert(t('common.error'), error.message || t('referral.inviteFailed'));
     },
   });
 
@@ -57,19 +59,19 @@ export default function ReferFriendScreen() {
 
   const handleCopyCode = async () => {
     await Clipboard.setStringAsync(referralCode);
-    Alert.alert('Copied!', 'Referral code copied to clipboard');
+    Alert.alert(t('referral.copied'), t('referral.codeCopied'));
   };
 
   const handleCopyLink = async () => {
     await Clipboard.setStringAsync(referralLink);
-    Alert.alert('Copied!', 'Referral link copied to clipboard');
+    Alert.alert(t('referral.copied'), t('referral.linkCopied'));
   };
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Join Habeshare and get 100 ETB bonus! Use my referral code: ${referralCode}\n\nDownload now: ${referralLink}`,
-        title: 'Join Habeshare',
+        message: t('referral.shareMessage', { code: referralCode, link: referralLink }),
+        title: t('referral.shareTitle'),
       });
     } catch (error) {
       console.error('Share error:', error);
@@ -78,11 +80,11 @@ export default function ReferFriendScreen() {
 
   const handleInviteByEmail = () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+      Alert.alert(t('common.error'), t('referral.enterEmail'));
       return;
     }
     if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      Alert.alert(t('common.error'), t('referral.validEmail'));
       return;
     }
     inviteMutation.mutate(email);
@@ -105,43 +107,41 @@ export default function ReferFriendScreen() {
           <View style={styles.headerIcon}>
             <Ionicons name="gift" size={40} color={COLORS.gold} />
           </View>
-          <Text style={styles.title}>Refer a Friend</Text>
-          <Text style={styles.subtitle}>
-            Earn 100 ETB for each friend who joins!
-          </Text>
+          <Text style={styles.title}>{t('referral.title')}</Text>
+          <Text style={styles.subtitle}>{t('referral.subtitle')}</Text>
         </View>
 
         <View style={styles.statsSection}>
           <View style={styles.statCard}>
             <Ionicons name="people" size={24} color={COLORS.primary} />
             <Text style={styles.statValue}>{totalReferred}</Text>
-            <Text style={styles.statLabel}>Friends Referred</Text>
+            <Text style={styles.statLabel}>{t('referral.friendsReferred')}</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="wallet" size={24} color={COLORS.success} />
             <Text style={styles.statValue}>{totalEarnings.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Total Earned (ETB)</Text>
+            <Text style={styles.statLabel}>{t('referral.totalEarned')}</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons name="time" size={24} color={COLORS.gold} />
             <Text style={styles.statValue}>{pendingRewards.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Pending (ETB)</Text>
+            <Text style={styles.statLabel}>{t('referral.pending')}</Text>
           </View>
         </View>
 
         <View style={styles.codeSection}>
-          <Text style={styles.sectionTitle}>Your Referral Code</Text>
+          <Text style={styles.sectionTitle}>{t('referral.yourCode')}</Text>
           <View style={styles.codeCard}>
             <Text style={styles.codeText}>{referralCode}</Text>
             <TouchableOpacity style={styles.copyButton} onPress={handleCopyCode}>
               <Ionicons name="copy" size={20} color={COLORS.white} />
-              <Text style={styles.copyButtonText}>Copy</Text>
+              <Text style={styles.copyButtonText}>{t('referral.copy')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.linkSection}>
-          <Text style={styles.sectionTitle}>Referral Link</Text>
+          <Text style={styles.sectionTitle}>{t('referral.referralLink')}</Text>
           <View style={styles.linkCard}>
             <Text style={styles.linkText} numberOfLines={1}>
               {referralLink}
@@ -153,43 +153,43 @@ export default function ReferFriendScreen() {
         </View>
 
         <View style={styles.shareSection}>
-          <Text style={styles.sectionTitle}>Share Via</Text>
+          <Text style={styles.sectionTitle}>{t('referral.shareVia')}</Text>
           <View style={styles.shareButtons}>
             <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
               <View style={[styles.shareIcon, { backgroundColor: '#25D366' }]}>
                 <Ionicons name="logo-whatsapp" size={24} color={COLORS.white} />
               </View>
-              <Text style={styles.shareLabel}>WhatsApp</Text>
+              <Text style={styles.shareLabel}>{t('referral.whatsapp')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
               <View style={[styles.shareIcon, { backgroundColor: '#1877F2' }]}>
                 <Ionicons name="logo-facebook" size={24} color={COLORS.white} />
               </View>
-              <Text style={styles.shareLabel}>Facebook</Text>
+              <Text style={styles.shareLabel}>{t('referral.facebook')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
               <View style={[styles.shareIcon, { backgroundColor: '#1DA1F2' }]}>
                 <Ionicons name="logo-twitter" size={24} color={COLORS.white} />
               </View>
-              <Text style={styles.shareLabel}>Twitter</Text>
+              <Text style={styles.shareLabel}>{t('referral.twitter')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
               <View style={[styles.shareIcon, { backgroundColor: COLORS.textSecondary }]}>
                 <Ionicons name="share-social" size={24} color={COLORS.white} />
               </View>
-              <Text style={styles.shareLabel}>More</Text>
+              <Text style={styles.shareLabel}>{t('referral.more')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.emailSection}>
-          <Text style={styles.sectionTitle}>Invite by Email</Text>
+          <Text style={styles.sectionTitle}>{t('referral.inviteByEmail')}</Text>
           <View style={styles.emailForm}>
             <TextInput
               style={styles.emailInput}
               value={email}
               onChangeText={setEmail}
-              placeholder="Enter friend's email"
+              placeholder={t('referral.emailPlaceholder')}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -201,23 +201,21 @@ export default function ReferFriendScreen() {
               {inviteMutation.isPending ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
-                <Text style={styles.inviteButtonText}>Invite</Text>
+                <Text style={styles.inviteButtonText}>{t('referral.invite')}</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.howItWorks}>
-          <Text style={styles.sectionTitle}>How It Works</Text>
+          <Text style={styles.sectionTitle}>{t('referral.howItWorks')}</Text>
           <View style={styles.step}>
             <View style={styles.stepNumber}>
               <Text style={styles.stepNumberText}>1</Text>
             </View>
             <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Share Your Code</Text>
-              <Text style={styles.stepDescription}>
-                Send your referral code or link to friends
-              </Text>
+              <Text style={styles.stepTitle}>{t('referral.step1Title')}</Text>
+              <Text style={styles.stepDescription}>{t('referral.step1Desc')}</Text>
             </View>
           </View>
           <View style={styles.step}>
@@ -225,10 +223,8 @@ export default function ReferFriendScreen() {
               <Text style={styles.stepNumberText}>2</Text>
             </View>
             <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Friend Joins</Text>
-              <Text style={styles.stepDescription}>
-                Your friend signs up using your code
-              </Text>
+              <Text style={styles.stepTitle}>{t('referral.step2Title')}</Text>
+              <Text style={styles.stepDescription}>{t('referral.step2Desc')}</Text>
             </View>
           </View>
           <View style={styles.step}>
@@ -236,12 +232,15 @@ export default function ReferFriendScreen() {
               <Text style={styles.stepNumberText}>3</Text>
             </View>
             <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Both Get Rewarded</Text>
-              <Text style={styles.stepDescription}>
-                You get 100 ETB and your friend gets 50 ETB!
-              </Text>
+              <Text style={styles.stepTitle}>{t('referral.step3Title')}</Text>
+              <Text style={styles.stepDescription}>{t('referral.step3Desc')}</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.termsSection}>
+          <Text style={styles.termsTitle}>{t('referral.termsTitle')}</Text>
+          <Text style={styles.termsText}>{t('referral.termsText')}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -458,5 +457,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: 4,
+  },
+  termsSection: {
+    margin: 20,
+    marginTop: 0,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 40,
+  },
+  termsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  termsText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
   },
 });

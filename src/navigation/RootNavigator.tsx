@@ -28,6 +28,9 @@ import RecurringSupportScreen from '../screens/RecurringSupportScreen';
 import FamilyCircleScreen from '../screens/FamilyCircleScreen';
 import SupportCampaignsScreen from '../screens/SupportCampaignsScreen';
 import WalletScreen from '../screens/WalletScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import TransparentFXScreen from '../screens/TransparentFXScreen';
+import SecuritySettingsScreen from '../screens/SecuritySettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -129,6 +132,9 @@ export default function RootNavigator() {
           <Stack.Screen name="FamilyCircle" component={FamilyCircleScreen} options={{ title: 'Family Circle' }} />
           <Stack.Screen name="SupportCampaigns" component={SupportCampaignsScreen} options={{ title: 'Support Campaigns' }} />
           <Stack.Screen name="Wallet" component={WalletScreen} options={{ title: 'Wallet' }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
+          <Stack.Screen name="TransparentFX" component={TransparentFXScreen} options={{ title: 'Transparent FX' }} />
+          <Stack.Screen name="SecuritySettings" component={SecuritySettingsScreen} options={{ title: 'Security' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

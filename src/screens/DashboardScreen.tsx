@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { transactionsApi, savingsApi, exchangeRatesApi } from '../services/api';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../hooks/useAuth';
+import { getUnreadCount } from '../services/firestoreNotifications';
 import '../i18n';
 
 const COLORS = {
@@ -44,8 +46,18 @@ const MOCK_RATES = {
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
   const [fxAmount, setFxAmount] = useState('100');
   const [fxFromCurrency, setFxFromCurrency] = useState('USD');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsubscribe = getUnreadCount(user.uid, (count) => {
+      setUnreadNotifications(count);
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const { data: ratesData, refetch: refetchRates } = useQuery({
     queryKey: ['exchange-rates'],
@@ -145,6 +157,7 @@ export default function DashboardScreen() {
     { icon: 'people-circle', labelKey: 'dashboard.familyCircle', screen: 'FamilyCircle', color: '#7C3AED' },
     { icon: 'heart', labelKey: 'dashboard.supportCampaigns', screen: 'SupportCampaigns', color: '#DC2626' },
     { icon: 'wallet', labelKey: 'dashboard.wallet', screen: 'Wallet', color: '#2563EB' },
+    { icon: 'swap-horizontal', labelKey: 'dashboard.transparentFX', screen: 'TransparentFX', color: '#0891B2' },
   ];
 
   const appFeatures = [
@@ -159,6 +172,23 @@ export default function DashboardScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
+      <View style={styles.notificationBellRow}>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={styles.bellButton}
+          onPress={() => navigation.navigate('Notifications')}
+        >
+          <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
+          {unreadNotifications > 0 && (
+            <View style={styles.bellBadge}>
+              <Text style={styles.bellBadgeText}>
+                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>Habeshare</Text>
         <Text style={styles.summarySubtitle}>{t('dashboard.transactionSummary')}</Text>
@@ -424,6 +454,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightGray,
+  },
+  notificationBellRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  bellButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: COLORS.lightGray,
+  },
+  bellBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   summaryCard: {
     backgroundColor: COLORS.primary,

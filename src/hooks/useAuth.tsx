@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { AppState } from 'react-native';
 import { secureStorage } from '../utils/storage';
 import { firebaseAuth, FirebaseUser } from '../services/firebase';
+import { SessionManager } from '../utils/security';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -18,14 +20,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const appState = useRef(AppState.currentState);
+
   useEffect(() => {
     const unsubscribe = firebaseAuth.onAuthChange(async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
         const token = await firebaseUser.getIdToken();
         await secureStorage.setItemAsync('authToken', token);
+        await SessionManager.recordActivity();
       } else {
         await secureStorage.deleteItemAsync('authToken');
+        await SessionManager.clearSession();
       }
       setIsLoading(false);
     });
@@ -33,10 +39,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active' && user) {
+        const expired = await SessionManager.isSessionExpired();
+        if (expired) {
+          await firebaseAuth.signOut();
+          await secureStorage.deleteItemAsync('authToken');
+          await SessionManager.clearSession();
+        } else {
+          await SessionManager.recordActivity();
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => subscription.remove();
+  }, [user]);
+
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     try {
       await firebaseAuth.signIn(email, password);
+      await SessionManager.recordActivity();
     } finally {
       setIsLoading(false);
     }

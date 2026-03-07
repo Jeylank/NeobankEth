@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { remittanceApi, beneficiariesApi, balanceApi } from '../services/api';
+import { requireBiometricConfirmation } from '../utils/security';
 import '../i18n';
 
 const COLORS = {
@@ -118,7 +119,11 @@ export default function RemittanceScreen() {
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('common.confirm'),
-          onPress: () => {
+          onPress: async () => {
+            const confirmed = await requireBiometricConfirmation(
+              t('security.confirmSensitive')
+            );
+            if (!confirmed) return;
             sendMutation.mutate({
               amount: parseFloat(amount),
               fromCurrency,
