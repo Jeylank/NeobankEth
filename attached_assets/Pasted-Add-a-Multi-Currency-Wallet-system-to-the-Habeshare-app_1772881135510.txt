@@ -1,0 +1,279 @@
+Add a Multi-Currency Wallet system to the Habeshare app.
+
+The wallet must support multiple balances per user and use a ledger-based architecture similar to Wise/Revolut.
+
+Requirements:
+
+--------------------------------
+WALLET CORE MODEL
+--------------------------------
+
+Create Firestore collection:
+
+wallets/{userId}
+
+Example document:
+
+{
+  userId: string
+  balances: {
+    EUR: number
+    USD: number
+    GBP: number
+    SAR: number
+    AED: number
+  }
+  defaultCurrency: string
+  updatedAt: timestamp
+}
+
+Currencies supported initially:
+
+EUR
+USD
+GBP
+
+--------------------------------
+LEDGER SYSTEM
+--------------------------------
+
+Create immutable ledger entries.
+
+Collection:
+
+wallets/{userId}/entries/{entryId}
+
+Example credit entry:
+
+{
+  entryId: string
+  type: "CREDIT"
+  category: "TOPUP"
+  currency: "EUR"
+  amount: number
+  status: "POSTED"
+  provider: "STRIPE"
+  providerRef: string
+  createdAt: timestamp
+}
+
+Example debit entry:
+
+{
+  entryId: string
+  type: "DEBIT"
+  category: "REMITTANCE"
+  currency: "EUR"
+  amount: number
+  txId: string
+  status: "POSTED"
+  createdAt: timestamp
+}
+
+Ledger entries must be immutable.
+
+--------------------------------
+WALLET OPERATIONS
+--------------------------------
+
+Create service:
+
+src/services/walletService.ts
+
+Functions:
+
+createWallet(userId)
+
+getWallet(userId)
+
+creditWallet(userId, currency, amount, provider, providerRef)
+
+debitWallet(userId, currency, amount, txId)
+
+reserveFunds(userId, currency, amount)
+
+releaseReservation(userId, currency, amount)
+
+calculateBalance(userId)
+
+--------------------------------
+TOP UP FLOW
+--------------------------------
+
+Top-up flow:
+
+User presses "Add Money"
+
+Flow:
+
+Card / payment gateway
+↓
+Payment success
+↓
+Create ledger CREDIT entry
+↓
+Update wallet balance
+
+UI button:
+
+Add Money
+
+--------------------------------
+SPEND FROM WALLET
+--------------------------------
+
+Allow wallet balance to be used for:
+
+- remittance
+- bill payments
+- support campaigns
+- family wallet transfers
+
+Flow:
+
+Check wallet balance
+↓
+Reserve funds
+↓
+Initiate payout
+↓
+Confirm transaction
+↓
+Convert reservation → debit
+
+--------------------------------
+WALLET UI SCREEN
+--------------------------------
+
+Create new screen:
+
+WalletScreen.tsx
+
+Display:
+
+Balances per currency:
+
+EUR
+USD
+GBP
+
+Buttons:
+
+Add Money
+Send
+Convert
+View Activity
+
+--------------------------------
+WALLET ACTIVITY
+--------------------------------
+
+Create Activity list using ledger entries.
+
+Display:
+
+Top-up
+Transfer
+Bill payment
+Campaign contribution
+Currency conversion
+
+--------------------------------
+CURRENCY CONVERSION
+--------------------------------
+
+Create collection:
+
+fx_conversions
+
+Example document:
+
+{
+  userId: string
+  fromCurrency: "EUR"
+  toCurrency: "USD"
+  fromAmount: number
+  toAmount: number
+  rate: number
+  fee: number
+  createdAt: timestamp
+}
+
+Create service:
+
+convertCurrency(userId, fromCurrency, toCurrency, amount)
+
+Flow:
+
+Check balance
+↓
+Apply FX rate
+↓
+Create debit entry
+↓
+Create credit entry
+
+--------------------------------
+SECURITY RULES
+--------------------------------
+
+Users cannot modify wallet balances directly.
+
+Only backend services can write to:
+
+wallets
+wallet entries
+fx_conversions
+
+--------------------------------
+UI REQUIREMENTS
+--------------------------------
+
+Wallet screen must show:
+
+Total balances
+Currency icons
+Quick actions
+Transaction history
+
+Use existing Habeshare design system.
+
+--------------------------------
+INTEGRATION
+--------------------------------
+
+When user sends remittance:
+
+Check if wallet balance available.
+
+If yes:
+
+use wallet funds
+
+Else:
+
+fallback to card payment.
+
+--------------------------------
+I18N
+--------------------------------
+
+Add wallet translations for:
+
+English
+Amharic
+Oromifa
+Tigrinya
+
+--------------------------------
+OUTPUT
+--------------------------------
+
+Generate:
+
+walletService.ts
+WalletScreen.tsx
+wallet ledger helpers
+Firestore schema
+conversion service
+wallet activity component

@@ -227,3 +227,42 @@ export interface CampaignContribution {
   transactionId?: string;
   createdAt: string;
 }
+
+export type WalletCurrency = 'EUR' | 'USD' | 'GBP';
+export type LedgerEntryType = 'CREDIT' | 'DEBIT';
+export type LedgerCategory = 'TOPUP' | 'REMITTANCE' | 'BILL_PAYMENT' | 'CAMPAIGN' | 'FAMILY_TRANSFER' | 'CONVERSION';
+export type LedgerStatus = 'POSTED' | 'RESERVED' | 'CANCELLED';
+
+export interface Wallet {
+  userId: string;
+  balances: Record<WalletCurrency, number>;
+  reservations: Record<WalletCurrency, number>;
+  defaultCurrency: WalletCurrency;
+  updatedAt: string;
+}
+
+export interface LedgerEntry {
+  entryId: string;
+  type: LedgerEntryType;
+  category: LedgerCategory;
+  currency: WalletCurrency;
+  amount: number;
+  status: LedgerStatus;
+  provider?: string;
+  providerRef?: string;
+  txId?: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface FxConversion {
+  id: string;
+  userId: string;
+  fromCurrency: WalletCurrency;
+  toCurrency: WalletCurrency;
+  fromAmount: number;
+  toAmount: number;
+  rate: number;
+  fee: number;
+  createdAt: string;
+}
