@@ -11,6 +11,7 @@ import type {
   AdminAlertFilters,
   AdminTicketFilters,
   AdminDisputeFilters,
+  FxMarketplaceStats,
 } from '../types';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.habeshare.com';
@@ -104,6 +105,11 @@ export const adminService = {
 
   async getLiquidity(): Promise<LiquidityData> {
     const response = await adminApi.get('/api/admin/liquidity');
+    return response.data;
+  },
+
+  async getFxMarketplaceStats(): Promise<FxMarketplaceStats> {
+    const response = await adminApi.get('/api/admin/fx-marketplace');
     return response.data;
   },
 };

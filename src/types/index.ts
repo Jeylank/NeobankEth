@@ -408,3 +408,104 @@ export interface AdminTicketFilters {
 export interface AdminDisputeFilters {
   status?: DisputeStatus;
 }
+
+export type FxQuoteStatus = 'active' | 'selected' | 'used' | 'expired';
+
+export interface FxQuoteRecord {
+  quoteId: string;
+  userId: string;
+  bank: string;
+  rate: number;
+  fee: number;
+  sendAmount: number;
+  sendCurrency: string;
+  receiveAmount: number;
+  receiveCurrency: string;
+  deliveryTime: string;
+  payoutMethod: string;
+  status: FxQuoteStatus;
+  providerHealthy: boolean;
+  providerLiquidity: number;
+  reservationId?: string;
+  txId?: string;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FxReservationStatus = 'reserved' | 'confirmed' | 'released';
+
+export interface FxReservation {
+  reservationId: string;
+  quoteId: string;
+  userId: string;
+  bank: string;
+  reservedAmountETB: number;
+  sendAmount: number;
+  sendCurrency: string;
+  rate: number;
+  fee: number;
+  status: FxReservationStatus;
+  txId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+}
+
+export type FxAuditEvent =
+  | 'quote_generated'
+  | 'quote_selected'
+  | 'quote_expired'
+  | 'quote_rejected'
+  | 'payout_executed_from_quote';
+
+export interface FxAuditLog {
+  event: FxAuditEvent;
+  userId: string;
+  quoteId?: string;
+  quoteIds?: string[];
+  reservationId?: string;
+  txId?: string;
+  bank?: string;
+  reason?: string;
+  amount?: number;
+  currency?: string;
+  providerCount?: number;
+  reservedAmountETB?: number;
+  amountETB?: number;
+  rate?: number;
+  expiresAt?: string;
+  available?: number;
+  required?: number;
+  expectedAmount?: number;
+  expectedCurrency?: string;
+  receivedAmount?: number;
+  receivedCurrency?: string;
+  timestamp: string;
+}
+
+export interface FxProviderHealth {
+  provider: string;
+  healthy: boolean;
+  availableLiquidityETB: number;
+  lastCheckedAt: string;
+}
+
+export interface FxMarketplaceStats {
+  quotesGenerated: number;
+  quotesSelected: number;
+  quotesExpired: number;
+  failedExecutions: number;
+  conversionRateByBank: {
+    bank: string;
+    generated: number;
+    selected: number;
+    conversionRate: number;
+  }[];
+  providerHealth: {
+    provider: string;
+    healthy: boolean;
+    availableLiquidityETB: number;
+  }[];
+  recentAuditLogs: FxAuditLog[];
+}
