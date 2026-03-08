@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { remittanceApi, beneficiariesApi, balanceApi } from '../services/api';
 import { requireBiometricConfirmation } from '../utils/security';
 import '../i18n';
@@ -50,13 +51,17 @@ const PAYOUT_METHODS = [
 export default function RemittanceScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [amount, setAmount] = useState('');
-  const [fromCurrency, setFromCurrency] = useState('USD');
-  const [toCurrency, setToCurrency] = useState('ETB');
-  const [selectedBeneficiary, setSelectedBeneficiary] = useState<number | null>(null);
-  const [description, setDescription] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('wallet');
-  const [payoutMethod, setPayoutMethod] = useState('bank_account');
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const prefilled = route.params?.prefilled;
+  const selectedQuote = route.params?.selectedQuote;
+  const [amount, setAmount] = useState(prefilled ? String(route.params?.amount ?? '') : '');
+  const [fromCurrency, setFromCurrency] = useState(prefilled ? (route.params?.fromCurrency ?? 'USD') : 'USD');
+  const [toCurrency, setToCurrency] = useState(prefilled ? (route.params?.toCurrency ?? 'ETB') : 'ETB');
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState<number | null>(prefilled ? (route.params?.beneficiaryId ?? null) : null);
+  const [description, setDescription] = useState(prefilled ? (route.params?.description ?? '') : '');
+  const [paymentMethod, setPaymentMethod] = useState(prefilled ? (route.params?.paymentMethod ?? 'wallet') : 'wallet');
+  const [payoutMethod, setPayoutMethod] = useState(prefilled ? (route.params?.payoutMethod ?? 'bank_account') : 'bank_account');
 
   const { data: balanceData } = useQuery({
     queryKey: ['balance'],
@@ -132,6 +137,7 @@ export default function RemittanceScreen() {
               description,
               paymentMethod,
               payoutMethod,
+              ...(selectedQuote?.quoteId ? { quoteId: selectedQuote.quoteId } : {}),
             });
           },
         },
@@ -230,6 +236,37 @@ export default function RemittanceScreen() {
           </View>
         </View>
       </View>
+
+      {selectedQuote && (
+        <View style={[styles.section, { backgroundColor: '#F0FFF4', borderWidth: 1, borderColor: COLORS.primary + '30', borderRadius: 12, padding: 14 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+            <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.primary }}>
+              {t('fxMarketplace.selected')}: {selectedQuote.bank}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 13, color: COLORS.gray }}>
+            {t('fxMarketplace.rate')}: {selectedQuote.rate} | {t('fxMarketplace.receive')}: {selectedQuote.receiveAmount?.toLocaleString()} ETB | {t('fxMarketplace.fee')}: €{selectedQuote.fee}
+          </Text>
+        </View>
+      )}
+
+      {!selectedQuote && amount && parseFloat(amount) > 0 && toCurrency === 'ETB' && (
+        <TouchableOpacity
+          style={{ backgroundColor: '#059669', marginHorizontal: 16, marginBottom: 8, paddingVertical: 12, borderRadius: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }}
+          onPress={() => navigation.navigate('FxMarketplace', {
+            amount: parseFloat(amount),
+            currency: fromCurrency,
+            payoutMethod: payoutMethod === 'bank_account' ? 'bank' : payoutMethod === 'mobile_wallet' ? 'mobile' : 'cash',
+            beneficiaryId: selectedBeneficiary,
+            description,
+            paymentMethod,
+          })}
+        >
+          <Ionicons name="trending-up" size={18} color="#FFFFFF" />
+          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>{t('fxMarketplace.chooseRate')}</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('remittance.paymentMethod')}</Text>

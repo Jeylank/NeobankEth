@@ -64,7 +64,8 @@
       "multiCurrencyDesc": "USD, ETB, EUR, GBP wallets",
       "localLanguages": "Local Languages",
       "localLanguagesDesc": "Amharic, Oromifa, Tigrinya"
-    }
+    },
+    "bestFxRates": "Best FX Rates"
   },
   "transactions": {
     "title": "Transactions",
@@ -859,5 +860,25 @@
     "administration": "Administration",
     "newBadge": "NEW",
     "consoleVersion": "Operations Console v1.0"
+  },
+  "fxMarketplace": {
+    "title": "FX Marketplace",
+    "chooseRate": "Choose the Best Exchange Rate",
+    "bank": "Bank",
+    "rate": "FX Rate",
+    "receive": "Receiver Gets",
+    "fee": "Fee",
+    "delivery": "Delivery",
+    "select": "Select Offer",
+    "selected": "Selected",
+    "bestRate": "Best Rate",
+    "sending": "Sending",
+    "fetching": "Fetching bank offers...",
+    "noOffers": "No offers available at this time",
+    "offersAvailable": "offers available",
+    "pleaseSelect": "Select an offer to continue",
+    "confirmOffer": "Confirm Offer",
+    "selectError": "Failed to select offer",
+    "bestFxRates": "Best FX Rates"
   }
 }

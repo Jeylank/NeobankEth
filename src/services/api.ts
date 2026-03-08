@@ -123,6 +123,7 @@ export const remittanceApi = {
     description?: string;
     paymentMethod?: string;
     payoutMethod?: string;
+    quoteId?: string;
   }) => {
     const response = await api.post('/api/remittance/initiate', data);
     return response.data;
@@ -190,6 +191,30 @@ export const kycApi = {
 export const supportApi = {
   submitTicket: async (data: { subject: string; message: string }) => {
     const response = await api.post('/api/support/ticket', data);
+    return response.data;
+  },
+};
+
+export interface FxQuote {
+  quoteId: string;
+  bank: string;
+  rate: number;
+  fee: number;
+  receiveAmount: number;
+  deliveryTime: string;
+}
+
+export const fxMarketplaceApi = {
+  getQuotes: async (params: {
+    amount: number;
+    currency: string;
+    payoutMethod: string;
+  }): Promise<FxQuote[]> => {
+    const response = await api.post('/api/fx/quotes', params);
+    return response.data;
+  },
+  selectQuote: async (quoteId: string): Promise<{ success: boolean }> => {
+    const response = await api.post('/api/fx/select', { quoteId });
     return response.data;
   },
 };

@@ -64,7 +64,8 @@
       "multiCurrencyDesc": "USD፣ ETB፣ EUR፣ GBP ዋሌቶች",
       "localLanguages": "የአካባቢ ቋንቋዎች",
       "localLanguagesDesc": "አማርኛ፣ ኦሮሚፋ፣ ትግርኛ"
-    }
+    },
+    "bestFxRates": "ምርጥ የምንዛሪ ተመኖች"
   },
   "transactions": {
     "title": "ግብይቶች",
@@ -859,5 +860,25 @@
     "administration": "አስተዳደር",
     "newBadge": "አዲስ",
     "consoleVersion": "ኮንሶል ስሪት 1.0"
+  },
+  "fxMarketplace": {
+    "title": "የውጭ ምንዛሪ ገበያ",
+    "chooseRate": "ምርጥ የምንዛሪ ተመን ይምረጡ",
+    "bank": "ባንክ",
+    "rate": "የምንዛሪ ተመን",
+    "receive": "ተቀባይ ያገኛል",
+    "fee": "ክፍያ",
+    "delivery": "የማድረስ ጊዜ",
+    "select": "ቅናሽ ይምረጡ",
+    "selected": "ተመርጧል",
+    "bestRate": "ምርጥ ተመን",
+    "sending": "መላክ",
+    "fetching": "የባንክ ቅናሾችን በማግኘት ላይ...",
+    "noOffers": "በአሁኑ ጊዜ ቅናሾች የሉም",
+    "offersAvailable": "ቅናሾች ይገኛሉ",
+    "pleaseSelect": "ለመቀጠል ቅናሽ ይምረጡ",
+    "confirmOffer": "ቅናሹን ያረጋግጡ",
+    "selectError": "ቅናሹን መምረጥ አልተሳካም",
+    "bestFxRates": "ምርጥ የምንዛሪ ተመኖች"
   }
 }

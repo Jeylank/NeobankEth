@@ -158,6 +158,7 @@ export default function DashboardScreen() {
     { icon: 'heart', labelKey: 'dashboard.supportCampaigns', screen: 'SupportCampaigns', color: '#DC2626' },
     { icon: 'wallet', labelKey: 'dashboard.wallet', screen: 'Wallet', color: '#2563EB' },
     { icon: 'swap-horizontal', labelKey: 'dashboard.transparentFX', screen: 'TransparentFX', color: '#0891B2' },
+    { icon: 'trending-up', labelKey: 'dashboard.bestFxRates', screen: 'FxMarketplace', color: '#059669' },
   ];
 
   const appFeatures = [

@@ -1,0 +1,198 @@
+You are improving the frontend of a fintech mobile application called Habeshare.
+
+The stack uses:
+
+- React Native (Expo)
+- TypeScript
+- Firebase Auth
+- Firestore
+- Existing remittance API backend
+- Existing wallet system
+
+Do NOT break existing screens such as:
+RemittanceScreen
+WalletScreen
+FamilyWalletScreen
+FamilyRequestsScreen
+Campaigns
+Admin Console
+
+You must ADD the following new modules.
+
+---
+
+1️⃣ FX MARKETPLACE SCREEN
+
+Create a new screen:
+
+src/screens/FxMarketplaceScreen.tsx
+
+Purpose:
+Allow users to see competing FX offers from Ethiopian banks before sending money.
+
+Features:
+
+- show amount user wants to send
+- display ETB receiver amount
+- show bank offers in cards
+- allow selecting the best bank offer
+
+UI Layout:
+
+Header:
+"Choose the Best Exchange Rate"
+
+Offer Card:
+
+Bank Name
+FX Rate
+Receiver Gets (ETB)
+Fee
+Delivery time
+
+Example:
+
+Dashen Bank
+Rate: 64.2
+Receiver gets: 12,840 ETB
+Fee: €1.20
+Delivery: 2 min
+
+Button:
+"Select Offer"
+
+Use a flat list component to display offers.
+
+---
+
+2️⃣ CONNECT TO BACKEND API
+
+Fetch offers from:
+
+POST /api/fx/quotes
+
+Request example:
+
+{
+amount: 200,
+currency: "EUR",
+payoutMethod: "bank"
+}
+
+Response example:
+
+[
+{
+quoteId: "Q1",
+bank: "Dashen",
+rate: 64.2,
+fee: 1.2,
+receiveAmount: 12840,
+deliveryTime: "2min"
+},
+{
+quoteId: "Q2",
+bank: "Awash",
+rate: 64.1,
+fee: 1.1,
+receiveAmount: 12820,
+deliveryTime: "Instant"
+}
+]
+
+---
+
+3️⃣ USER SELECTS OFFER
+
+When user taps an offer:
+
+Call:
+
+POST /api/fx/select
+
+Body:
+
+{
+quoteId: "Q1"
+}
+
+Then redirect to existing:
+
+ConfirmTransferScreen
+
+---
+
+4️⃣ UPDATE REMITTANCE FLOW
+
+Update RemittanceScreen:
+
+Current flow:
+
+Enter Amount → Confirm → Send
+
+New flow:
+
+Enter Amount
+↓
+FX Marketplace Screen
+↓
+User selects bank offer
+↓
+Confirm Transfer
+
+---
+
+5️⃣ ADD REUSABLE COMPONENT
+
+Create component:
+
+src/components/BankOfferCard.tsx
+
+Props:
+
+bank
+rate
+fee
+receiveAmount
+deliveryTime
+onSelect
+
+---
+
+6️⃣ ADD I18N KEYS
+
+Add translation keys:
+
+fxMarketplace.title
+fxMarketplace.chooseRate
+fxMarketplace.bank
+fxMarketplace.rate
+fxMarketplace.receive
+fxMarketplace.delivery
+fxMarketplace.select
+
+Add translations for:
+
+English
+Amharic
+Oromifa
+Tigrinya
+
+---
+
+7️⃣ DASHBOARD TILE
+
+Add dashboard tile:
+
+Icon: trending-up
+Title: "Best FX Rates"
+
+Navigate to:
+
+FxMarketplaceScreen
+
+---
+
+Follow existing design system and Tailwind styles used in the app.
+
+Do NOT modify authentication or wallet logic.

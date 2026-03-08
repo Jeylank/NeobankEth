@@ -31,6 +31,7 @@ import WalletScreen from '../screens/WalletScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import TransparentFXScreen from '../screens/TransparentFXScreen';
 import SecuritySettingsScreen from '../screens/SecuritySettingsScreen';
+import FxMarketplaceScreen from '../screens/FxMarketplaceScreen';
 import AdminConsoleScreen from '../screens/admin/AdminConsoleScreen';
 import AdminOverviewScreen from '../screens/admin/AdminOverviewScreen';
 import AdminPayoutMonitoringScreen from '../screens/admin/AdminPayoutMonitoringScreen';
@@ -142,6 +143,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
           <Stack.Screen name="TransparentFX" component={TransparentFXScreen} options={{ title: 'Transparent FX' }} />
           <Stack.Screen name="SecuritySettings" component={SecuritySettingsScreen} options={{ title: 'Security' }} />
+          <Stack.Screen name="FxMarketplace" component={FxMarketplaceScreen} options={{ title: 'FX Marketplace' }} />
           <Stack.Screen name="AdminConsole" component={AdminConsoleScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminOverview" component={AdminOverviewScreen} options={{ title: 'Overview' }} />
           <Stack.Screen name="AdminPayoutMonitoring" component={AdminPayoutMonitoringScreen} options={{ title: 'Payout Monitoring' }} />

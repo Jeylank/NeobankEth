@@ -64,7 +64,8 @@
       "multiCurrencyDesc": "USD, ETB, EUR, GBP waaleetii",
       "localLanguages": "Afaanota Naannoo",
       "localLanguagesDesc": "Amaariffaa, Oromiffaa, Tigrinya"
-    }
+    },
+    "bestFxRates": "Gatii Jijjiirraa Irra Caalaa"
   },
   "transactions": {
     "title": "Daldalawwan",
@@ -859,5 +860,25 @@
     "administration": "Bulchiinsa",
     "newBadge": "HAARAA",
     "consoleVersion": "Konsoolii Gosa 1.0"
+  },
+  "fxMarketplace": {
+    "title": "Gabaa Jijjiirraa Maallaqaa",
+    "chooseRate": "Gatii Jijjiirraa Irra Caalaa Gaarii Filadhu",
+    "bank": "Baankii",
+    "rate": "Gatii Jijjiirraa",
+    "receive": "Fudhataan Ni Argata",
+    "fee": "Kaffaltii",
+    "delivery": "Yeroo Geejjibaa",
+    "select": "Dhiheessii Filadhu",
+    "selected": "Filatame",
+    "bestRate": "Gatii Irra Caalaa",
+    "sending": "Ergaa",
+    "fetching": "Dhiheessii baankii barbaadaa...",
+    "noOffers": "Yeroo ammaa dhiheessiin hin jiru",
+    "offersAvailable": "dhiheessiin ni jiru",
+    "pleaseSelect": "Itti fufuuf dhiheessii filadhu",
+    "confirmOffer": "Dhiheessii Mirkaneessi",
+    "selectError": "Dhiheessii filachuun hin danda'amne",
+    "bestFxRates": "Gatii Jijjiirraa Irra Caalaa"
   }
 }

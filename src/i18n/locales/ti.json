@@ -64,7 +64,8 @@
       "multiCurrencyDesc": "USD፣ ETB፣ EUR፣ GBP ዋሌታት",
       "localLanguages": "ናይ ከባቢ ቋንቋታት",
       "localLanguagesDesc": "ኣማርኛ፣ ኦሮሚፋ፣ ትግርኛ"
-    }
+    },
+    "bestFxRates": "ዝበለጸ ናይ ምንዛሪ ዋጋታት"
   },
   "transactions": {
     "title": "ግብይቲታት",
@@ -859,5 +860,25 @@
     "administration": "ምምሕዳር",
     "newBadge": "ሓድሽ",
     "consoleVersion": "ኮንሶል ስሪት 1.0"
+  },
+  "fxMarketplace": {
+    "title": "ዕዳጋ ወጻኢ ባጤራ",
+    "chooseRate": "ዝበለጸ ናይ ምንዛሪ ዋጋ ምረጹ",
+    "bank": "ባንክ",
+    "rate": "ናይ ምንዛሪ ዋጋ",
+    "receive": "ተቐባሊ ዝረኽቦ",
+    "fee": "ክፍሊት",
+    "delivery": "ግዜ ምብጻሕ",
+    "select": "ቅናሽ ምረጹ",
+    "selected": "ተመሪጹ",
+    "bestRate": "ዝበለጸ ዋጋ",
+    "sending": "ምልኣኽ",
+    "fetching": "ናይ ባንክ ቅናሻት ንደሊ ኣለና...",
+    "noOffers": "ኣብዚ ግዜ ቅናሻት የለን",
+    "offersAvailable": "ቅናሻት ኣለዉ",
+    "pleaseSelect": "ንምቕጻል ቅናሽ ምረጹ",
+    "confirmOffer": "ቅናሽ ኣረጋግጹ",
+    "selectError": "ቅናሽ ምምራጽ ኣይተኻእለን",
+    "bestFxRates": "ዝበለጸ ናይ ምንዛሪ ዋጋታት"
   }
 }
