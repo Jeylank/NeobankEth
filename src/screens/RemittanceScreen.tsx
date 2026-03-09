@@ -15,6 +15,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { remittanceApi, beneficiariesApi, balanceApi } from '../services/api';
 import { requireBiometricConfirmation } from '../utils/security';
+import FeeBreakdownCard from '../components/FeeBreakdownCard';
+import DeliveryTimeBadge from '../components/DeliveryTimeBadge';
+import { RateLockTimer } from '../components/RateLockTimer';
+import { estimateDeliveryTime } from '../services/deliveryEstimator';
+import { rateLockService } from '../services/rateLockService';
 import '../i18n';
 
 const COLORS = {
@@ -55,6 +60,7 @@ export default function RemittanceScreen() {
   const route = useRoute<any>();
   const prefilled = route.params?.prefilled;
   const selectedQuote = route.params?.selectedQuote;
+  const incomingRecipient = route.params?.selectedRecipient;
   const [amount, setAmount] = useState(prefilled ? String(route.params?.amount ?? '') : '');
   const [fromCurrency, setFromCurrency] = useState(prefilled ? (route.params?.fromCurrency ?? 'USD') : 'USD');
   const [toCurrency, setToCurrency] = useState(prefilled ? (route.params?.toCurrency ?? 'ETB') : 'ETB');
@@ -62,6 +68,13 @@ export default function RemittanceScreen() {
   const [description, setDescription] = useState(prefilled ? (route.params?.description ?? '') : '');
   const [paymentMethod, setPaymentMethod] = useState(prefilled ? (route.params?.paymentMethod ?? 'wallet') : 'wallet');
   const [payoutMethod, setPayoutMethod] = useState(prefilled ? (route.params?.payoutMethod ?? 'bank_account') : 'bank_account');
+  const [selectedRecipientName, setSelectedRecipientName] = useState<string | null>(incomingRecipient?.name || null);
+
+  React.useEffect(() => {
+    if (incomingRecipient) {
+      setSelectedRecipientName(incomingRecipient.name);
+    }
+  }, [incomingRecipient]);
 
   const { data: balanceData } = useQuery({
     queryKey: ['balance'],
@@ -237,6 +250,18 @@ export default function RemittanceScreen() {
         </View>
       </View>
 
+      {amount && parseFloat(amount) > 0 && (
+        <FeeBreakdownCard
+          sendAmount={parseFloat(amount)}
+          sendCurrency={fromCurrency}
+          receiveAmount={parseFloat(convertedAmount)}
+          receiveCurrency={toCurrency}
+          fxRate={getExchangeRate()}
+          platformFee={Math.max(parseFloat(amount) * 0.0075, 0.50)}
+          bankFee={parseFloat(amount) > 100 ? 0.40 : 0.20}
+        />
+      )}
+
       {selectedQuote && (
         <View style={[styles.section, { backgroundColor: '#F0FFF4', borderWidth: 1, borderColor: COLORS.primary + '30', borderRadius: 12, padding: 14 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -248,6 +273,17 @@ export default function RemittanceScreen() {
           <Text style={{ fontSize: 13, color: COLORS.gray }}>
             {t('fxMarketplace.rate')}: {selectedQuote.rate} | {t('fxMarketplace.receive')}: {selectedQuote.receiveAmount?.toLocaleString()} ETB | {t('fxMarketplace.fee')}: €{selectedQuote.fee}
           </Text>
+          <View style={{ marginTop: 10 }}>
+            <RateLockTimer
+              onLock={async () => {
+                const lock = await rateLockService.lockRate('user', selectedQuote.quoteId, selectedQuote.rate);
+                return { lockId: lock.lockId, expiresAt: lock.expiresAt };
+              }}
+              onExpired={() => {
+                Alert.alert(t('rateLock.rateExpired'), t('rateLock.refreshRate'));
+              }}
+            />
+          </View>
         </View>
       )}
 
@@ -327,6 +363,29 @@ export default function RemittanceScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {payoutMethod && (
+        <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+          {(() => {
+            const estimate = estimateDeliveryTime('default', payoutMethod === 'bank_account' ? 'bank_transfer' : payoutMethod === 'mobile_wallet' ? 'mobile_wallet' : 'cash_pickup');
+            return <DeliveryTimeBadge label={estimate.label} minutes={estimate.minutes} icon={estimate.icon} />;
+          })()}
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={{ backgroundColor: COLORS.white, marginHorizontal: 16, marginBottom: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: selectedRecipientName ? COLORS.primary + '40' : '#E5E7EB' }}
+        onPress={() => navigation.navigate('Recipients', { selectMode: true })}
+      >
+        <Ionicons name="people" size={20} color={COLORS.primary} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.text }}>{t('recipient.savedRecipients')}</Text>
+          {selectedRecipientName && (
+            <Text style={{ fontSize: 12, color: COLORS.primary, marginTop: 2 }}>{selectedRecipientName}</Text>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={COLORS.gray} />
+      </TouchableOpacity>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Select Beneficiary</Text>

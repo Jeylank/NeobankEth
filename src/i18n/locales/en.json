@@ -880,5 +880,75 @@
     "confirmOffer": "Confirm Offer",
     "selectError": "Failed to select offer",
     "bestFxRates": "Best FX Rates"
+  },
+  "delivery": {
+    "instant": "Instant (under 1 minute)",
+    "minutes": "{{count}} minutes",
+    "bankTransfer": "5-10 minutes",
+    "mobileWallet": "Instant",
+    "cashPickup": "15 minutes",
+    "estimatedTime": "Estimated delivery time"
+  },
+  "tracking": {
+    "initiated": "Transfer Initiated",
+    "fxConversion": "FX Conversion Complete",
+    "processing": "Payout Processing",
+    "sentToProvider": "Sent to Provider",
+    "delivered": "Money Delivered",
+    "liveTracking": "Live Transfer Tracking",
+    "transferTimeline": "Transfer Timeline",
+    "statusUpdate": "Status Update",
+    "viewDetails": "View Details",
+    "trackTransfer": "Track Transfer",
+    "transactionId": "Transaction ID",
+    "provider": "Provider",
+    "inProgress": "In Progress"
+  },
+  "rateLock": {
+    "lockRate": "Lock This Rate",
+    "rateLockedFor": "Rate locked for",
+    "secondsRemaining": "seconds remaining",
+    "rateExpired": "Rate Expired",
+    "refreshRate": "Refresh Rate",
+    "rateLocked": "Rate Locked",
+    "lockingRate": "Locking rate..."
+  },
+  "recipient": {
+    "title": "Recipients",
+    "addRecipient": "Add Recipient",
+    "editRecipient": "Edit Recipient",
+    "deleteRecipient": "Delete Recipient",
+    "recipientName": "Recipient Name",
+    "institution": "Financial Institution",
+    "accountNumber": "Account Number",
+    "phone": "Phone Number (Optional)",
+    "searchRecipients": "Search recipients...",
+    "noRecipients": "No saved recipients yet",
+    "selectRecipient": "Select Recipient",
+    "savedRecipients": "Saved Recipients",
+    "confirmDelete": "Are you sure you want to delete this recipient?",
+    "recipientAdded": "Recipient added successfully",
+    "recipientUpdated": "Recipient updated successfully",
+    "recipientDeleted": "Recipient deleted",
+    "selectForTransfer": "Select for Transfer",
+    "fillRequired": "Please fill in all required fields"
+  },
+  "fee": {
+    "breakdown": "Fee Breakdown",
+    "youSend": "You Send",
+    "fxRate": "FX Rate",
+    "platformFee": "Platform Fee",
+    "processingFee": "Processing Fee",
+    "receiverGets": "Receiver Gets",
+    "totalFees": "Total Fees",
+    "feeDisclaimer": "Fees are estimates and may vary at time of transfer",
+    "estimatedFees": "Estimated Fees"
+  },
+  "adminStats": {
+    "transferStats": "Transfer Statistics",
+    "avgDeliveryTime": "Average Delivery Time",
+    "successRate": "Success Rate by Provider",
+    "fxLockUsage": "FX Lock Usage",
+    "topPayoutMethod": "Most Used Payout Method"
   }
 }

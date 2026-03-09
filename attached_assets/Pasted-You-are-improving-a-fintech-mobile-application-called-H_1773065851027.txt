@@ -1,0 +1,248 @@
+You are improving a fintech mobile application called Habeshare, a diaspora remittance and family finance platform.
+
+Existing stack:
+
+Frontend:
+React Native (Expo)
+TypeScript
+Firebase Auth
+Firestore
+Tailwind styling
+i18n (English, Amharic, Oromifa, Tigrinya)
+
+Backend:
+Node.js
+Express
+TypeScript
+Firebase Admin
+Firestore database
+Payment router
+FX marketplace
+Treasury liquidity service
+
+Existing features already implemented:
+
+Wallet system
+Remittance transfers
+FX marketplace
+Family wallet
+Family requests
+Support campaigns
+Recurring transfers
+Admin console
+Fraud monitoring
+KYC verification
+Biometric login
+
+DO NOT break existing architecture.
+
+Add the following 5 advanced remittance features used by top global fintech apps.
+
+---
+
+1️⃣ DELIVERY TIME ESTIMATOR
+
+Users should see how long the transfer will take before sending money.
+
+Create service:
+
+src/services/deliveryEstimator.ts
+
+Function:
+
+estimateDeliveryTime(provider, payoutMethod)
+
+Return examples:
+
+Telebirr → "Instant (under 1 minute)"
+Bank transfer → "5-10 minutes"
+Cash pickup → "15 minutes"
+
+Display on:
+
+RemittanceScreen
+FX Marketplace offers
+
+Add UI component:
+
+src/components/DeliveryTimeBadge.tsx
+
+---
+
+2️⃣ LIVE TRANSFER TRACKING
+
+Add real-time status updates like:
+
+Transfer initiated
+FX conversion complete
+Payout processing
+Money delivered
+
+Create Firestore collection:
+
+transfer_status_updates
+
+Example document:
+
+{
+txId: "TX123",
+status: "PROCESSING",
+provider: "CHAPA",
+updatedAt: timestamp
+}
+
+Create new screen:
+
+src/screens/TransferTrackingScreen.tsx
+
+UI timeline:
+
+• Initiated
+• Processing
+• Sent to bank
+• Delivered
+
+Auto-update using Firestore onSnapshot.
+
+---
+
+3️⃣ RATE LOCK FEATURE
+
+Allow users to lock an FX rate for 60 seconds before payment.
+
+Backend:
+
+src/services/rateLockService.ts
+
+Functions:
+
+lockRate(userId, quoteId)
+validateRateLock(lockId)
+
+Firestore collection:
+
+rate_locks
+
+Example:
+
+{
+lockId: "LOCK123",
+userId: "UID1",
+quoteId: "Q123",
+expiresAt: timestamp
+}
+
+UI:
+
+Show countdown timer.
+
+Component:
+
+src/components/RateLockTimer.tsx
+
+---
+
+4️⃣ SMART RECIPIENT LIST
+
+Users often send to the same people.
+
+Create collection:
+
+recipients
+
+Example:
+
+{
+userId: "UID123",
+name: "Meron Tadesse",
+bank: "Commercial Bank of Ethiopia",
+accountNumber: "100012345678"
+}
+
+Create screen:
+
+src/screens/RecipientsScreen.tsx
+
+Features:
+
+Add recipient
+Edit recipient
+Select recipient during transfer
+
+Update RemittanceScreen:
+
+Allow selecting saved recipients.
+
+---
+
+5️⃣ TRANSFER FEE SIMULATOR
+
+Users should see full pricing transparency before sending.
+
+Create component:
+
+src/components/FeeBreakdownCard.tsx
+
+Display:
+
+Amount sent
+FX rate
+Platform fee
+Bank fee
+Receiver gets
+
+Example:
+
+You send: €200
+FX rate: 64.1
+Platform fee: €1.50
+Bank fee: €0.40
+Receiver gets: 12,780 ETB
+
+Integrate into:
+
+RemittanceScreen
+FX Marketplace
+
+---
+
+6️⃣ I18N SUPPORT
+
+Add translation keys:
+
+delivery.instant
+delivery.minutes
+tracking.initiated
+tracking.processing
+tracking.delivered
+fee.breakdown
+recipient.add
+recipient.select
+
+Add translations for:
+
+English
+Amharic
+Oromifa
+Tigrinya
+
+---
+
+7️⃣ ADMIN DASHBOARD EXTENSIONS
+
+Extend admin API:
+
+GET /api/admin/transfer-stats
+
+Return:
+
+average delivery time
+success rate by provider
+FX lock usage
+most used payout method
+
+---
+
+Write production-ready TypeScript code and follow the existing architecture patterns used in Habeshare.
+
+Do not change wallet ledger or payout routing logic.

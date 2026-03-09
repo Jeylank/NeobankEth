@@ -880,5 +880,75 @@
     "confirmOffer": "ቅናሹን ያረጋግጡ",
     "selectError": "ቅናሹን መምረጥ አልተሳካም",
     "bestFxRates": "ምርጥ የምንዛሪ ተመኖች"
+  },
+  "delivery": {
+    "instant": "ወዲያውኑ (ከ1 ደቂቃ በታች)",
+    "minutes": "{{count}} ደቂቃዎች",
+    "bankTransfer": "5-10 ደቂቃዎች",
+    "mobileWallet": "ወዲያውኑ",
+    "cashPickup": "15 ደቂቃዎች",
+    "estimatedTime": "የሚገመት የማድረስ ጊዜ"
+  },
+  "tracking": {
+    "initiated": "ዝውውር ተጀምሯል",
+    "fxConversion": "የምንዛሪ ልውውጥ ተጠናቋል",
+    "processing": "ክፍያ በሂደት ላይ",
+    "sentToProvider": "ወደ አገልግሎት ሰጪ ተልኳል",
+    "delivered": "ገንዘብ ደርሷል",
+    "liveTracking": "የቀጥታ ዝውውር ክትትል",
+    "transferTimeline": "የዝውውር ጊዜ ሰሌዳ",
+    "statusUpdate": "ሁኔታ ዝመና",
+    "viewDetails": "ዝርዝር ይመልከቱ",
+    "trackTransfer": "ዝውውር ይከታተሉ",
+    "transactionId": "የዝውውር ቁጥር",
+    "provider": "አገልግሎት ሰጪ",
+    "inProgress": "በሂደት ላይ"
+  },
+  "rateLock": {
+    "lockRate": "ይህን ተመን ይቆልፉ",
+    "rateLockedFor": "ተመን ተቆልፏል ለ",
+    "secondsRemaining": "ሴኮንዶች ቀርተዋል",
+    "rateExpired": "ተመን ጊዜው አልፏል",
+    "refreshRate": "ተመን ያድሱ",
+    "rateLocked": "ተመን ተቆልፏል",
+    "lockingRate": "ተመን በመቆለፍ ላይ..."
+  },
+  "recipient": {
+    "title": "ተቀባዮች",
+    "addRecipient": "ተቀባይ ያክሉ",
+    "editRecipient": "ተቀባይ ያርትዑ",
+    "deleteRecipient": "ተቀባይ ይሰርዙ",
+    "recipientName": "የተቀባይ ስም",
+    "institution": "የገንዘብ ተቋም",
+    "accountNumber": "የሂሳብ ቁጥር",
+    "phone": "ስልክ ቁጥር (አማራጭ)",
+    "searchRecipients": "ተቀባዮችን ፈልግ...",
+    "noRecipients": "ገና ምንም ተቀባዮች አልተቀመጡም",
+    "selectRecipient": "ተቀባይ ይምረጡ",
+    "savedRecipients": "የተቀመጡ ተቀባዮች",
+    "confirmDelete": "ይህን ተቀባይ መሰረዝ ይፈልጋሉ?",
+    "recipientAdded": "ተቀባይ በተሳካ ሁኔታ ታክሏል",
+    "recipientUpdated": "ተቀባይ በተሳካ ሁኔታ ተዘምኗል",
+    "recipientDeleted": "ተቀባይ ተሰርዟል",
+    "selectForTransfer": "ለዝውውር ይምረጡ",
+    "fillRequired": "እባክዎ ሁሉንም አስፈላጊ መስኮች ይሙሉ"
+  },
+  "fee": {
+    "breakdown": "የክፍያ ዝርዝር",
+    "youSend": "የሚልኩት",
+    "fxRate": "የምንዛሪ ተመን",
+    "platformFee": "የመድረክ ክፍያ",
+    "processingFee": "የማስኬጃ ክፍያ",
+    "receiverGets": "ተቀባይ ያገኛል",
+    "totalFees": "ጠቅላላ ክፍያዎች",
+    "feeDisclaimer": "ክፍያዎች ግምቶች ናቸው እና በዝውውር ጊዜ ሊለያዩ ይችላሉ",
+    "estimatedFees": "የሚገመቱ ክፍያዎች"
+  },
+  "adminStats": {
+    "transferStats": "የዝውውር ስታቲስቲክስ",
+    "avgDeliveryTime": "አማካይ የማድረስ ጊዜ",
+    "successRate": "በአገልግሎት ሰጪ የስኬት ምጣኔ",
+    "fxLockUsage": "የምንዛሪ ቆልፍ አጠቃቀም",
+    "topPayoutMethod": "በጣም ጥቅም ላይ የዋለ የክፍያ ዘዴ"
   }
 }

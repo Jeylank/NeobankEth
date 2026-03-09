@@ -880,5 +880,75 @@
     "confirmOffer": "ቅናሽ ኣረጋግጹ",
     "selectError": "ቅናሽ ምምራጽ ኣይተኻእለን",
     "bestFxRates": "ዝበለጸ ናይ ምንዛሪ ዋጋታት"
+  },
+  "delivery": {
+    "instant": "ብቕጽበት (ትሕቲ 1 ደቒቕ)",
+    "minutes": "{{count}} ደቓይቕ",
+    "bankTransfer": "5-10 ደቓይቕ",
+    "mobileWallet": "ብቕጽበት",
+    "cashPickup": "15 ደቓይቕ",
+    "estimatedTime": "ግምታዊ ግዜ ምብጻሕ"
+  },
+  "tracking": {
+    "initiated": "ምትሕልላፍ ተጀሚሩ",
+    "fxConversion": "ናይ ምንዛሪ ልውውጥ ተዛዚሙ",
+    "processing": "ክፍሊት ይስራሕ ኣሎ",
+    "sentToProvider": "ናብ ኣገልግሎት ወሃቢ ተላኢኹ",
+    "delivered": "ገንዘብ በጺሑ",
+    "liveTracking": "ቀጥታ ናይ ምትሕልላፍ ምክትታል",
+    "transferTimeline": "ናይ ምትሕልላፍ ግዜ ሰሌዳ",
+    "statusUpdate": "ናይ ኩነታት ምሕዳስ",
+    "viewDetails": "ዝርዝር ርኣይ",
+    "trackTransfer": "ምትሕልላፍ ተኸታተል",
+    "transactionId": "ቁጽሪ ምትሕልላፍ",
+    "provider": "ኣገልግሎት ወሃቢ",
+    "inProgress": "ይስራሕ ኣሎ"
+  },
+  "rateLock": {
+    "lockRate": "ነዚ ዋጋ ቁለፎ",
+    "rateLockedFor": "ዋጋ ተቖሊፉ ንኸ",
+    "secondsRemaining": "ካልኢታት ተሪፉ",
+    "rateExpired": "ዋጋ ግዜኡ ሓሊፉ",
+    "refreshRate": "ዋጋ ሓድሶ",
+    "rateLocked": "ዋጋ ተቖሊፉ",
+    "lockingRate": "ዋጋ ይቕለፍ ኣሎ..."
+  },
+  "recipient": {
+    "title": "ተቐበልቲ",
+    "addRecipient": "ተቐባሊ ወስኽ",
+    "editRecipient": "ተቐባሊ ኣርትዕ",
+    "deleteRecipient": "ተቐባሊ ደምስስ",
+    "recipientName": "ስም ተቐባሊ",
+    "institution": "ናይ ገንዘብ ትካል",
+    "accountNumber": "ቁጽሪ ሕሳብ",
+    "phone": "ቁጽሪ ስልኪ (ኣማራጺ)",
+    "searchRecipients": "ተቐበልቲ ድለይ...",
+    "noRecipients": "ክሳብ ሕጂ ዝተዓቀቡ ተቐበልቲ የለዉን",
+    "selectRecipient": "ተቐባሊ ምረጽ",
+    "savedRecipients": "ዝተዓቀቡ ተቐበልቲ",
+    "confirmDelete": "ነዚ ተቐባሊ ክትድምስሶ ትደሊ ዲኻ?",
+    "recipientAdded": "ተቐባሊ ብዕዉት ተወሲኹ",
+    "recipientUpdated": "ተቐባሊ ብዕዉት ተሓዲሱ",
+    "recipientDeleted": "ተቐባሊ ተደምሲሱ",
+    "selectForTransfer": "ንምትሕልላፍ ምረጽ",
+    "fillRequired": "ኩሎም ኣድለይቲ ቦታታት ምልኡ"
+  },
+  "fee": {
+    "breakdown": "ዝርዝር ክፍሊት",
+    "youSend": "ዝሰደካዮ",
+    "fxRate": "ናይ ምንዛሪ ዋጋ",
+    "platformFee": "ናይ መድረኽ ክፍሊት",
+    "processingFee": "ናይ ኣሰራርሓ ክፍሊት",
+    "receiverGets": "ተቐባሊ ዝረኽቦ",
+    "totalFees": "ጠቕላላ ክፍሊታት",
+    "feeDisclaimer": "ክፍሊታት ግምታት እዮም ኣብ ግዜ ምትሕልላፍ ክቕየሩ ይኽእሉ",
+    "estimatedFees": "ግምታዊ ክፍሊታት"
+  },
+  "adminStats": {
+    "transferStats": "ናይ ምትሕልላፍ ስታቲስቲክስ",
+    "avgDeliveryTime": "ማእከላይ ናይ ምብጻሕ ግዜ",
+    "successRate": "ብኣገልግሎት ወሃቢ ናይ ዕዉትነት መጠን",
+    "fxLockUsage": "ናይ ምንዛሪ ቁልፊ ኣጠቃቕማ",
+    "topPayoutMethod": "ብበዝሒ ዝተጠቕመ ናይ ክፍሊት ኣገባብ"
   }
 }

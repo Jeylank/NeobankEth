@@ -409,6 +409,59 @@ export interface AdminDisputeFilters {
   status?: DisputeStatus;
 }
 
+export interface Recipient {
+  id: string;
+  name: string;
+  bank: string;
+  accountNumber: string;
+  phone?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RateLockStatus = 'active' | 'expired' | 'released';
+
+export interface RateLock {
+  lockId: string;
+  userId: string;
+  quoteId: string;
+  lockedRate: number;
+  expiresAt: string;
+  status: RateLockStatus;
+  createdAt: string;
+}
+
+export type TransferTrackingStatus = 'initiated' | 'fx_conversion' | 'processing' | 'sent_to_provider' | 'delivered';
+
+export interface TransferStatusUpdate {
+  id: string;
+  txId: string;
+  status: TransferTrackingStatus;
+  provider: string;
+  details?: string;
+  updatedAt: string;
+}
+
+export interface TransferStats {
+  avgDeliveryTimeMinutes: number;
+  successRateByProvider: {
+    provider: string;
+    successRate: number;
+    totalTransfers: number;
+  }[];
+  fxLockUsage: {
+    totalLocks: number;
+    usedLocks: number;
+    expiredLocks: number;
+    usageRate: number;
+  };
+  topPayoutMethod: {
+    method: string;
+    count: number;
+    percentage: number;
+  };
+}
+
 export type FxQuoteStatus = 'active' | 'selected' | 'used' | 'expired';
 
 export interface FxQuoteRecord {

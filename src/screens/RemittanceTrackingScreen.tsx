@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
 import { remittanceApi } from '../services/api';
 
 const COLORS = {
@@ -38,6 +39,7 @@ const STATUS_CONFIG: Record<string, { color: string; icon: keyof typeof Ionicons
 };
 
 export default function RemittanceTrackingScreen() {
+  const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -200,6 +202,14 @@ export default function RemittanceTrackingScreen() {
                 </View>
 
                 {renderTimeline(remittance)}
+
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, marginTop: 8, backgroundColor: COLORS.primary + '10', borderRadius: 8 }}
+                  onPress={() => navigation.navigate('TransferTracking', { txId: remittance.reference || remittance.id })}
+                >
+                  <Ionicons name="locate" size={16} color={COLORS.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.primary }}>Track Live</Text>
+                </TouchableOpacity>
               </View>
             );
           })

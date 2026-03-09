@@ -880,5 +880,75 @@
     "confirmOffer": "Dhiheessii Mirkaneessi",
     "selectError": "Dhiheessii filachuun hin danda'amne",
     "bestFxRates": "Gatii Jijjiirraa Irra Caalaa"
+  },
+  "delivery": {
+    "instant": "Battalumatti (daqiiqaa 1 gadi)",
+    "minutes": "daqiiqaa {{count}}",
+    "bankTransfer": "daqiiqaa 5-10",
+    "mobileWallet": "Battalumatti",
+    "cashPickup": "daqiiqaa 15",
+    "estimatedTime": "Yeroo geejjibaa tilmaamame"
+  },
+  "tracking": {
+    "initiated": "Dabarsi Eegalame",
+    "fxConversion": "Jijjiirraan Maallaqaa Xumurameera",
+    "processing": "Kaffaltiin Adeemsifamaa Jira",
+    "sentToProvider": "Gara Tajaajila Kennituutti Ergame",
+    "delivered": "Maallaqni Ga'eera",
+    "liveTracking": "Hordoffii Dabarsa Kallattii",
+    "transferTimeline": "Sarara Yeroo Dabarsaa",
+    "statusUpdate": "Haala Haaromsa",
+    "viewDetails": "Bal'inaan Ilaali",
+    "trackTransfer": "Dabarsa Hordofi",
+    "transactionId": "Lakkoofsa Dabarsaa",
+    "provider": "Tajaajila Kennituu",
+    "inProgress": "Adeemsifamaa Jira"
+  },
+  "rateLock": {
+    "lockRate": "Gatii Kana Cufi",
+    "rateLockedFor": "Gatiin cufameera",
+    "secondsRemaining": "sekondiin hafe",
+    "rateExpired": "Gatiin Yeroon Isaa Darbe",
+    "refreshRate": "Gatii Haaromsi",
+    "rateLocked": "Gatiin Cufameera",
+    "lockingRate": "Gatii cufaa jira..."
+  },
+  "recipient": {
+    "title": "Fudhattoota",
+    "addRecipient": "Fudhataa Dabalii",
+    "editRecipient": "Fudhataa Gulaali",
+    "deleteRecipient": "Fudhataa Haqi",
+    "recipientName": "Maqaa Fudhataa",
+    "institution": "Dhaabbata Maallaqaa",
+    "accountNumber": "Lakkoofsa Herrega",
+    "phone": "Lakkoofsa Bilbilaa (Dirqama miti)",
+    "searchRecipients": "Fudhattoota barbaadi...",
+    "noRecipients": "Ammaaf fudhataan kuufame hin jiru",
+    "selectRecipient": "Fudhataa Filadhu",
+    "savedRecipients": "Fudhattoota Kuufaman",
+    "confirmDelete": "Fudhataa kana haquu barbaaddaa?",
+    "recipientAdded": "Fudhataan milkaa'inaan dabalameera",
+    "recipientUpdated": "Fudhataan milkaa'inaan haaromsameera",
+    "recipientDeleted": "Fudhataan haqameera",
+    "selectForTransfer": "Dabarsaaf Filadhu",
+    "fillRequired": "Maaloo dirree barbaachisan hunda guutaa"
+  },
+  "fee": {
+    "breakdown": "Caccabsaa Kaffaltii",
+    "youSend": "Kan Ergitu",
+    "fxRate": "Gatii Jijjiirraa",
+    "platformFee": "Kaffaltii Maddaa",
+    "processingFee": "Kaffaltii Adeemsisaa",
+    "receiverGets": "Fudhataan Ni Argata",
+    "totalFees": "Kaffaltii Waliigalaa",
+    "feeDisclaimer": "Kaffaltiin tilmaamadha yeroo dabarsaatti garaagarummaa qabaachuu danda'a",
+    "estimatedFees": "Kaffaltii Tilmaamame"
+  },
+  "adminStats": {
+    "transferStats": "Istaatistiksii Dabarsaa",
+    "avgDeliveryTime": "Yeroo Geejjibaa Giddugaleessaa",
+    "successRate": "Hamma Milkaa'inaa Tajaajila Kennituu",
+    "fxLockUsage": "Itti Fayyadama Cufa Gatii Jijjiirraa",
+    "topPayoutMethod": "Mala Kaffaltii Irra Caalaa Fayyadamame"
   }
 }
