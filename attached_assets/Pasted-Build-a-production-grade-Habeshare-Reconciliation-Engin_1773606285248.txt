@@ -1,0 +1,421 @@
+Build a production-grade "Habeshare Reconciliation Engine" for my fintech/remittance platform.
+
+Context:
+Habeshare is a diaspora remittance and family finance platform with:
+- wallet ledger
+- FX marketplace
+- payout connectors
+- treasury/liquidity reservations
+- admin operations console
+- fraud monitoring
+- disputes and support tickets
+
+Stack:
+- Node.js
+- TypeScript
+- Express
+- Firebase Admin SDK
+- Firestore
+- Existing payout connectors and admin dashboard
+
+Important:
+- Do NOT break existing payout logic.
+- Reconciliation must be backend-first.
+- Add admin-facing monitoring endpoints and frontend screens only where relevant.
+- Keep TypeScript strict.
+- Use existing project patterns.
+
+Build a complete Reconciliation Engine including:
+
+==================================================
+1) CORE PURPOSE
+==================================================
+
+The reconciliation engine must compare internal financial records with external provider / bank records and detect mismatches.
+
+It should reconcile:
+- payout transactions
+- wallet ledger entries
+- treasury reservations
+- settlement obligations
+- provider status updates
+
+It must detect:
+- missing payouts
+- duplicate payouts
+- amount mismatches
+- status mismatches
+- stale reservations
+- unsettled obligations
+- orphaned transactions
+- ledger inconsistencies
+
+==================================================
+2) FIRESTORE COLLECTIONS
+==================================================
+
+Create these top-level collections:
+
+reconciliation_runs
+reconciliation_items
+reconciliation_alerts
+provider_settlement_reports
+
+Optional if useful:
+reconciliation_summaries
+
+Document examples:
+
+A) reconciliation_runs/{runId}
+{
+  runId: "rec_2026_03_08_001",
+  startedAt: timestamp,
+  completedAt: timestamp,
+  status: "running" | "completed" | "failed",
+  mode: "manual" | "scheduled",
+  provider: "all" | "CHAPA" | "TELEBIRR" | "BANK",
+  totalChecked: 0,
+  totalMatched: 0,
+  totalMismatched: 0,
+  totalMissing: 0,
+  totalDuplicate: 0,
+  totalAlertsCreated: 0,
+  createdBy: "system" | "adminUid"
+}
+
+B) reconciliation_items/{itemId}
+{
+  itemId: "rec_item_001",
+  runId: "rec_2026_03_08_001",
+  txId: "tx_123",
+  provider: "CHAPA",
+  providerRef: "pay_123",
+  internalAmount: 12056.4,
+  externalAmount: 12056.4,
+  currency: "ETB",
+  internalStatus: "COMPLETED",
+  externalStatus: "COMPLETED",
+  result: "matched" | "amount_mismatch" | "status_mismatch" | "missing_external" | "missing_internal" | "duplicate" | "reservation_stale" | "settlement_overdue",
+  notes: "optional explanation",
+  createdAt: timestamp
+}
+
+C) reconciliation_alerts/{alertId}
+{
+  alertId: "alert_001",
+  runId: "rec_2026_03_08_001",
+  txId: "tx_123",
+  provider: "CHAPA",
+  type: "AMOUNT_MISMATCH" | "STATUS_MISMATCH" | "MISSING_EXTERNAL" | "MISSING_INTERNAL" | "DUPLICATE_PAYOUT" | "STALE_RESERVATION" | "SETTLEMENT_OVERDUE" | "LEDGER_INCONSISTENCY",
+  severity: "low" | "medium" | "high" | "critical",
+  status: "open" | "investigating" | "resolved" | "ignored",
+  description: "Provider amount differs from internal ledger",
+  createdAt: timestamp,
+  resolvedAt: null,
+  resolvedBy: null
+}
+
+D) provider_settlement_reports/{reportId}
+{
+  reportId: "chapa_2026_03_08",
+  provider: "CHAPA",
+  date: "2026-03-08",
+  importedAt: timestamp,
+  itemCount: 245,
+  sourceType: "api" | "manual_upload" | "mock",
+  status: "ready" | "processing" | "failed"
+}
+
+==================================================
+3) SERVICE STRUCTURE
+==================================================
+
+Create a new folder:
+
+src/services/reconciliation/
+
+Files:
+- reconciliationService.ts
+- providerReportService.ts
+- reconciliationMatcher.ts
+- reconciliationAlertService.ts
+- reconciliationTypes.ts
+
+Responsibilities:
+
+A) reconciliationService.ts
+Main orchestration entrypoint.
+Functions:
+- runReconciliation(options)
+- runProviderReconciliation(provider, dateRange)
+- finalizeRun(runId)
+- getRunSummary(runId)
+
+B) providerReportService.ts
+Fetch or load external settlement/provider data.
+Functions:
+- fetchProviderReport(provider, dateRange)
+- normalizeProviderReport(provider, rawData)
+- saveProviderReport(report)
+
+C) reconciliationMatcher.ts
+Compare internal vs external records.
+Functions:
+- matchTransactions(internal, external)
+- detectDuplicates()
+- detectAmountMismatch()
+- detectStatusMismatch()
+- detectMissingInternal()
+- detectMissingExternal()
+- detectStaleReservations()
+- detectSettlementOverdue()
+- detectLedgerInconsistency()
+
+D) reconciliationAlertService.ts
+Create and manage alerts.
+Functions:
+- createAlert()
+- resolveAlert()
+- ignoreAlert()
+- getOpenAlerts()
+
+==================================================
+4) INTERNAL DATA SOURCES TO RECONCILE
+==================================================
+
+Use existing collections/services where available:
+
+- payout_transactions
+- wallet ledger entries
+- fx reservations / treasury reservations
+- settlement obligations
+- audit logs
+- transfer status updates
+- provider health / provider refs
+
+The reconciliation engine should compare:
+1. internal payout_transactions vs provider settlement report
+2. wallet debits vs payout completions
+3. treasury reservations vs payout final states
+4. settlement obligations vs completed payout totals
+
+==================================================
+5) RECONCILIATION LOGIC
+==================================================
+
+Implement these rules:
+
+A) MATCHED
+If:
+- providerRef exists on both sides
+- amount matches
+- status matches
+
+B) AMOUNT_MISMATCH
+If:
+- tx exists both sides
+- amount differs
+
+C) STATUS_MISMATCH
+If:
+- tx exists both sides
+- internal status differs from provider status
+
+D) MISSING_EXTERNAL
+If:
+- tx exists internally
+- no matching provider entry found
+
+E) MISSING_INTERNAL
+If:
+- provider entry exists
+- no internal tx found
+
+F) DUPLICATE_PAYOUT
+If:
+- same providerRef or same tx characteristics appear multiple times
+
+G) STALE_RESERVATION
+If:
+- reservation is still active
+- transaction is completed / failed / expired
+- reservation was not confirmed or released
+
+H) SETTLEMENT_OVERDUE
+If:
+- settlement obligation remains open beyond configured threshold
+
+I) LEDGER_INCONSISTENCY
+If:
+- wallet debit exists but payout never executed
+- payout completed but no ledger debit/settlement entry exists
+
+==================================================
+6) SCHEDULED JOBS
+==================================================
+
+Add scheduled reconciliation jobs.
+
+Examples:
+- daily full reconciliation
+- hourly lightweight payout reconciliation
+- stale reservation cleanup check
+- overdue settlement check
+
+Implement as cron / worker jobs using the existing backend pattern.
+
+Suggested files:
+- src/workers/reconciliationWorker.ts
+- src/workers/staleReservationWorker.ts
+
+Behavior:
+- create reconciliation run
+- process items
+- store results
+- create alerts
+- write summary
+- fail safely with audit logging
+
+==================================================
+7) ADMIN API ENDPOINTS
+==================================================
+
+Create admin-only routes:
+
+GET /api/admin/reconciliation/runs
+GET /api/admin/reconciliation/runs/:runId
+GET /api/admin/reconciliation/alerts
+POST /api/admin/reconciliation/run
+POST /api/admin/reconciliation/alerts/:id/resolve
+POST /api/admin/reconciliation/alerts/:id/ignore
+
+Optional:
+GET /api/admin/reconciliation/summary
+GET /api/admin/reconciliation/provider/:provider
+
+Requirements:
+- verify Firebase auth
+- enforce admin-only access
+- validate input with Zod
+- support pagination and filters where useful
+
+==================================================
+8) ADMIN FRONTEND SCREENS
+==================================================
+
+If the project already has an admin console, extend it with these screens:
+
+A) AdminReconciliationOverviewScreen.tsx
+Show:
+- last run status
+- open alerts count
+- matched / mismatched counts
+- runs over time
+- unresolved critical alerts
+
+B) AdminReconciliationRunsScreen.tsx
+Table with:
+- runId
+- provider
+- status
+- startedAt
+- completedAt
+- totals checked / matched / mismatched
+
+C) AdminReconciliationAlertsScreen.tsx
+Table/cards with:
+- alertId
+- txId
+- provider
+- type
+- severity
+- status
+- createdAt
+
+Actions:
+- resolve
+- ignore
+
+D) AdminReconciliationRunDetailScreen.tsx
+Show:
+- summary cards
+- mismatched items
+- missing items
+- duplicate items
+- linked transaction/providerRef details
+
+Use the existing admin design system.
+
+==================================================
+9) AUDIT LOGGING
+==================================================
+
+Write audit logs for:
+- reconciliation_run_started
+- reconciliation_run_completed
+- reconciliation_run_failed
+- reconciliation_alert_created
+- reconciliation_alert_resolved
+- reconciliation_alert_ignored
+
+If an audit service already exists, reuse it.
+
+==================================================
+10) SECURITY AND SAFETY
+==================================================
+
+Requirements:
+- admin-only access for reconciliation endpoints
+- do not allow clients to write reconciliation collections directly
+- mask sensitive account numbers if displayed in admin UI
+- handle provider report parsing safely
+- fail without breaking payouts
+- reconciliation must be read-mostly and non-blocking for live transactions
+
+==================================================
+11) TYPES
+==================================================
+
+Create strict TypeScript types/interfaces for:
+- ReconciliationRun
+- ReconciliationItem
+- ReconciliationAlert
+- ProviderSettlementReport
+- ReconciliationResultType
+- ReconciliationSeverity
+- ReconciliationStatus
+
+==================================================
+12) DEV / TEST SUPPORT
+==================================================
+
+In development mode:
+- allow mock provider reports
+- seed sample settlement report data
+- allow manual run trigger
+- include test utility functions for mismatches
+
+Add a script or helper to simulate:
+- amount mismatch
+- missing external record
+- duplicate providerRef
+- stale reservation
+
+==================================================
+13) DELIVERABLES
+==================================================
+
+Generate:
+- reconciliation services
+- provider report normalization
+- matcher logic
+- alert service
+- scheduled workers
+- admin routes
+- admin screens
+- TypeScript types
+- any needed Firestore rule suggestions
+- i18n keys for new admin UI text
+
+Do not change unrelated existing business logic unless required for reconciliation integration.
+Keep the implementation clean, modular, and production-oriented.

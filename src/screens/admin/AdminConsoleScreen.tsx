@@ -70,6 +70,13 @@ const MENU_ITEMS = [
     color: COLORS.cyan,
     bg: '#ECFEFF',
   },
+  {
+    key: 'reconciliation',
+    screen: 'AdminReconciliationOverview',
+    icon: 'git-compare-outline' as const,
+    color: '#7C3AED',
+    bg: '#F5F3FF',
+  },
 ];
 
 function AdminConsoleContent() {

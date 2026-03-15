@@ -41,6 +41,10 @@ import AdminFraudAlertsScreen from '../screens/admin/AdminFraudAlertsScreen';
 import AdminSupportTicketsScreen from '../screens/admin/AdminSupportTicketsScreen';
 import AdminDisputesScreen from '../screens/admin/AdminDisputesScreen';
 import AdminLiquidityScreen from '../screens/admin/AdminLiquidityScreen';
+import AdminReconciliationOverviewScreen from '../screens/admin/AdminReconciliationOverviewScreen';
+import AdminReconciliationRunsScreen from '../screens/admin/AdminReconciliationRunsScreen';
+import AdminReconciliationAlertsScreen from '../screens/admin/AdminReconciliationAlertsScreen';
+import AdminReconciliationRunDetailScreen from '../screens/admin/AdminReconciliationRunDetailScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -155,6 +159,10 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminSupportTickets" component={AdminSupportTicketsScreen} options={{ title: 'Support Tickets' }} />
           <Stack.Screen name="AdminDisputes" component={AdminDisputesScreen} options={{ title: 'Disputes' }} />
           <Stack.Screen name="AdminLiquidity" component={AdminLiquidityScreen} options={{ title: 'Liquidity' }} />
+          <Stack.Screen name="AdminReconciliationOverview" component={AdminReconciliationOverviewScreen} options={{ title: 'Reconciliation' }} />
+          <Stack.Screen name="AdminReconciliationRuns" component={AdminReconciliationRunsScreen} options={{ title: 'Reconciliation Runs' }} />
+          <Stack.Screen name="AdminReconciliationAlerts" component={AdminReconciliationAlertsScreen} options={{ title: 'Reconciliation Alerts' }} />
+          <Stack.Screen name="AdminReconciliationRunDetail" component={AdminReconciliationRunDetailScreen} options={{ title: 'Run Detail' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
