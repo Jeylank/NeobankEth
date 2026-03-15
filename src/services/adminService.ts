@@ -158,4 +158,54 @@ export const adminService = {
     const { reconciliationAlertService } = await import('./reconciliation/reconciliationAlertService');
     return reconciliationAlertService.ignoreAlert(alertId, resolvedBy);
   },
+
+  async getTreasuryOverview(): Promise<any> {
+    const { treasuryService } = await import('./treasury/treasuryService');
+    return treasuryService.getOverview();
+  },
+
+  async getTreasuryPools(): Promise<any[]> {
+    const { liquidityService } = await import('./treasury/liquidityService');
+    return liquidityService.listAllPools();
+  },
+
+  async getTreasuryReservations(filters?: Record<string, any>): Promise<any[]> {
+    const { reservationService } = await import('./treasury/reservationService');
+    return reservationService.listReservations(filters as any);
+  },
+
+  async getTreasurySettlements(filters?: Record<string, any>): Promise<any[]> {
+    const { settlementService } = await import('./treasury/settlementService');
+    return settlementService.listObligations(filters as any);
+  },
+
+  async getTreasuryAlerts(filters?: Record<string, any>): Promise<any[]> {
+    const { treasuryAlertsService } = await import('./treasury/treasuryAlertsService');
+    return treasuryAlertsService.getAllAlerts(filters as any);
+  },
+
+  async releaseTreasuryReservation(reservationId: string, releasedBy: string): Promise<any> {
+    const { reservationService } = await import('./treasury/reservationService');
+    return reservationService.releaseReservation(reservationId, `admin_release_${releasedBy}`);
+  },
+
+  async closeTreasuryObligation(obligationId: string, settledAmount?: number, closedBy?: string): Promise<void> {
+    const { settlementService } = await import('./treasury/settlementService');
+    return settlementService.closeObligation(obligationId, settledAmount, closedBy);
+  },
+
+  async acknowledgeTreasuryAlert(alertId: string, acknowledgedBy: string): Promise<void> {
+    const { treasuryAlertsService } = await import('./treasury/treasuryAlertsService');
+    return treasuryAlertsService.acknowledgeAlert(alertId, acknowledgedBy);
+  },
+
+  async resolveTreasuryAlert(alertId: string, resolvedBy: string): Promise<void> {
+    const { treasuryAlertsService } = await import('./treasury/treasuryAlertsService');
+    return treasuryAlertsService.resolveAlert(alertId, resolvedBy);
+  },
+
+  async suppressTreasuryAlert(alertId: string, suppressedBy: string): Promise<void> {
+    const { treasuryAlertsService } = await import('./treasury/treasuryAlertsService');
+    return treasuryAlertsService.suppressAlert(alertId, suppressedBy);
+  },
 };

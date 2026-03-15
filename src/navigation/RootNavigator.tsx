@@ -45,6 +45,11 @@ import AdminReconciliationOverviewScreen from '../screens/admin/AdminReconciliat
 import AdminReconciliationRunsScreen from '../screens/admin/AdminReconciliationRunsScreen';
 import AdminReconciliationAlertsScreen from '../screens/admin/AdminReconciliationAlertsScreen';
 import AdminReconciliationRunDetailScreen from '../screens/admin/AdminReconciliationRunDetailScreen';
+import AdminTreasuryOverviewScreen from '../screens/admin/AdminTreasuryOverviewScreen';
+import AdminLiquidityPoolsScreen from '../screens/admin/AdminLiquidityPoolsScreen';
+import AdminTreasuryReservationsScreen from '../screens/admin/AdminTreasuryReservationsScreen';
+import AdminSettlementObligationsScreen from '../screens/admin/AdminSettlementObligationsScreen';
+import AdminTreasuryAlertsScreen from '../screens/admin/AdminTreasuryAlertsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -163,6 +168,11 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminReconciliationRuns" component={AdminReconciliationRunsScreen} options={{ title: 'Reconciliation Runs' }} />
           <Stack.Screen name="AdminReconciliationAlerts" component={AdminReconciliationAlertsScreen} options={{ title: 'Reconciliation Alerts' }} />
           <Stack.Screen name="AdminReconciliationRunDetail" component={AdminReconciliationRunDetailScreen} options={{ title: 'Run Detail' }} />
+          <Stack.Screen name="AdminTreasuryOverview" component={AdminTreasuryOverviewScreen} options={{ title: 'Treasury' }} />
+          <Stack.Screen name="AdminLiquidityPools" component={AdminLiquidityPoolsScreen} options={{ title: 'Liquidity Pools' }} />
+          <Stack.Screen name="AdminTreasuryReservations" component={AdminTreasuryReservationsScreen} options={{ title: 'Reservations' }} />
+          <Stack.Screen name="AdminSettlementObligations" component={AdminSettlementObligationsScreen} options={{ title: 'Settlement Obligations' }} />
+          <Stack.Screen name="AdminTreasuryAlerts" component={AdminTreasuryAlertsScreen} options={{ title: 'Treasury Alerts' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

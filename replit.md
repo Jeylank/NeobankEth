@@ -1,94 +1,53 @@
 # Habeshare Mobile App
 
 ## Overview
-Habeshare is an Expo React Native mobile banking application with web support, following a NON-CUSTODIAL PARTNER MODEL. Habeshare does NOT hold user funds - all funds are held and processed by licensed financial institutions in Ethiopia. It provides features like authentication, remittance tracking, bill payments, and KYC verification with multi-language support for Ethiopian languages.
+Habeshare is a non-custodial mobile banking application built with Expo React Native, offering web support. It facilitates financial services such as remittance tracking, bill payments, and KYC verification, primarily for the Ethiopian diaspora, without holding user funds directly. All transactions are processed through licensed financial institutions in Ethiopia. The project aims to provide a comprehensive and secure platform for managing financial interactions with Ethiopia, including features like family support automation, group funding (Family Circle, Support Campaigns), and multi-currency management with transparent FX services.
 
-## Project Structure
-- `App.tsx` - Main application entry point
-- `src/` - Source code directory
-  - `components/` - Reusable UI components
-  - `hooks/` - Custom React hooks (useAuth, etc.)
-  - `navigation/` - React Navigation setup
-  - `screens/` - Application screens
-  - `services/` - API and service integrations
-  - `theme/` - Theme configuration and styling
-  - `types/` - TypeScript type definitions
-  - `utils/` - Utility functions
-- `assets/fonts/` - Custom Ethiopic fonts
+## User Preferences
+I want to interact with you in a clear and concise manner. Prioritize high-level architectural and design decisions over minute implementation details. When proposing changes or explaining concepts, focus on the 'why' before the 'how'. For development tasks, I prefer an iterative approach, with clear checkpoints and opportunities for feedback. Do not introduce new external dependencies or significant architectural changes without prior discussion and approval.
 
-## Running the App
-The app runs on port 5000 using a static build for stability:
-```
-npm run web          # Builds and serves static files
-npm run web:dev      # Development mode with hot reload (less stable)
-npm run build:web    # Build only (outputs to dist/)
-```
+## System Architecture
+The application is built with Expo SDK 50, React Native 0.73, React Navigation 6, and TypeScript. Firebase is used for authentication and notifications, with TanStack React Query for data fetching.
 
-## Environment Variables Required
-Copy `.env.example` to `.env` and configure:
-- `EXPO_PUBLIC_API_URL` - Backend API URL
-- `EXPO_PUBLIC_FIREBASE_API_KEY` - Firebase API key
-- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` - Firebase auth domain
-- `EXPO_PUBLIC_FIREBASE_PROJECT_ID` - Firebase project ID
-- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` - Firebase storage bucket
-- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` - Firebase messaging sender ID
-- `EXPO_PUBLIC_FIREBASE_APP_ID` - Firebase app ID
+**Core Features & Technical Implementations:**
+- **User Authentication & KYC:** Firebase for authentication, phone number pre-validation (+251), and ID document scanning/upload integrated with Firebase Storage.
+- **Multi-Language Support:** Comprehensive i18n with support for English, Amharic, Oromo, and Tigrinya.
+- **Non-Custodial Model:** Habeshare acts as an intermediary, with funds processed by Ethiopian financial institutions. The system maintains transaction status summaries (Money Sent, Delivered, Pending) instead of wallet balances.
+- **Family Support Features:**
+    - **Family Wallet:** Track monthly support for family members, with allocation tracking and a "Send Now" option. Data persisted in Firebase Firestore.
+    - **Family Request:** Allows family members in Ethiopia to request financial support, with approval/decline workflows and notification integration.
+    - **Recurring Support Automation:** Schedule automated payments (weekly, monthly, etc.) with CRUD operations, execution history, and a processing engine for payouts.
+    - **Family Circle (Group Support):** Enables multiple diaspora members to pool contributions for a shared family member, with tracking and payout processing.
+- **Support Campaigns:** Fundraising functionality for various causes (medical, education, emergency) with contribution tracking and goal-based completion.
+- **Multi-Currency Wallet:** Ledger-based architecture for EUR/USD/GBP balances, immutable ledger entries, wallet operations (credit, debit, reservation), and currency conversion with FX rates. Top-up options include Card, Chapa, and Telebirr.
+- **Transparent FX:** Displays live foreign exchange rate comparisons from competing banks, a rate calculator with fee breakdowns, and quick conversion links.
+- **Notifications System:** In-app notifications with type-based filtering, read/unread states, and unread counts, connected to Firestore.
+- **Security:** Session management (auto-logout), biometric confirmation for sensitive actions, input sanitization, amount validation, account masking, and security settings.
+- **Payout Connectors:** Integration with Chapa, Telebirr, and various Ethiopian banks (Dashen, Awash, CBE, Abyssinia) for initiating and tracking payouts, including retry mechanisms.
+- **Admin Operations Console:** A suite of admin screens for monitoring payouts, fraud alerts, support tickets, disputes, and liquidity, with role-based access control.
+- **FX Marketplace:** Compares and selects best FX rates from various banks for remittances, including quote expiration, liquidity reservation, and audit logging.
+- **Reconciliation Engine:** A ledger-matching system comparing internal records with external provider settlement reports to detect discrepancies and generate alerts.
+- **Treasury Engine:** Manages liquidity and settlement with defined liquidity pools, reservations, settlement obligations, and alerts for critical thresholds (e.g., low liquidity, overdue settlements).
+- **Advanced Remittance Features:**
+    - **Delivery Time Estimator:** Provides estimated delivery times based on payout method and bank.
+    - **Live Transfer Tracking:** Real-time, step-by-step tracking of remittances.
+    - **Rate Lock:** Allows users to lock in an FX rate for a limited time.
+    - **Smart Recipient List:** Manage and select saved recipients for quick transfers.
+    - **Transfer Fee Simulator:** Detailed breakdown of all transfer-related fees.
 
-## Tech Stack
-- Expo SDK 50
-- React Native 0.73
-- React Navigation 6
-- TanStack React Query
-- Firebase (for authentication and notifications)
-- TypeScript
+**UI/UX:**
+- Consistent design across platforms (mobile and web).
+- Usage of custom Ethiopic fonts (NotoSansEthiopic).
+- Intuitive navigation with React Navigation.
+- Clear presentation of financial data, including donut charts for allocation tracking and progress visualization for campaigns.
+- Color-coded badges for delivery time estimates.
 
-## Running Tests
-```
-npm run test:remittance   # Runs full remittance lifecycle test suite (scripts/runRemittanceTests.ts)
-```
-
-## Recent Changes
-- January 2026: Initial setup in Replit environment
-- Configured Expo web to run on port 5000
-- Removed NativeWind babel plugin for Metro compatibility
-- Added NotoSansEthiopic variable font files
-- Switched to static build for stable preview (no hot reload flickering)
-- Added Forgot Password functionality on login screen
-- Added Tigrinya (ትግርኛ) language support
-- Added "What We Offer" features showcase on dashboard
-- Implemented KYC ID document scanning/upload with Firebase Storage integration
-- Added phone number authentication with +251 Ethiopian number pre-validation
-- Rebranded from NeoBanker to Habeshare with non-custodial partner model
-- Replaced wallet balances with transaction status summary (Money Sent, Delivered, Pending)
-- Added regulatory disclaimers throughout the app
-- Removed all "Bank/Banking" terminology for regulatory compliance (replaced with Finance, Linked Accounts, Direct Transfer, etc.)
-- Removed all NeoBanker references, replaced with Habeshare branding
-- Updated tagline to "Habeshare Global" and footer to "Secure Services for the Ethiopian Diaspora"
-- Added Family Wallet feature: manage monthly support for family members in Ethiopia with allocation tracking, donut chart, Send Now, and full i18n support
-- Connected Family Wallet to Firebase Firestore: data persisted under users/{uid}/family_members, audit logs under users/{uid}/family_audit_log, monthly sent records under users/{uid}/family_sent. Replaced AsyncStorage mock. Added error state with retry. Connected Send Now to remittanceApi.initiateTransfer. Dev mode seeds sample data on empty Firestore.
-- Added Family Request feature: family members in Ethiopia can request financial support from diaspora users. Includes RequestMoneyScreen (create request form with purpose picker), FamilyRequestsScreen (incoming/sent tabs with approve/decline), Firestore service with local fallback, notification integration, and full i18n (4 languages).
-- Refined Family Request for production-readiness: expanded status lifecycle (pending→processing→completed/failed, declined), transactionId/approvedAt/approvedBy tracking, audit logs (request_created, request_approved, request_declined, payout_initiated_from_request), duplicate approval protection, renamed "Incoming" tab to "Support Requests", restricted AsyncStorage fallback to dev-only (production shows offline/read-only state), offline banner UI.
-- Added Recurring Support Automation: users can schedule automated payments to family members (weekly/biweekly/monthly/quarterly/semester). Includes schedule CRUD, processDueSchedules engine (queues payouts via remittanceApi), execution history tracking, pause/resume/cancel, Process Now manual trigger. Firestore: users/{uid}/recurring_schedules, users/{uid}/schedule_executions. Full i18n (51 keys × 4 languages).
-- Added Family Circle (Group Support): multiple diaspora members can pool together to support the same family member(s). Circle CRUD, member management (add/remove/invite), contribution tracking, progress visualization, payout processing when target reached. Firestore: users/{uid}/family_circles, users/{uid}/circle_contributions, users/{uid}/circle_audit_log. Full i18n (59 keys × 4 languages).
-- Added Support Campaigns: fundraising for medical, funeral, education, emergency. Campaign CRUD, category filtering, contribution flow with remittanceApi, progress tracking, auto-complete on goal reached, contributor lists, creator campaign management. Firestore: support_campaigns, campaign_contributions (top-level). Full i18n (50 keys × 4 languages).
-- Added Multi-Currency Wallet with ledger-based architecture: EUR/USD/GBP balances, immutable ledger entries (CREDIT/DEBIT), wallet operations (createWallet, creditWallet, debitWallet, reserveFunds, releaseReservation, confirmReservation), currency conversion with FX rates (1.5% fee), wallet activity feed. Top-up flow via Card/Chapa/Telebirr. WalletScreen with balance cards, quick actions, Add Money/Convert/Activity modals. Firestore: wallets/{userId}, wallets/{userId}/entries/{entryId}, fx_conversions (top-level). Full i18n (62 keys × 4 languages).
-- Added Transparent FX screen: live rate comparison table (EUR/USD/GBP→ETB), rate calculator with fee breakdown, transparency info cards, quick convert link to wallet. Full i18n (35 keys × 4 languages).
-- Added Notifications system: NotificationsScreen with type-based icons, read/unread styling, mark-all-as-read, filter tabs (All/Transactions/Remittance/Security). Dashboard bell icon with unread count badge. Connected to firestoreNotifications service. Full i18n (29 keys × 4 languages).
-- Polished Referral system: updated code prefix from NB→HS, added i18n for all text (34 keys × 4 languages), added referral terms section.
-- Added Security hardening: SessionManager (auto-logout after timeout), biometric confirmation for sensitive actions, input sanitization, amount validation, account masking utilities in src/utils/security.ts. SecuritySettingsScreen with session timeout picker, biometric toggles, change password, 2FA placeholder, login activity, security tips. Full i18n (27 keys × 4 languages).
-- Added production-ready payout connectors: src/services/payoutConnectors.ts with Chapa, Telebirr, and Bank payout APIs. Methods: sendPayout(), checkPayoutStatus(), validateAccount(). Stores provider reference IDs. Updates transaction documents with {provider, providerRef, payoutStatus}. Exponential retry handling (3 retries with 2s/5s/15s delays). Firestore: payout_transactions (top-level). Updated Transaction type with provider/providerRef/payoutStatus fields. PaymentGatewayService.initiatePayout() and checkTransactionStatus() now delegate to real connectors.
-- Added admin-only Operations Console: 7 admin screens in src/screens/admin/ (AdminConsoleScreen, AdminOverviewScreen, AdminPayoutMonitoringScreen, AdminFraudAlertsScreen, AdminSupportTicketsScreen, AdminDisputesScreen, AdminLiquidityScreen). Admin service layer (src/services/adminService.ts) with all admin API methods. AdminGuard component (src/components/AdminGuard.tsx) enforces role-based access. useAuth hook updated with isAdmin flag fetched from user profile. ProfileScreen shows "Operations Console" entry only for admin users. Full i18n (112 keys × 4 languages). Admin types added to src/types/index.ts. All admin routes wired in RootNavigator.
-- Added FX Marketplace: FxMarketplaceScreen displays competing bank offers (Dashen, Awash, etc.) with rate/fee/delivery comparison. BankOfferCard reusable component. API: POST /api/fx/quotes and POST /api/fx/select. Updated RemittanceScreen flow: Enter Amount → "Choose Best Rate" button → FX Marketplace → Select offer → Confirm Transfer (prefilled). Dashboard tile "Best FX Rates" with trending-up icon. Full i18n (18 keys × 4 languages).
-- Hardened FX Marketplace backend: src/services/fxMarketplaceService.ts with quote expiration enforcement (5-min TTL, QUOTE_EXPIRED error), liquidity reservation on selection (reserve ETB at provider, release on fail/abandon, confirm on payout success), amount integrity checks (AMOUNT_MISMATCH if transfer amount/currency differs from quote), provider health filtering (exclude unhealthy + insufficient liquidity providers), duplicate quote protection (QUOTE_ALREADY_USED), structured error classes (FxQuoteExpiredError, FxAmountMismatchError, FxQuoteNotFoundError, FxQuoteAlreadyUsedError, FxInsufficientLiquidityError). Audit logging: quote_generated, quote_selected, quote_expired, quote_rejected, payout_executed_from_quote. Admin endpoint: GET /api/admin/fx-marketplace returns stats (quotes generated/selected/expired, conversion rate by bank, failed executions, provider health). Types: FxQuoteRecord, FxReservation, FxAuditLog, FxProviderHealth, FxMarketplaceStats in types/index.ts. Firestore: fx_quotes, fx_reservations, fx_audit_log (top-level collections).
-- Added Reconciliation Engine: full ledger-matching system comparing internal payout records against external provider settlement reports. Core services in `src/services/reconciliation/` (reconciliationTypes, reconciliationAlertService, providerReportService, reconciliationMatcher, reconciliationService). Workers in `src/workers/` (reconciliationWorker.ts with daily/hourly/stale/overdue jobs + manual trigger, staleReservationWorker.ts with auto-release). Four admin screens: AdminReconciliationOverviewScreen (stats grid, critical banner, Run Now), AdminReconciliationRunsScreen (run cards with match-rate bar), AdminReconciliationAlertsScreen (filter tabs, resolve/ignore), AdminReconciliationRunDetailScreen (item list with internal vs external comparison). Added `reconciliation` menu item to AdminConsoleScreen, 4 new routes in RootNavigator. Firestore collections: reconciliation_runs, reconciliation_items, reconciliation_alerts, provider_settlement_reports. Detection types: amount_mismatch, status_mismatch, missing_external, missing_internal, duplicate, reservation_stale, settlement_overdue, ledger_inconsistency. Full i18n (51 keys × 4 languages). Dev mode returns seeded mock data for all services.
-- Added automated remittance test runner: `scripts/runRemittanceTests.ts` — 5 lifecycle scenarios + 4 failure scenarios (partner outage, network error, duplicate request, liquidity shortage). 9/9 tests pass. Run via `npm run test:remittance`. `scripts/tsconfig.json` provides CommonJS ts-node-compatible compiler config. `ts-node` added as devDependency.
-- Added "Track Live" button to RemittanceTrackingScreen — each remittance card shows a green button navigating to TransferTrackingScreen with the transfer's reference ID.
-- Added 5 advanced remittance features:
-  1. Delivery Time Estimator: src/services/deliveryEstimator.ts (estimateDeliveryTime for Telebirr/CBE/Awash/Dashen/Abyssinia × bank/mobile/cash), src/components/DeliveryTimeBadge.tsx (color-coded badge). Integrated into RemittanceScreen payout method section.
-  2. Live Transfer Tracking: src/screens/TransferTrackingScreen.tsx with 5-step timeline (Initiated → FX Conversion → Processing → Sent to Provider → Delivered), Firestore onSnapshot on transfer_status_updates collection, __DEV__ mock seeding. Route: TransferTracking.
-  3. Rate Lock: src/services/rateLockService.ts (lockRate/validateRateLock/releaseLock, 60s TTL, Firestore rate_locks collection), src/components/RateLockTimer.tsx (countdown bar, lock/expired states). Integrated into RemittanceScreen selected quote section.
-  4. Smart Recipient List: src/services/recipientService.ts (CRUD on users/{uid}/recipients), src/screens/RecipientsScreen.tsx (add/edit/delete/search/select recipients, masked account numbers). Route: Recipients. "Saved Recipients" button in RemittanceScreen.
-  5. Transfer Fee Simulator: src/components/FeeBreakdownCard.tsx (full fee breakdown: send amount, FX rate, platform fee, processing fee, total fees, receiver gets, disclaimer). Integrated into RemittanceScreen when amount > 0.
-  - Types added: Recipient, RateLock, RateLockStatus, TransferStatusUpdate, TransferTrackingStatus, TransferStats in types/index.ts.
-  - Admin: GET /api/admin/transfer-stats endpoint via adminService.getTransferStats() returning avg delivery time, success rate by provider, FX lock usage, top payout method.
-  - Full i18n: delivery.* (6 keys), tracking.* (10 keys), rateLock.* (7 keys), recipient.* (18 keys), fee.* (9 keys), adminStats.* (5 keys) = 55 keys × 4 languages (EN/AM/OM/TI).
+## External Dependencies
+- **Firebase:** Authentication, Firestore (database for user data, family features, wallet, campaigns, admin logs, reconciliation, treasury), Firebase Storage (for KYC documents).
+- **Expo SDK:** Core framework for React Native development.
+- **React Native:** UI framework.
+- **React Navigation:** In-app navigation.
+- **TanStack React Query:** Data fetching and state management.
+- **Chapa API:** Payout connector.
+- **Telebirr API:** Payout connector.
+- **Ethiopian Bank APIs:** Integration with banks like Dashen, Awash, CBE, Abyssinia for payouts and FX quotes.

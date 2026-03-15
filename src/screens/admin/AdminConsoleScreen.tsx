@@ -77,6 +77,13 @@ const MENU_ITEMS = [
     color: '#7C3AED',
     bg: '#F5F3FF',
   },
+  {
+    key: 'treasury',
+    screen: 'AdminTreasuryOverview',
+    icon: 'shield-half-outline' as const,
+    color: '#006633',
+    bg: '#ECFDF5',
+  },
 ];
 
 function AdminConsoleContent() {
