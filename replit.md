@@ -42,6 +42,11 @@ Copy `.env.example` to `.env` and configure:
 - Firebase (for authentication and notifications)
 - TypeScript
 
+## Running Tests
+```
+npm run test:remittance   # Runs full remittance lifecycle test suite (scripts/runRemittanceTests.ts)
+```
+
 ## Recent Changes
 - January 2026: Initial setup in Replit environment
 - Configured Expo web to run on port 5000
@@ -75,6 +80,8 @@ Copy `.env.example` to `.env` and configure:
 - Added admin-only Operations Console: 7 admin screens in src/screens/admin/ (AdminConsoleScreen, AdminOverviewScreen, AdminPayoutMonitoringScreen, AdminFraudAlertsScreen, AdminSupportTicketsScreen, AdminDisputesScreen, AdminLiquidityScreen). Admin service layer (src/services/adminService.ts) with all admin API methods. AdminGuard component (src/components/AdminGuard.tsx) enforces role-based access. useAuth hook updated with isAdmin flag fetched from user profile. ProfileScreen shows "Operations Console" entry only for admin users. Full i18n (112 keys × 4 languages). Admin types added to src/types/index.ts. All admin routes wired in RootNavigator.
 - Added FX Marketplace: FxMarketplaceScreen displays competing bank offers (Dashen, Awash, etc.) with rate/fee/delivery comparison. BankOfferCard reusable component. API: POST /api/fx/quotes and POST /api/fx/select. Updated RemittanceScreen flow: Enter Amount → "Choose Best Rate" button → FX Marketplace → Select offer → Confirm Transfer (prefilled). Dashboard tile "Best FX Rates" with trending-up icon. Full i18n (18 keys × 4 languages).
 - Hardened FX Marketplace backend: src/services/fxMarketplaceService.ts with quote expiration enforcement (5-min TTL, QUOTE_EXPIRED error), liquidity reservation on selection (reserve ETB at provider, release on fail/abandon, confirm on payout success), amount integrity checks (AMOUNT_MISMATCH if transfer amount/currency differs from quote), provider health filtering (exclude unhealthy + insufficient liquidity providers), duplicate quote protection (QUOTE_ALREADY_USED), structured error classes (FxQuoteExpiredError, FxAmountMismatchError, FxQuoteNotFoundError, FxQuoteAlreadyUsedError, FxInsufficientLiquidityError). Audit logging: quote_generated, quote_selected, quote_expired, quote_rejected, payout_executed_from_quote. Admin endpoint: GET /api/admin/fx-marketplace returns stats (quotes generated/selected/expired, conversion rate by bank, failed executions, provider health). Types: FxQuoteRecord, FxReservation, FxAuditLog, FxProviderHealth, FxMarketplaceStats in types/index.ts. Firestore: fx_quotes, fx_reservations, fx_audit_log (top-level collections).
+- Added automated remittance test runner: `scripts/runRemittanceTests.ts` — 5 lifecycle scenarios + 4 failure scenarios (partner outage, network error, duplicate request, liquidity shortage). 9/9 tests pass. Run via `npm run test:remittance`. `scripts/tsconfig.json` provides CommonJS ts-node-compatible compiler config. `ts-node` added as devDependency.
+- Added "Track Live" button to RemittanceTrackingScreen — each remittance card shows a green button navigating to TransferTrackingScreen with the transfer's reference ID.
 - Added 5 advanced remittance features:
   1. Delivery Time Estimator: src/services/deliveryEstimator.ts (estimateDeliveryTime for Telebirr/CBE/Awash/Dashen/Abyssinia × bank/mobile/cash), src/components/DeliveryTimeBadge.tsx (color-coded badge). Integrated into RemittanceScreen payout method section.
   2. Live Transfer Tracking: src/screens/TransferTrackingScreen.tsx with 5-step timeline (Initiated → FX Conversion → Processing → Sent to Provider → Delivered), Firestore onSnapshot on transfer_status_updates collection, __DEV__ mock seeding. Route: TransferTracking.

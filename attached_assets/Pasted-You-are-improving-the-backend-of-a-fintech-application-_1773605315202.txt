@@ -1,0 +1,236 @@
+You are improving the backend of a fintech application called Habeshare.
+
+Current stack:
+
+Node.js
+TypeScript
+Express
+Firebase Admin SDK
+Firestore
+Stripe
+Partner payout connectors
+
+Do NOT modify existing production logic.
+
+Create an automated test runner script that simulates full remittance flows.
+
+---
+
+1️⃣ CREATE TEST RUNNER SCRIPT
+
+Create file:
+
+scripts/runRemittanceTests.ts
+
+Purpose:
+
+Simulate the full lifecycle of a remittance transaction.
+
+Flow to simulate:
+
+User signup
+↓
+KYC verification
+↓
+Wallet top-up
+↓
+FX quote request
+↓
+Quote selection
+↓
+Remittance transfer
+↓
+Partner payout simulation
+↓
+Transaction completion
+
+---
+
+2️⃣ IMPLEMENT TEST SCENARIOS
+
+Add the following test scenarios.
+
+Scenario 1 — EUR → ETB Telebirr payout
+
+Steps:
+
+1 create test user
+2 simulate KYC verification
+3 credit wallet €500
+4 request FX quote for €200
+5 select quote
+6 initiate payout to Telebirr
+7 confirm payout status completed
+
+Expected:
+
+transaction status = COMPLETED
+
+---
+
+Scenario 2 — USD → ETB bank payout
+
+Steps:
+
+1 wallet balance $500
+2 request FX quote
+3 select bank offer
+4 payout via bank connector
+
+Expected:
+
+status COMPLETED
+
+---
+
+Scenario 3 — Wallet transfer to family member
+
+Steps:
+
+1 create family wallet member
+2 send €150
+3 verify ledger entries
+
+Expected:
+
+ledger entries created
+status COMPLETED
+
+---
+
+Scenario 4 — Campaign contribution
+
+Steps:
+
+1 create campaign
+2 contribute $200
+3 update campaign raisedAmount
+
+Expected:
+
+campaign progress updated
+
+---
+
+Scenario 5 — Recurring support execution
+
+Steps:
+
+1 create scheduled support
+2 trigger worker execution
+3 process payout
+
+Expected:
+
+nextExecutionDate updated
+
+---
+
+3️⃣ FAILURE SCENARIOS
+
+Add tests for common remittance failures.
+
+Scenario A — Partner outage
+
+Simulate provider returning HTTP 503.
+
+Expected:
+
+retry 3 times
+transaction status FAILED
+wallet refund issued
+
+---
+
+Scenario B — Network error
+
+Simulate fetch() throwing network exception.
+
+Expected:
+
+retry logic triggered
+
+---
+
+Scenario C — Duplicate request
+
+Submit same idempotencyKey twice.
+
+Expected:
+
+second request rejected
+
+---
+
+Scenario D — Liquidity shortage
+
+TreasuryService returns insufficient liquidity.
+
+Expected:
+
+transaction FAILED
+admin alert logged
+
+---
+
+4️⃣ TEST UTILITIES
+
+Create helper functions:
+
+createTestUser()
+simulateKycVerification()
+creditWallet()
+simulateProviderPayout()
+assertTransactionCompleted()
+assertWalletRefund()
+
+---
+
+5️⃣ TEST OUTPUT
+
+When running the script, display structured logs.
+
+Example:
+
+✓ Test 1: EUR → ETB Telebirr payout PASSED
+✓ Test 2: USD → ETB Bank payout PASSED
+✓ Test 3: Wallet → Family support PASSED
+✓ Test 4: Campaign contribution PASSED
+✓ Test 5: Recurring support PASSED
+✓ Failure test: Partner outage PASSED
+✓ Failure test: Duplicate request PASSED
+
+Final summary:
+
+All tests passed
+Execution time
+Transactions simulated
+
+---
+
+6️⃣ ADD NPM SCRIPT
+
+Update package.json
+
+Add:
+
+"scripts": {
+"test:remittance": "ts-node scripts/runRemittanceTests.ts"
+}
+
+---
+
+7️⃣ KEEP TYPESCRIPT STRICT
+
+Use existing types:
+
+Transaction
+WalletEntry
+FxQuote
+PayoutStatus
+
+---
+
+Generate clean TypeScript code with detailed comments explaining the test flow.
+
+Do not modify production payout logic.
