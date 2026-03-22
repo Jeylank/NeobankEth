@@ -18,7 +18,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   doc,
   setDoc,
@@ -30,7 +29,7 @@ import {
   limit,
   updateDoc,
 } from 'firebase/firestore';
-import { app } from '../firebase';
+import { db } from '../firebase';
 import type {
   ReconciliationRun,
   ReconciliationItem,
@@ -53,7 +52,6 @@ import {
 } from './reconciliationMatcher';
 import { reconciliationAlertService } from './reconciliationAlertService';
 
-const db = getFirestore(app);
 const RUNS_COL = 'reconciliation_runs';
 const ITEMS_COL = 'reconciliation_items';
 const PAYOUT_COL = 'payout_transactions';

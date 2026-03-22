@@ -15,7 +15,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   query,
   where,
@@ -23,10 +22,9 @@ import {
   doc,
   updateDoc,
 } from 'firebase/firestore';
-import { app } from '../services/firebase';
+import { db } from '../services/firebase';
 import { reconciliationAlertService } from '../services/reconciliation/reconciliationAlertService';
 
-const db = getFirestore(app);
 const FX_RESERVATIONS_COL = 'fx_reservations';
 const PAYOUT_COL = 'payout_transactions';
 

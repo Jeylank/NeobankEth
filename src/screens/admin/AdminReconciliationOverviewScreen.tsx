@@ -420,5 +420,4 @@ const styles = StyleSheet.create({
   },
   linkLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
   emptyText: { fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', paddingVertical: 16 },
-  blueLight: COLORS.blueLight,
 });

@@ -19,7 +19,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   doc,
   setDoc,
@@ -32,7 +31,7 @@ import {
   limit,
   runTransaction,
 } from 'firebase/firestore';
-import { app } from '../firebase';
+import { db } from '../firebase';
 import { liquidityService } from './liquidityService';
 import { treasuryAlertsService } from './treasuryAlertsService';
 import type {
@@ -51,7 +50,6 @@ import {
   ReservationStateError,
 } from './treasuryTypes';
 
-const db = getFirestore(app);
 const RESERVATIONS_COL = 'liquidity_reservations';
 
 /** Reservations older than this (hours) without confirmation are auto-expired */

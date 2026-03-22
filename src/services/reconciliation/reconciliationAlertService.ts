@@ -6,7 +6,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   doc,
   addDoc,
@@ -18,7 +17,7 @@ import {
   limit,
   updateDoc,
 } from 'firebase/firestore';
-import { app } from '../firebase';
+import { db } from '../firebase';
 import type {
   ReconciliationAlert,
   ReconciliationAlertType,
@@ -27,7 +26,6 @@ import type {
   AlertFilters,
 } from './reconciliationTypes';
 
-const db = getFirestore(app);
 const ALERTS_COL = 'reconciliation_alerts';
 
 function generateAlertId(): string {

@@ -19,7 +19,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   doc,
   setDoc,
@@ -31,7 +30,7 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
-import { app } from '../firebase';
+import { db } from '../firebase';
 import { treasuryAlertsService } from './treasuryAlertsService';
 import { liquidityService } from './liquidityService';
 import type {
@@ -42,7 +41,6 @@ import type {
   SettlementFilters,
 } from './treasuryTypes';
 
-const db = getFirestore(app);
 const OBLIGATIONS_COL = 'settlement_obligations';
 
 /** Default settlement window in hours */

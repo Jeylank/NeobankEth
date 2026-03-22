@@ -7,7 +7,6 @@
  */
 
 import {
-  getFirestore,
   doc,
   setDoc,
   getDocs,
@@ -15,14 +14,13 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-import { app } from '../firebase';
+import { db } from '../firebase';
 import type {
   ProviderSettlementReport,
   ProviderSettlementItem,
   ReconciliationProvider,
 } from './reconciliationTypes';
 
-const db = getFirestore(app);
 const REPORTS_COL = 'provider_settlement_reports';
 
 function now(): string {

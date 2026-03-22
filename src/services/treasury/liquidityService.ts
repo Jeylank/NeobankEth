@@ -19,7 +19,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   doc,
   setDoc,
@@ -31,7 +30,7 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
-import { app } from '../firebase';
+import { db } from '../firebase';
 import type {
   LiquidityPool,
   TreasuryProvider,
@@ -41,7 +40,6 @@ import type {
   PoolSummary,
 } from './treasuryTypes';
 
-const db = getFirestore(app);
 const POOLS_COL = 'liquidity_pools';
 const MOVEMENTS_COL = 'treasury_movements';
 

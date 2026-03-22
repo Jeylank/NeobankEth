@@ -16,7 +16,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   doc,
   setDoc,
@@ -27,7 +26,7 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
-import { app } from '../firebase';
+import { db } from '../firebase';
 import type {
   TreasuryAlert,
   TreasuryAlertType,
@@ -38,7 +37,6 @@ import type {
   AlertFilters,
 } from './treasuryTypes';
 
-const db = getFirestore(app);
 const ALERTS_COL = 'treasury_alerts';
 
 function now(): string {
