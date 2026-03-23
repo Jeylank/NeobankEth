@@ -1,0 +1,498 @@
+Build a production-grade Settlement Engine for Habeshare, including backend services, Firestore schema, admin APIs, and admin UI integration.
+
+Important context:
+Habeshare is a fintech / remittance platform with:
+- Node.js + TypeScript backend
+- Express APIs
+- Firebase Admin SDK
+- Firestore
+- Existing modules already built:
+  - walletService
+  - treasuryService
+  - paymentRouter
+  - payout connectors
+  - fraud monitoring
+  - reconciliation service
+  - admin console
+  - FX marketplace
+  - liquidity reservations
+  - payout_transactions
+  - ledger_entries
+  - audit logs
+
+Goal:
+Implement the final missing core component: Settlement Engine.
+
+This engine must track what Habeshare owes partners, what partners owe Habeshare, and the lifecycle of settlement and rebalancing after payouts are executed.
+
+Do NOT break existing payout logic.
+
+==================================================
+1) BACKEND SERVICE STRUCTURE
+==================================================
+
+Create new backend folder:
+
+src/services/settlement/
+
+Files to create:
+- settlementService.ts
+- settlementLedgerService.ts
+- settlementBatchService.ts
+- settlementReconciliationService.ts
+- settlementAlertsService.ts
+- settlementTypes.ts
+
+Responsibilities:
+
+1. settlementService.ts
+   - main orchestration entry point
+   - create settlement obligations after completed payouts
+   - update obligation status
+   - fetch settlement summaries
+
+2. settlementLedgerService.ts
+   - immutable settlement movement records
+   - record opening, closing, rebalancing, adjustments
+
+3. settlementBatchService.ts
+   - group open obligations into daily or provider-based settlement batches
+   - mark batches as processing, settled, failed
+
+4. settlementReconciliationService.ts
+   - compare partner-reported settlement vs internal obligations
+   - flag mismatches
+
+5. settlementAlertsService.ts
+   - generate alerts for overdue settlement, mismatch, negative partner exposure
+
+==================================================
+2) FIRESTORE COLLECTIONS
+==================================================
+
+Create these top-level Firestore collections:
+
+A. settlement_obligations
+
+Document example:
+{
+  "obligationId": "settle_001",
+  "provider": "CHAPA",
+  "currency": "ETB",
+  "direction": "OWED_TO_PARTNER",
+  "amount": 12056.4,
+  "referenceType": "PAYOUT_TRANSACTION",
+  "referenceId": "tx_123",
+  "status": "OPEN",
+  "createdAt": timestamp,
+  "dueAt": timestamp,
+  "settledAt": null,
+  "batchId": null
+}
+
+Supported direction values:
+- OWED_TO_PARTNER
+- OWED_FROM_PARTNER
+
+Supported status values:
+- OPEN
+- BATCHED
+- PROCESSING
+- SETTLED
+- FAILED
+- CANCELLED
+
+B. settlement_batches
+
+Document example:
+{
+  "batchId": "batch_2026_03_08_chapa_etb",
+  "provider": "CHAPA",
+  "currency": "ETB",
+  "totalAmount": 500000,
+  "obligationCount": 38,
+  "status": "PROCESSING",
+  "createdAt": timestamp,
+  "settledAt": null,
+  "notes": ""
+}
+
+Supported status values:
+- OPEN
+- PROCESSING
+- SETTLED
+- FAILED
+
+C. settlement_movements
+
+Immutable ledger of settlement actions.
+
+Document example:
+{
+  "movementId": "sm_001",
+  "type": "SETTLEMENT_OPENED",
+  "provider": "CHAPA",
+  "currency": "ETB",
+  "amount": 12056.4,
+  "obligationId": "settle_001",
+  "batchId": null,
+  "createdAt": timestamp,
+  "createdBy": "system"
+}
+
+Supported movement types:
+- SETTLEMENT_OPENED
+- SETTLEMENT_BATCHED
+- SETTLEMENT_SETTLED
+- SETTLEMENT_FAILED
+- SETTLEMENT_REBALANCED
+- SETTLEMENT_ADJUSTED
+
+D. settlement_alerts
+
+Document example:
+{
+  "alertId": "sa_001",
+  "type": "SETTLEMENT_OVERDUE",
+  "provider": "CHAPA",
+  "currency": "ETB",
+  "severity": "HIGH",
+  "message": "Settlement batch overdue by 1 day",
+  "status": "OPEN",
+  "createdAt": timestamp,
+  "resolvedAt": null
+}
+
+Supported alert types:
+- SETTLEMENT_OVERDUE
+- SETTLEMENT_MISMATCH
+- NEGATIVE_EXPOSURE
+- BATCH_FAILURE
+
+E. settlement_reconciliation_reports
+
+Document example:
+{
+  "reportId": "recon_2026_03_08_chapa",
+  "provider": "CHAPA",
+  "currency": "ETB",
+  "expectedAmount": 500000,
+  "reportedAmount": 495000,
+  "difference": -5000,
+  "status": "MISMATCH",
+  "createdAt": timestamp
+}
+
+Supported status values:
+- MATCHED
+- MISMATCH
+- PENDING
+
+==================================================
+3) SETTLEMENT LOGIC
+==================================================
+
+Implement this lifecycle:
+
+A. After a payout transaction becomes COMPLETED:
+- create a settlement obligation
+- direction depends on business model:
+  usually OWED_TO_PARTNER for payout execution
+- store provider, currency, amount, txId reference
+- write settlement movement: SETTLEMENT_OPENED
+- write audit log event: settlement_opened
+
+B. Batch open obligations:
+- batch by provider + currency + day
+- create settlement_batch
+- move obligations from OPEN -> BATCHED
+- assign batchId
+- write movement: SETTLEMENT_BATCHED
+
+C. Mark batch as processing:
+- status PROCESSING when settlement initiated
+
+D. Mark batch as settled:
+- mark batch SETTLED
+- mark obligations SETTLED
+- set settledAt
+- write movement: SETTLEMENT_SETTLED
+- write audit log event: settlement_completed
+
+E. If settlement fails:
+- mark batch FAILED
+- mark obligations FAILED or return to OPEN based on retry policy
+- generate settlement alert
+- write movement: SETTLEMENT_FAILED
+
+==================================================
+4) INTEGRATION WITH EXISTING SYSTEM
+==================================================
+
+Integrate with:
+- payout_transactions
+- treasury reservations
+- admin console
+- reconciliation service
+- audit logs
+
+Requirements:
+
+1. When payout succeeds:
+   - confirm reservation if not already confirmed
+   - create settlement obligation
+
+2. When payout fails:
+   - do NOT create settlement obligation
+   - release treasury reservation as normal
+
+3. Settlement engine must not duplicate obligations for the same txId
+
+4. Add idempotency protection so repeated callbacks or retries do not create duplicate obligations
+
+==================================================
+5) TYPESCRIPT TYPES
+==================================================
+
+Add strong types in settlementTypes.ts and export where needed.
+
+Include:
+- SettlementObligation
+- SettlementBatch
+- SettlementMovement
+- SettlementAlert
+- SettlementReconciliationReport
+- SettlementDirection
+- SettlementStatus
+- SettlementBatchStatus
+- SettlementAlertType
+
+Keep TypeScript strict.
+
+==================================================
+6) ADMIN API ENDPOINTS
+==================================================
+
+Create new routes file:
+
+src/routes/settlementRoutes.ts
+
+Add these admin-only endpoints:
+
+GET /api/admin/settlement/overview
+Return:
+- total open obligations
+- total batched amount
+- total settled today
+- overdue alerts count
+- mismatched reports count
+
+GET /api/admin/settlement/obligations
+Support filters:
+- provider
+- currency
+- status
+- date range
+
+GET /api/admin/settlement/batches
+Support filters:
+- provider
+- currency
+- status
+
+GET /api/admin/settlement/alerts
+Support filters:
+- type
+- severity
+- status
+
+GET /api/admin/settlement/reconciliation
+Support filters:
+- provider
+- status
+
+POST /api/admin/settlement/batches/:id/process
+POST /api/admin/settlement/batches/:id/settle
+POST /api/admin/settlement/batches/:id/fail
+
+POST /api/admin/settlement/alerts/:id/resolve
+
+All admin routes must:
+- verify Firebase auth token
+- require admin role
+- return structured JSON
+- never expose secrets
+
+==================================================
+7) ADMIN FRONTEND INTEGRATION
+==================================================
+
+Integrate the Settlement Engine into the existing admin console frontend.
+
+Create new admin screens under:
+
+src/screens/admin/
+
+Files:
+- AdminSettlementOverviewScreen.tsx
+- AdminSettlementObligationsScreen.tsx
+- AdminSettlementBatchesScreen.tsx
+- AdminSettlementAlertsScreen.tsx
+- AdminSettlementReconciliationScreen.tsx
+
+Add navigation entry:
+- Settlement
+
+If you already have an admin console hub/sidebar, add:
+- Settlement Overview
+- Settlement Obligations
+- Settlement Batches
+- Settlement Alerts
+- Settlement Reconciliation
+
+==================================================
+8) FRONTEND UI REQUIREMENTS
+==================================================
+
+Settlement Overview screen:
+- summary cards:
+  - Open obligations
+  - Batched amount
+  - Settled today
+  - Overdue alerts
+  - Reconciliation mismatches
+- small chart if possible:
+  - settlements by day
+  - obligations by provider
+
+Settlement Obligations screen:
+- searchable/filterable table
+- columns:
+  obligationId
+  provider
+  currency
+  direction
+  amount
+  referenceId
+  status
+  createdAt
+  dueAt
+  batchId
+
+Settlement Batches screen:
+- cards/table
+- columns:
+  batchId
+  provider
+  currency
+  totalAmount
+  obligationCount
+  status
+  createdAt
+  settledAt
+- admin actions:
+  Process
+  Mark Settled
+  Mark Failed
+- confirmation modal before actions
+
+Settlement Alerts screen:
+- filter by type/severity/status
+- color-coded severity badges
+- action: Resolve alert
+
+Settlement Reconciliation screen:
+- columns:
+  reportId
+  provider
+  currency
+  expectedAmount
+  reportedAmount
+  difference
+  status
+  createdAt
+
+UI requirements:
+- keep existing Habeshare admin style
+- responsive
+- loading states
+- empty states
+- error retry states
+- status badges
+- CSV export button for obligations and batches if possible
+
+==================================================
+9) FRONTEND ADMIN SERVICE
+==================================================
+
+Extend existing admin service:
+
+src/services/adminService.ts
+
+Add methods:
+- getSettlementOverview()
+- getSettlementObligations(filters)
+- getSettlementBatches(filters)
+- getSettlementAlerts(filters)
+- getSettlementReconciliation(filters)
+- processSettlementBatch(id)
+- settleSettlementBatch(id)
+- failSettlementBatch(id)
+- resolveSettlementAlert(id)
+
+Use existing auth token pattern.
+
+==================================================
+10) AUDIT LOGGING
+==================================================
+
+Add audit log events:
+- settlement_opened
+- settlement_batched
+- settlement_processing
+- settlement_completed
+- settlement_failed
+- settlement_alert_resolved
+- settlement_reconciliation_mismatch
+
+==================================================
+11) RECONCILIATION RULES
+==================================================
+
+Implement a reconciliation job or callable service that:
+- compares summed internal obligations vs provider-reported totals
+- generates settlement_reconciliation_reports
+- raises settlement_alerts if mismatch != 0
+
+You may stub provider-reported totals if real APIs are not yet available, but structure it production-ready.
+
+==================================================
+12) SECURITY
+==================================================
+
+- admin-only access enforced in frontend and backend
+- financial collections must not be writable by client apps
+- all settlement mutations go through backend service
+- use Firestore transactions where needed for consistency
+- preserve existing payout logic
+- no breaking changes to wallet or treasury logic
+
+==================================================
+13) I18N
+==================================================
+
+Add all required admin settlement text to all 4 locales:
+- English
+- Amharic
+- Oromifa
+- Tigrinya
+
+No hardcoded UI strings.
+
+==================================================
+14) DELIVERABLES
+==================================================
+
+Generate all backend services, Firestore schema usage, admin APIs, frontend admin screens, admin service methods, route wiring, i18n keys, and types.
+
+This should be the final missing core component of Habeshare’s fintech architecture.

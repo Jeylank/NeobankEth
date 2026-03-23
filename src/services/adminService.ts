@@ -242,4 +242,51 @@ export const adminService = {
     const { partnerSettlementService } = await import('./partnerSettlementService');
     return partnerSettlementService.listReconciliationReports(limitCount);
   },
+
+  // ─── Settlement Engine ───────────────────────────────────────────────────
+
+  async getSettlementOverview() {
+    const { settlementService } = await import('./settlement/settlementService');
+    return settlementService.getOverview();
+  },
+
+  async getSettlementObligations(filters?: import('./settlement/settlementTypes').ObligationFilters) {
+    const { settlementService } = await import('./settlement/settlementService');
+    return settlementService.listObligations(filters);
+  },
+
+  async getSettlementBatches(filters?: import('./settlement/settlementTypes').BatchFilters) {
+    const { settlementBatchService } = await import('./settlement/settlementBatchService');
+    return settlementBatchService.listBatches(filters);
+  },
+
+  async getSettlementAlerts(filters?: import('./settlement/settlementTypes').AlertFilters) {
+    const { settlementAlertsService } = await import('./settlement/settlementAlertsService');
+    return settlementAlertsService.listAlerts(filters);
+  },
+
+  async getSettlementReconciliation(filters?: import('./settlement/settlementTypes').ReconciliationFilters) {
+    const { settlementReconciliationService } = await import('./settlement/settlementReconciliationService');
+    return settlementReconciliationService.listReports(filters);
+  },
+
+  async processSettlementBatch(batchId: string): Promise<void> {
+    const { settlementBatchService } = await import('./settlement/settlementBatchService');
+    return settlementBatchService.processBatch(batchId, 'admin');
+  },
+
+  async settleSettlementBatch(batchId: string): Promise<void> {
+    const { settlementBatchService } = await import('./settlement/settlementBatchService');
+    return settlementBatchService.settleBatch(batchId, 'admin');
+  },
+
+  async failSettlementBatch(batchId: string): Promise<void> {
+    const { settlementBatchService } = await import('./settlement/settlementBatchService');
+    return settlementBatchService.failBatch(batchId, 'Manually failed by admin', 'admin');
+  },
+
+  async resolveSettlementAlert(alertId: string): Promise<void> {
+    const { settlementAlertsService } = await import('./settlement/settlementAlertsService');
+    return settlementAlertsService.resolveAlert(alertId, 'admin');
+  },
 };

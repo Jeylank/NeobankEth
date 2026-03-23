@@ -98,6 +98,13 @@ const MENU_ITEMS = [
     color: '#006633',
     bg: '#ECFDF5',
   },
+  {
+    key: 'settlementEngine',
+    screen: 'AdminSettlementEngine',
+    icon: 'layers-outline' as const,
+    color: '#0891B2',
+    bg: '#ECFEFF',
+  },
 ];
 
 function AdminConsoleContent() {

@@ -52,6 +52,11 @@ import AdminSettlementObligationsScreen from '../screens/admin/AdminSettlementOb
 import AdminTreasuryAlertsScreen from '../screens/admin/AdminTreasuryAlertsScreen';
 import AdminSettlementsScreen from '../screens/admin/AdminSettlementsScreen';
 import AdminReconciliationScreen from '../screens/admin/AdminReconciliationScreen';
+import AdminSettlementOverviewScreen from '../screens/admin/AdminSettlementOverviewScreen';
+import AdminSettlementEngineObligationsScreen from '../screens/admin/AdminSettlementEngineObligationsScreen';
+import AdminSettlementBatchesScreen from '../screens/admin/AdminSettlementBatchesScreen';
+import AdminSettlementAlertsScreen from '../screens/admin/AdminSettlementAlertsScreen';
+import AdminSettlementReconciliationScreen from '../screens/admin/AdminSettlementReconciliationScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -177,6 +182,11 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminTreasuryAlerts" component={AdminTreasuryAlertsScreen} options={{ title: 'Treasury Alerts' }} />
           <Stack.Screen name="AdminSettlements" component={AdminSettlementsScreen} options={{ title: 'Partner Settlements' }} />
           <Stack.Screen name="AdminReconciliation" component={AdminReconciliationScreen} options={{ title: 'Reconciliation Reports' }} />
+          <Stack.Screen name="AdminSettlementEngine" component={AdminSettlementOverviewScreen} options={{ title: 'Settlement Engine' }} />
+          <Stack.Screen name="AdminSettlementEngineObligations" component={AdminSettlementEngineObligationsScreen} options={{ title: 'Settlement Obligations' }} />
+          <Stack.Screen name="AdminSettlementBatches" component={AdminSettlementBatchesScreen} options={{ title: 'Settlement Batches' }} />
+          <Stack.Screen name="AdminSettlementAlerts" component={AdminSettlementAlertsScreen} options={{ title: 'Settlement Alerts' }} />
+          <Stack.Screen name="AdminSettlementReconciliation" component={AdminSettlementReconciliationScreen} options={{ title: 'Settlement Reconciliation' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
