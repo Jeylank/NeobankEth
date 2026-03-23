@@ -1,0 +1,284 @@
+You are improving the backend of a fintech remittance platform called Habeshare.
+
+Stack:
+
+- Node.js
+- TypeScript
+- Express
+- Firebase Admin SDK
+- Firestore
+
+Existing system includes:
+
+- walletService (ledger-based)
+- fxMarketplaceService
+- treasuryService (liquidity + reservations)
+- payout connectors (Chapa, Telebirr, Banks)
+- audit logs
+- admin console
+
+DO NOT break any existing payout or FX marketplace logic.
+
+---
+
+🎯 GOAL
+
+Build a Settlement + Reconciliation Engine to ensure:
+
+- financial correctness
+- partner balance tracking
+- mismatch detection
+- daily reconciliation reporting
+
+---
+
+1️⃣ SETTLEMENT SERVICE
+
+Create:
+
+src/services/settlementService.ts
+
+Purpose:
+Track how much Habeshare owes or is owed by each partner.
+
+Core concept:
+Net settlement instead of per-transaction settlement.
+
+Functions:
+
+1. recordSettlement(tx)
+
+Input:
+
+- txId
+- provider (CHAPA / TELEBIRR / BANK)
+- amount
+- currency
+- direction ("inflow" | "outflow")
+
+Logic:
+
+- aggregate partner balances
+- store running totals
+
+2. getPartnerBalance(provider)
+
+Return:
+
+{
+provider: "CHAPA",
+currency: "ETB",
+netBalance: 1200000
+}
+
+3. generateSettlementSummary(date)
+
+Return:
+
+{
+provider: "CHAPA",
+totalInflow: 5000000,
+totalOutflow: 3800000,
+netSettlement: 1200000
+}
+
+---
+
+2️⃣ FIRESTORE COLLECTIONS
+
+Create:
+
+settlements
+
+{
+settlementId
+provider
+currency
+inflow
+outflow
+netBalance
+updatedAt
+}
+
+---
+
+3️⃣ RECONCILIATION SERVICE
+
+Create:
+
+src/services/reconciliationService.ts
+
+Purpose:
+Compare internal transactions vs partner data.
+
+Functions:
+
+1. reconcileTransactions(date)
+
+Steps:
+
+- fetch all transactions (COMPLETED)
+- group by provider
+- compare with settlement records
+- detect mismatches
+
+2. detectMismatch(tx, providerData)
+
+Mismatch conditions:
+
+- amount mismatch
+- missing transaction
+- duplicate transaction
+- status mismatch
+
+---
+
+4️⃣ FIRESTORE COLLECTION
+
+reconciliation_reports
+
+{
+reportId
+date
+provider
+totalTransactions
+matched
+mismatched
+discrepancies: [
+{
+txId
+issue: "AMOUNT_MISMATCH"
+}
+]
+createdAt
+}
+
+---
+
+5️⃣ WEBHOOK INTEGRATION
+
+Update:
+
+src/routes/webhooks.ts
+
+When receiving provider webhook:
+
+- update transaction status
+- call settlementService.recordSettlement()
+- update reconciliation tracking
+
+---
+
+6️⃣ CRON JOB (DAILY RECONCILIATION)
+
+Create:
+
+src/workers/reconciliationWorker.ts
+
+Schedule:
+
+Run once per day
+
+Flow:
+
+- call reconcileTransactions()
+- store report
+- log discrepancies
+
+---
+
+7️⃣ ADMIN API
+
+Add route:
+
+GET /api/admin/reconciliation
+
+Return:
+
+[
+{
+date: "2026-03-07",
+provider: "CHAPA",
+totalTransactions: 1200,
+matched: 1180,
+mismatched: 20
+}
+]
+
+Add:
+
+GET /api/admin/settlements
+
+Return:
+
+[
+{
+provider: "CHAPA",
+netBalance: 1200000
+}
+]
+
+---
+
+8️⃣ ERROR HANDLING
+
+Create structured errors:
+
+SettlementError
+ReconciliationError
+
+Ensure:
+
+- no crash on mismatch
+- discrepancies logged but system continues
+
+---
+
+9️⃣ SECURITY
+
+Ensure:
+
+- only backend writes to settlements
+- only admin can read reconciliation_reports
+- Firebase auth enforced
+
+---
+
+🔟 TYPES
+
+Add to:
+
+src/types/index.ts
+
+SettlementRecord
+ReconciliationReport
+ReconciliationDiscrepancy
+
+---
+
+11️⃣ LOGGING
+
+Add audit logs:
+
+SETTLEMENT_RECORDED
+RECONCILIATION_RUN
+MISMATCH_DETECTED
+
+---
+
+12️⃣ OUTPUT
+
+Generate:
+
+- production-ready TypeScript code
+- clean services
+- reusable functions
+- clear comments for each module
+
+---
+
+IMPORTANT:
+
+- DO NOT modify walletService logic
+- DO NOT modify payout execution flow
+- ONLY extend system with settlement + reconciliation layer

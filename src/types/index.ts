@@ -562,3 +562,112 @@ export interface FxMarketplaceStats {
   }[];
   recentAuditLogs: FxAuditLog[];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETTLEMENT & RECONCILIATION ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Canonical audit event names for the Settlement + Reconciliation Engine.
+ * Use these constants instead of raw strings to ensure consistency across
+ * services and workers.
+ */
+export const AUDIT_EVENTS = {
+  SETTLEMENT_RECORDED: 'SETTLEMENT_RECORDED',
+  RECONCILIATION_RUN: 'RECONCILIATION_RUN',
+  MISMATCH_DETECTED: 'MISMATCH_DETECTED',
+} as const;
+
+export type AuditEventName = (typeof AUDIT_EVENTS)[keyof typeof AUDIT_EVENTS];
+
+/**
+ * SettlementRecord — Firestore document in partner_settlements/{provider_currency}.
+ *
+ * Tracks the running net balance between Habeshare and each payout partner.
+ * netBalance = inflow − outflow
+ *   positive → partner owes Habeshare
+ *   negative → Habeshare owes partner
+ */
+export interface SettlementRecord {
+  settlementId: string;
+  provider: string;
+  currency: string;
+  inflow: number;
+  outflow: number;
+  netBalance: number;
+  updatedAt: string;
+}
+
+/**
+ * ReconciliationDiscrepancy — a single mismatch found during reconciliation.
+ *
+ * issue codes:
+ *   AMOUNT_MISMATCH      — internal amount ≠ provider amount (beyond tolerance)
+ *   MISSING_TRANSACTION  — transaction present internally but absent in provider data
+ *   DUPLICATE_TRANSACTION — same providerRef appears more than once
+ *   STATUS_MISMATCH      — internal status ≠ provider status
+ */
+export interface ReconciliationDiscrepancy {
+  txId: string;
+  issue: 'AMOUNT_MISMATCH' | 'MISSING_TRANSACTION' | 'DUPLICATE_TRANSACTION' | 'STATUS_MISMATCH';
+  internalAmount?: number;
+  providerAmount?: number;
+  internalStatus?: string;
+  providerStatus?: string;
+  notes?: string;
+}
+
+/**
+ * ReconciliationReport — Firestore document in reconciliation_reports/{reportId}.
+ *
+ * Produced once per day per provider by the reconciliation worker after
+ * running the full reconciliation pass and generating the settlement summary.
+ *
+ * Matches the spec shape for GET /api/admin/reconciliation.
+ */
+export interface ReconciliationReport {
+  reportId: string;
+  date: string;
+  provider: string;
+  totalTransactions: number;
+  matched: number;
+  mismatched: number;
+  discrepancies: ReconciliationDiscrepancy[];
+  totalInflow: number;
+  totalOutflow: number;
+  netSettlement: number;
+  currency: string;
+  createdAt: string;
+}
+
+/**
+ * SettlementError — thrown by partnerSettlementService and webhookService.
+ *
+ * Always caught at the worker/handler boundary; the system continues
+ * processing even when individual settlement operations fail.
+ */
+export class SettlementError extends Error {
+  public readonly code: string;
+
+  constructor(message: string, code = 'SETTLEMENT_ERROR') {
+    super(message);
+    this.name = 'SettlementError';
+    this.code = code;
+    Object.setPrototypeOf(this, SettlementError.prototype);
+  }
+}
+
+/**
+ * ReconciliationError — thrown by webhookService.detectMismatch and
+ * any reconciliation pass that encounters an unrecoverable data issue.
+ */
+export class ReconciliationError extends Error {
+  public readonly code: string;
+
+  constructor(message: string, code = 'RECONCILIATION_ERROR') {
+    super(message);
+    this.name = 'ReconciliationError';
+    this.code = code;
+    Object.setPrototypeOf(this, ReconciliationError.prototype);
+  }
+}

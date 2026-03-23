@@ -13,6 +13,8 @@ import type {
   AdminDisputeFilters,
   FxMarketplaceStats,
   TransferStats,
+  SettlementRecord,
+  ReconciliationReport,
 } from '../types';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.habeshare.com';
@@ -207,5 +209,37 @@ export const adminService = {
   async suppressTreasuryAlert(alertId: string, suppressedBy: string): Promise<void> {
     const { treasuryAlertsService } = await import('./treasury/treasuryAlertsService');
     return treasuryAlertsService.suppressAlert(alertId, suppressedBy);
+  },
+
+  // ─── Settlement + Reconciliation Engine ──────────────────────────────────
+
+  /**
+   * getPartnerSettlements — equivalent to GET /api/admin/settlements.
+   *
+   * Returns the current net balance for every payout provider.
+   * Data lives in partner_settlements Firestore collection.
+   */
+  async getPartnerSettlements(): Promise<SettlementRecord[]> {
+    const { partnerSettlementService } = await import('./partnerSettlementService');
+    return partnerSettlementService.listAllPartnerBalances();
+  },
+
+  /**
+   * getPartnerBalance — returns balance records for a single provider.
+   */
+  async getPartnerBalance(provider: string): Promise<SettlementRecord[]> {
+    const { partnerSettlementService } = await import('./partnerSettlementService');
+    return partnerSettlementService.getPartnerBalance(provider);
+  },
+
+  /**
+   * getReconciliationReports — equivalent to GET /api/admin/reconciliation.
+   *
+   * Returns daily reconciliation reports (newest first).
+   * Data lives in reconciliation_reports Firestore collection.
+   */
+  async getReconciliationReports(limitCount = 30): Promise<ReconciliationReport[]> {
+    const { partnerSettlementService } = await import('./partnerSettlementService');
+    return partnerSettlementService.listReconciliationReports(limitCount);
   },
 };

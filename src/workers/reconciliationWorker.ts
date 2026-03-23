@@ -15,6 +15,8 @@
 
 import { reconciliationService } from '../services/reconciliation/reconciliationService';
 import { reconciliationAlertService } from '../services/reconciliation/reconciliationAlertService';
+import { partnerSettlementService } from '../services/partnerSettlementService';
+import { AUDIT_EVENTS } from '../types';
 import type { ReconciliationProvider } from '../services/reconciliation/reconciliationTypes';
 
 // ─────────────────────────────────────────────
@@ -66,17 +68,44 @@ export async function runDailyReconciliation(): Promise<void> {
         `mismatched:${summary.totalMismatched} alerts:${summary.totalAlertsCreated}`,
     );
 
-    auditLog('reconciliation_daily_completed', {
+    auditLog(AUDIT_EVENTS.RECONCILIATION_RUN, {
       runId: summary.runId,
+      mode: 'daily',
       totalChecked: summary.totalChecked,
       totalMatched: summary.totalMatched,
       totalMismatched: summary.totalMismatched,
       openAlerts: summary.openAlerts,
       criticalAlerts: summary.criticalAlerts,
     });
+
+    // ── Generate daily settlement summaries for each provider ──────
+    const today = new Date().toISOString().slice(0, 10);
+    const providers: Array<Exclude<ReconciliationProvider, 'all'>> = [
+      'CHAPA',
+      'TELEBIRR',
+      'BANK',
+    ];
+    for (const provider of providers) {
+      try {
+        await partnerSettlementService.generateSettlementSummary(
+          today,
+          provider,
+          summary.totalChecked,
+          summary.totalMatched,
+          summary.totalMismatched,
+          [],
+        );
+      } catch (err: any) {
+        // Non-fatal per provider — log and continue
+        console.warn(
+          `[ReconciliationWorker] Settlement summary failed for ${provider}:`,
+          err.message,
+        );
+      }
+    }
   } catch (err: any) {
     console.error('[ReconciliationWorker] Daily reconciliation FAILED:', err.message);
-    auditLog('reconciliation_daily_failed', { error: err.message });
+    auditLog('RECONCILIATION_DAILY_FAILED', { error: err.message });
     // Worker fails safely — does NOT throw, preventing cascade failure
   }
 }
@@ -137,8 +166,9 @@ export async function runStaleReservationCheck(): Promise<void> {
     console.log(
       `[ReconciliationWorker] Stale reservation check done — run:${summary.runId} | alerts:${summary.totalAlertsCreated}`,
     );
-    auditLog('stale_reservation_check_completed', {
+    auditLog(AUDIT_EVENTS.RECONCILIATION_RUN, {
       runId: summary.runId,
+      mode: 'stale_reservation_check',
       totalAlertsCreated: summary.totalAlertsCreated,
     });
   } catch (err: any) {
@@ -201,8 +231,9 @@ export async function triggerManualReconciliation(
     createdBy: adminUid,
   });
 
-  auditLog('reconciliation_manual_triggered', {
+  auditLog(AUDIT_EVENTS.RECONCILIATION_RUN, {
     runId: summary.runId,
+    mode: 'manual',
     adminUid,
     provider,
   });
