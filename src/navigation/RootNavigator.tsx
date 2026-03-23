@@ -50,6 +50,8 @@ import AdminLiquidityPoolsScreen from '../screens/admin/AdminLiquidityPoolsScree
 import AdminTreasuryReservationsScreen from '../screens/admin/AdminTreasuryReservationsScreen';
 import AdminSettlementObligationsScreen from '../screens/admin/AdminSettlementObligationsScreen';
 import AdminTreasuryAlertsScreen from '../screens/admin/AdminTreasuryAlertsScreen';
+import AdminSettlementsScreen from '../screens/admin/AdminSettlementsScreen';
+import AdminReconciliationScreen from '../screens/admin/AdminReconciliationScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -173,6 +175,8 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminTreasuryReservations" component={AdminTreasuryReservationsScreen} options={{ title: 'Reservations' }} />
           <Stack.Screen name="AdminSettlementObligations" component={AdminSettlementObligationsScreen} options={{ title: 'Settlement Obligations' }} />
           <Stack.Screen name="AdminTreasuryAlerts" component={AdminTreasuryAlertsScreen} options={{ title: 'Treasury Alerts' }} />
+          <Stack.Screen name="AdminSettlements" component={AdminSettlementsScreen} options={{ title: 'Partner Settlements' }} />
+          <Stack.Screen name="AdminReconciliation" component={AdminReconciliationScreen} options={{ title: 'Reconciliation Reports' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

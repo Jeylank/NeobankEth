@@ -24,7 +24,7 @@ The application is built with Expo SDK 50, React Native 0.73, React Navigation 6
 - **Notifications System:** In-app notifications with type-based filtering, read/unread states, and unread counts, connected to Firestore.
 - **Security:** Session management (auto-logout), biometric confirmation for sensitive actions, input sanitization, amount validation, account masking, and security settings.
 - **Payout Connectors:** Integration with Chapa, Telebirr, and various Ethiopian banks (Dashen, Awash, CBE, Abyssinia) for initiating and tracking payouts, including retry mechanisms.
-- **Admin Operations Console:** A suite of admin screens for monitoring payouts, fraud alerts, support tickets, disputes, and liquidity, with role-based access control.
+- **Admin Operations Console:** A suite of admin screens for monitoring payouts, fraud alerts, support tickets, disputes, liquidity, partner settlements (net balance by provider), and reconciliation reports (daily mismatch tracking), with role-based access control.
 - **FX Marketplace:** Compares and selects best FX rates from various banks for remittances, including quote expiration, liquidity reservation, and audit logging.
 - **Reconciliation Engine:** A ledger-matching system comparing internal records with external provider settlement reports to detect discrepancies and generate alerts.
 - **Treasury Engine:** Manages liquidity and settlement with defined liquidity pools, reservations, settlement obligations, and alerts for critical thresholds (e.g., low liquidity, overdue settlements).

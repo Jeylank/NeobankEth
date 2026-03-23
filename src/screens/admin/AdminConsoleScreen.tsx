@@ -78,6 +78,20 @@ const MENU_ITEMS = [
     bg: '#F5F3FF',
   },
   {
+    key: 'partnerSettlements',
+    screen: 'AdminSettlements',
+    icon: 'swap-horizontal-outline' as const,
+    color: '#059669',
+    bg: '#ECFDF5',
+  },
+  {
+    key: 'reconciliationReports',
+    screen: 'AdminReconciliation',
+    icon: 'bar-chart-outline' as const,
+    color: '#DC2626',
+    bg: '#FEF2F2',
+  },
+  {
     key: 'treasury',
     screen: 'AdminTreasuryOverview',
     icon: 'shield-half-outline' as const,
