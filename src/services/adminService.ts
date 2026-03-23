@@ -272,21 +272,86 @@ export const adminService = {
 
   async processSettlementBatch(batchId: string): Promise<void> {
     const { settlementBatchService } = await import('./settlement/settlementBatchService');
-    return settlementBatchService.processBatch(batchId, 'admin');
+    await settlementBatchService.processBatch(batchId, 'admin');
+    const { settlementAuditService } = await import('./settlement/settlementAuditService');
+    await settlementAuditService.log({ action: 'process_batch', targetId: batchId, targetType: 'batch', performedBy: 'admin' });
   },
 
   async settleSettlementBatch(batchId: string): Promise<void> {
     const { settlementBatchService } = await import('./settlement/settlementBatchService');
-    return settlementBatchService.settleBatch(batchId, 'admin');
+    await settlementBatchService.settleBatch(batchId, 'admin');
+    const { settlementAuditService } = await import('./settlement/settlementAuditService');
+    await settlementAuditService.log({ action: 'settle_batch', targetId: batchId, targetType: 'batch', performedBy: 'admin' });
   },
 
   async failSettlementBatch(batchId: string): Promise<void> {
     const { settlementBatchService } = await import('./settlement/settlementBatchService');
-    return settlementBatchService.failBatch(batchId, 'Manually failed by admin', 'admin');
+    await settlementBatchService.failBatch(batchId, 'Manually failed by admin', 'admin');
+    const { settlementAuditService } = await import('./settlement/settlementAuditService');
+    await settlementAuditService.log({ action: 'fail_batch', targetId: batchId, targetType: 'batch', performedBy: 'admin', metadata: { reason: 'Manually failed by admin' } });
   },
 
   async resolveSettlementAlert(alertId: string): Promise<void> {
     const { settlementAlertsService } = await import('./settlement/settlementAlertsService');
-    return settlementAlertsService.resolveAlert(alertId, 'admin');
+    await settlementAlertsService.resolveAlert(alertId, 'admin');
+    const { settlementAuditService } = await import('./settlement/settlementAuditService');
+    await settlementAuditService.log({ action: 'resolve_alert', targetId: alertId, targetType: 'alert', performedBy: 'admin' });
+  },
+
+  // ─── Settlement Scheduler ────────────────────────────────────────────────
+
+  async runSettlementScheduler(triggeredBy: 'admin' | 'auto' = 'admin') {
+    const { settlementSchedulerService } = await import('./settlement/settlementSchedulerService');
+    const result = await settlementSchedulerService.runFullSchedule(triggeredBy);
+    const { settlementAuditService } = await import('./settlement/settlementAuditService');
+    await settlementAuditService.log({
+      action: 'run_scheduler',
+      targetId: result.runId,
+      targetType: 'scheduler',
+      performedBy: triggeredBy,
+      metadata: {
+        durationMs: result.durationMs,
+        batchesCreated: result.batchingResult.filter((b) => b.batchId !== null).length,
+        overdueDetected: result.overdueResult.detected,
+        errors: result.errors.length,
+      },
+    });
+    return result;
+  },
+
+  async getSchedulerStatus() {
+    const { settlementSchedulerService } = await import('./settlement/settlementSchedulerService');
+    return settlementSchedulerService.getSchedulerStatus();
+  },
+
+  async shouldAutoRunScheduler() {
+    const { settlementSchedulerService } = await import('./settlement/settlementSchedulerService');
+    return settlementSchedulerService.shouldAutoRun();
+  },
+
+  /** getSettlementDashboardSummary — aggregate stats specifically for the overview widgets */
+  async getSettlementDashboardSummary() {
+    const { settlementService } = await import('./settlement/settlementService');
+    const { settlementAlertsService } = await import('./settlement/settlementAlertsService');
+    const { settlementReconciliationService } = await import('./settlement/settlementReconciliationService');
+
+    const [overview, alerts, reports] = await Promise.all([
+      settlementService.getOverview(),
+      settlementAlertsService.listAlerts({ status: 'OPEN' }, 100),
+      settlementReconciliationService.listReports(undefined, 20),
+    ]);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const todayReports = reports.filter((r) => r.date === today || r.createdAt.startsWith(today));
+    const matchedToday   = todayReports.filter((r) => r.status === 'MATCHED').length;
+    const mismatchedToday = todayReports.filter((r) => r.status === 'MISMATCH').length;
+
+    return {
+      ...overview,
+      unresolvedAlerts: alerts.length,
+      matchedToday,
+      mismatchedToday,
+      totalReconToday: todayReports.length,
+    };
   },
 };
