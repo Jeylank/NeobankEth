@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import AdminGuard from '../../components/AdminGuard';
 import { adminService } from '../../services/adminService';
-import type { AdminOverview } from '../../types';
+import type { AdminOverview, TransferStats } from '../../types';
 
 const COLORS = {
   primary: '#006633',
@@ -179,6 +179,12 @@ function AdminOverviewContent() {
     queryFn: () => adminService.getAdminOverview(),
   });
 
+  const { data: transferStats } = useQuery<TransferStats>({
+    queryKey: ['admin-transfer-stats'],
+    queryFn: () => adminService.getTransferStats(),
+    retry: 1,
+  });
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
@@ -339,6 +345,45 @@ function AdminOverviewContent() {
           </View>
         )}
 
+        {transferStats && (
+          <View style={styles.chartCard}>
+            <Text style={styles.chartTitle}>{t('adminStats.transferStats', 'Transfer Statistics')}</Text>
+
+            <View style={styles.statRow}>
+              <View style={styles.statItem}>
+                <Ionicons name="time-outline" size={18} color={COLORS.blue} />
+                <Text style={styles.statValue}>{transferStats.avgDeliveryTimeMinutes} min</Text>
+                <Text style={styles.statLabel}>{t('adminStats.avgDeliveryTime', 'Avg Delivery')}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="lock-closed-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.statValue}>{Math.round((transferStats.fxLockUsage?.usageRate ?? 0) * 100)}%</Text>
+                <Text style={styles.statLabel}>{t('adminStats.fxLockUsage', 'FX Lock Rate')}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="phone-portrait-outline" size={18} color={COLORS.amber} />
+                <Text style={styles.statValue} numberOfLines={1}>{transferStats.topPayoutMethod?.method ?? '—'}</Text>
+                <Text style={styles.statLabel}>{t('adminStats.topPayoutMethod', 'Top Method')}</Text>
+              </View>
+            </View>
+
+            {(transferStats.successRateByProvider ?? []).length > 0 && (
+              <>
+                <Text style={[styles.chartTitle, { marginTop: 14, fontSize: 13 }]}>
+                  {t('adminStats.successRate', 'Success Rate by Provider')}
+                </Text>
+                <HorizontalBarChart
+                  data={(transferStats.successRateByProvider ?? []).map((p) => ({
+                    label: `${p.provider} (${p.totalTransfers})`,
+                    value: Math.round(p.successRate * 100),
+                  }))}
+                  colors={[COLORS.green, COLORS.primary, COLORS.blue, COLORS.amber]}
+                />
+              </>
+            )}
+          </View>
+        )}
+
         <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
@@ -452,5 +497,31 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 32,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    gap: 8,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  statLabel: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
 });

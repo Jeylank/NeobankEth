@@ -1,0 +1,300 @@
+You are improving a fintech remittance platform called Habeshare.
+
+Stack:
+
+- React Native (Expo) frontend
+- Node.js + Express backend
+- TypeScript
+- Firebase Auth
+- Firestore
+- Existing modules:
+  - remittance flow
+  - wallet service
+  - FX marketplace
+  - treasury service
+  - admin console
+
+DO NOT break existing payout or wallet logic.
+
+---
+
+🎯 GOAL:
+Upgrade Habeshare to a world-class remittance UX by implementing:
+
+1. Delivery Time Estimator
+2. Live Transfer Tracking
+3. Rate Lock System
+4. Smart Recipient List
+5. Transfer Fee Simulator
+
+---
+
+=====================================
+1️⃣ DELIVERY TIME ESTIMATOR
+
+BACKEND:
+
+Create:
+
+src/services/deliveryEstimator.ts
+
+Function:
+
+estimateDeliveryTime(provider, payoutMethod)
+
+Return:
+
+{
+minMinutes: number,
+maxMinutes: number,
+label: "Instant" | "Fast" | "Standard"
+}
+
+Rules:
+
+Telebirr → Instant (0–2 min)
+Bank → 2–10 min
+Cash → 5–30 min
+
+---
+
+FRONTEND:
+
+Create:
+
+src/components/DeliveryTimeBadge.tsx
+
+Display:
+
+- Instant → green
+- Fast → blue
+- Standard → orange
+
+Integrate into:
+RemittanceScreen (next to payout method)
+
+---
+
+=====================================
+2️⃣ LIVE TRANSFER TRACKING
+
+BACKEND:
+
+Create Firestore collection:
+
+transfer_status_updates
+
+Document:
+
+{
+txId,
+status: "INITIATED" | "FX_DONE" | "PROCESSING" | "SENT" | "DELIVERED",
+timestamp
+}
+
+Update status during payout lifecycle.
+
+---
+
+FRONTEND:
+
+Create:
+
+src/screens/TransferTrackingScreen.tsx
+
+Features:
+
+- timeline UI (5 steps)
+- Firestore real-time listener (onSnapshot)
+- show current step highlighted
+
+Steps:
+
+Initiated
+FX Conversion
+Processing
+Sent to Provider
+Delivered
+
+---
+
+=====================================
+3️⃣ RATE LOCK SYSTEM
+
+BACKEND:
+
+Create:
+
+src/services/rateLockService.ts
+
+Functions:
+
+lockRate(quoteId)
+validateRateLock(lockId)
+releaseRateLock(lockId)
+
+Rules:
+
+- lock FX rate for 60 seconds
+- store in Firestore:
+
+rate_locks
+
+{
+lockId,
+rate,
+expiresAt,
+status: "active" | "expired" | "used"
+}
+
+---
+
+FRONTEND:
+
+Create:
+
+src/components/RateLockTimer.tsx
+
+Features:
+
+- countdown timer (60s)
+- progress bar
+- "Rate locked" / "Expired" states
+
+Integrate into:
+
+RemittanceScreen after FX selection
+
+---
+
+=====================================
+4️⃣ SMART RECIPIENT LIST
+
+BACKEND:
+
+Create:
+
+src/services/recipientService.ts
+
+Firestore:
+
+users/{uid}/recipients
+
+Structure:
+
+{
+id,
+name,
+bank,
+accountNumber,
+lastUsedAt
+}
+
+---
+
+FRONTEND:
+
+Create:
+
+src/screens/RecipientsScreen.tsx
+
+Features:
+
+- list recipients
+- search
+- add/edit/delete
+- masked account numbers
+- select recipient
+
+Add button in RemittanceScreen:
+
+"Saved Recipients"
+
+---
+
+=====================================
+5️⃣ TRANSFER FEE SIMULATOR
+
+FRONTEND:
+
+Create:
+
+src/components/FeeBreakdownCard.tsx
+
+Display:
+
+- You send
+- FX rate
+- Platform fee
+- Processing fee
+- Total
+- Receiver gets
+
+Add disclaimer:
+
+"Rates and fees may vary"
+
+Integrate into RemittanceScreen.
+
+---
+
+=====================================
+6️⃣ ADMIN MONITORING
+
+BACKEND:
+
+Create endpoint:
+
+GET /api/admin/transfer-stats
+
+Return:
+
+{
+totalTransfers,
+avgDeliveryTime,
+successRate,
+failedTransfers
+}
+
+---
+
+=====================================
+7️⃣ I18N SUPPORT
+
+Add keys:
+
+delivery.instant
+delivery.fast
+delivery.standard
+
+tracking.initiated
+tracking.processing
+tracking.completed
+
+recipient.saved
+
+fee.breakdown
+
+Support:
+
+English
+Amharic
+Oromifa
+Tigrinya
+
+---
+
+=====================================
+8️⃣ QUALITY REQUIREMENTS
+
+- Strict TypeScript
+- Use existing Firebase patterns
+- Reusable components
+- Clean separation (services vs UI)
+- No breaking changes
+
+---
+
+OUTPUT:
+
+Production-ready code with comments explaining logic.

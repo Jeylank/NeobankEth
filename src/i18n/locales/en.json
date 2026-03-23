@@ -882,7 +882,9 @@
     "bestFxRates": "Best FX Rates"
   },
   "delivery": {
-    "instant": "Instant (under 1 minute)",
+    "instant": "Instant",
+    "fast": "Fast",
+    "standard": "Standard",
     "minutes": "{{count}} minutes",
     "bankTransfer": "5-10 minutes",
     "mobileWallet": "Instant",
@@ -895,6 +897,7 @@
     "processing": "Payout Processing",
     "sentToProvider": "Sent to Provider",
     "delivered": "Money Delivered",
+    "completed": "Transfer Completed",
     "liveTracking": "Live Transfer Tracking",
     "transferTimeline": "Transfer Timeline",
     "statusUpdate": "Status Update",

@@ -882,7 +882,9 @@
     "bestFxRates": "Gatii Jijjiirraa Irra Caalaa"
   },
   "delivery": {
-    "instant": "Battalumatti (daqiiqaa 1 gadi)",
+    "instant": "Battalumatti",
+    "fast": "Saffisaa",
+    "standard": "Idilee",
     "minutes": "daqiiqaa {{count}}",
     "bankTransfer": "daqiiqaa 5-10",
     "mobileWallet": "Battalumatti",
@@ -895,6 +897,7 @@
     "processing": "Kaffaltiin Adeemsifamaa Jira",
     "sentToProvider": "Gara Tajaajila Kennituutti Ergame",
     "delivered": "Maallaqni Ga'eera",
+    "completed": "Dabarsi Xumurameera",
     "liveTracking": "Hordoffii Dabarsa Kallattii",
     "transferTimeline": "Sarara Yeroo Dabarsaa",
     "statusUpdate": "Haala Haaromsa",

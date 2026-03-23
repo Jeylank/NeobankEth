@@ -368,7 +368,7 @@ export default function RemittanceScreen() {
         <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
           {(() => {
             const estimate = estimateDeliveryTime('default', payoutMethod === 'bank_account' ? 'bank_transfer' : payoutMethod === 'mobile_wallet' ? 'mobile_wallet' : 'cash_pickup');
-            return <DeliveryTimeBadge label={estimate.label} minutes={estimate.minutes} icon={estimate.icon} />;
+            return <DeliveryTimeBadge estimate={estimate} />;
           })()}
         </View>
       )}

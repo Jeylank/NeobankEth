@@ -882,7 +882,9 @@
     "bestFxRates": "ምርጥ የምንዛሪ ተመኖች"
   },
   "delivery": {
-    "instant": "ወዲያውኑ (ከ1 ደቂቃ በታች)",
+    "instant": "ወዲያውኑ",
+    "fast": "ፈጣን",
+    "standard": "መደበኛ",
     "minutes": "{{count}} ደቂቃዎች",
     "bankTransfer": "5-10 ደቂቃዎች",
     "mobileWallet": "ወዲያውኑ",
@@ -895,6 +897,7 @@
     "processing": "ክፍያ በሂደት ላይ",
     "sentToProvider": "ወደ አገልግሎት ሰጪ ተልኳል",
     "delivered": "ገንዘብ ደርሷል",
+    "completed": "ዝውውር ተጠናቋል",
     "liveTracking": "የቀጥታ ዝውውር ክትትል",
     "transferTimeline": "የዝውውር ጊዜ ሰሌዳ",
     "statusUpdate": "ሁኔታ ዝመና",

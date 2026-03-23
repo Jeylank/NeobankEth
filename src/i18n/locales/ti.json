@@ -882,7 +882,9 @@
     "bestFxRates": "ዝበለጸ ናይ ምንዛሪ ዋጋታት"
   },
   "delivery": {
-    "instant": "ብቕጽበት (ትሕቲ 1 ደቒቕ)",
+    "instant": "ብቕጽበት",
+    "fast": "ቅልጡፍ",
+    "standard": "ሓፈሻዊ",
     "minutes": "{{count}} ደቓይቕ",
     "bankTransfer": "5-10 ደቓይቕ",
     "mobileWallet": "ብቕጽበት",
@@ -895,6 +897,7 @@
     "processing": "ክፍሊት ይስራሕ ኣሎ",
     "sentToProvider": "ናብ ኣገልግሎት ወሃቢ ተላኢኹ",
     "delivered": "ገንዘብ በጺሑ",
+    "completed": "ምትሕልላፍ ተዛዚሙ",
     "liveTracking": "ቀጥታ ናይ ምትሕልላፍ ምክትታል",
     "transferTimeline": "ናይ ምትሕልላፍ ግዜ ሰሌዳ",
     "statusUpdate": "ናይ ኩነታት ምሕዳስ",
