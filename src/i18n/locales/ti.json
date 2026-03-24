@@ -65,7 +65,23 @@
       "localLanguages": "ናይ ከባቢ ቋንቋታት",
       "localLanguagesDesc": "ኣማርኛ፣ ኦሮሚፋ፣ ትግርኛ"
     },
-    "bestFxRates": "ዝበለጸ ናይ ምንዛሪ ዋጋታት"
+    "bestFxRates": "ዝበለጸ ናይ ምንዛሪ ዋጋታት",
+    "welcome": "ሰላም ምጻእካ/ኪ, {{name}}",
+    "trustSecure": "ውሑስ ምስክርነት",
+    "trustLicensed": "ፍቓድ ዘለዎም ባንኮ",
+    "trustTracking": "ቅጽበታዊ ክትትል",
+    "sendToEthiopia": "ናብ ኢትዮጵያ ስደድ",
+    "heroBtnSub": "ቅልጡፍ፡ ውሑስ ምስክርነት",
+    "receiverGets": "ቅልጡፍ ናይ ምንዛሪ ስሌት",
+    "receiverGetsLabel": "ተቐባሊ ይቕበል",
+    "allRates": "ኩሎም ዋጋታት",
+    "bestRate": "ዝበለጸ ዋጋ",
+    "recentTransfers": "ቀረባ ዝሓለፉ ምስክርነታት",
+    "delivered": "ተረኺቡ",
+    "yourFamily": "ስድራቤተይ",
+    "manageFamily": "ኣመሓድር",
+    "monthlySupport": "ወርሓዊ",
+    "quickSend": "ስደድ"
   },
   "transactions": {
     "title": "ግብይቲታት",

@@ -65,7 +65,23 @@
       "localLanguages": "Afaanota Naannoo",
       "localLanguagesDesc": "Amaariffaa, Oromiffaa, Tigrinya"
     },
-    "bestFxRates": "Gatii Jijjiirraa Irra Caalaa"
+    "bestFxRates": "Gatii Jijjiirraa Irra Caalaa",
+    "welcome": "Baga Nagaan Dhuftan, {{name}}",
+    "trustSecure": "Ergaa Nagaa",
+    "trustLicensed": "Banki Hayyama Qabu",
+    "trustTracking": "Hordoffii Yeroo Dhaa",
+    "sendToEthiopia": "Maallaqa Itoophiyaatti Ergi",
+    "heroBtnSub": "Dafaa, nagaa fi ifa ta'e",
+    "receiverGets": "Lakkoofsa Jijjiirraa",
+    "receiverGetsLabel": "Fudhataani Fudhata",
+    "allRates": "Gatii Hunda",
+    "bestRate": "Gatii Irra Caalaa",
+    "recentTransfers": "Ergaawwan Dhiyoo",
+    "delivered": "Ga'eera",
+    "yourFamily": "Maatii Koo",
+    "manageFamily": "Bulchi",
+    "monthlySupport": "Ji'a Ji'aan",
+    "quickSend": "Ergi"
   },
   "transactions": {
     "title": "Daldalawwan",

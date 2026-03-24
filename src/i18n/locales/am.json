@@ -65,7 +65,23 @@
       "localLanguages": "የአካባቢ ቋንቋዎች",
       "localLanguagesDesc": "አማርኛ፣ ኦሮሚፋ፣ ትግርኛ"
     },
-    "bestFxRates": "ምርጥ የምንዛሪ ተመኖች"
+    "bestFxRates": "ምርጥ የምንዛሪ ተመኖች",
+    "welcome": "እንኳን ደህና መጡ፣ {{name}}",
+    "trustSecure": "ደህንነቱ የተጠበቀ ዝውውር",
+    "trustLicensed": "ፈቃድ ያላቸው ባንኮች",
+    "trustTracking": "በቅጽበት ክትትል",
+    "sendToEthiopia": "ወደ ኢትዮጵያ ላክ",
+    "heroBtnSub": "ፈጣን፣ ደህንነቱ የተጠበቀ ዝውውር",
+    "receiverGets": "ፈጣን የምንዛሪ ስሌት",
+    "receiverGetsLabel": "ተቀባዩ ይቀበላል",
+    "allRates": "ሁሉም ተመኖች",
+    "bestRate": "ምርጥ ተመን",
+    "recentTransfers": "የቅርብ ዝውውሮች",
+    "delivered": "ደርሷል",
+    "yourFamily": "ቤተሰቦቼ",
+    "manageFamily": "አስተዳድር",
+    "monthlySupport": "ወርሃዊ",
+    "quickSend": "ላክ"
   },
   "transactions": {
     "title": "ግብይቶች",

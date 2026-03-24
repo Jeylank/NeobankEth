@@ -65,7 +65,23 @@
       "localLanguages": "Local Languages",
       "localLanguagesDesc": "Amharic, Oromifa, Tigrinya"
     },
-    "bestFxRates": "Best FX Rates"
+    "bestFxRates": "Best FX Rates",
+    "welcome": "Welcome, {{name}}",
+    "trustSecure": "Secure Transfers",
+    "trustLicensed": "Licensed Partners",
+    "trustTracking": "Real-time Tracking",
+    "sendToEthiopia": "Send Money to Ethiopia",
+    "heroBtnSub": "Fast, secure & transparent",
+    "receiverGets": "Quick FX Calculator",
+    "receiverGetsLabel": "Recipient Receives",
+    "allRates": "All Rates",
+    "bestRate": "Best Rate",
+    "recentTransfers": "Recent Transfers",
+    "delivered": "Delivered",
+    "yourFamily": "Your Family",
+    "manageFamily": "Manage",
+    "monthlySupport": "Monthly",
+    "quickSend": "Send"
   },
   "transactions": {
     "title": "Transactions",
