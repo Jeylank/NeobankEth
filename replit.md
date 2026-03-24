@@ -45,6 +45,35 @@ The application is built with Expo SDK 50, React Native 0.73, React Navigation 6
 - Clear presentation of financial data, including donut charts for allocation tracking and progress visualization for campaigns.
 - Color-coded badges for delivery time estimates.
 
+## Admin Operations API (Express Server)
+
+A standalone Node.js/Express/TypeScript server at `server/`. Run with `npm run server:admin` (default port 4000).
+
+**Authorization:** Every route requires a valid Firebase ID token (`Authorization: Bearer <token>`). The `verifyAdmin` middleware checks `isAdmin: true` custom claim OR `role: "admin"` in the Firestore `users` document.
+
+**Endpoints:**
+- `GET  /api/admin/payouts` — list payout transactions; filters: `?status=`, `?provider=`, `?dateFrom=`, `?dateTo=`
+- `GET  /api/admin/fraud-alerts` — list fraud alerts; filter: `?status=`
+- `POST /api/admin/fraud-action` — `{ txId, action: APPROVE|BLOCK|FREEZE }` → writes `transaction_flags`, audit log
+- `GET  /api/admin/support-tickets` — list support tickets; filter: `?status=`, `?userId=`
+- `POST /api/admin/support-action` — `{ ticketId, action: IN_REVIEW|RESOLVED|CLOSED }`
+- `GET  /api/admin/disputes` — list disputes; filter: `?status=`, `?userId=`
+- `POST /api/admin/dispute-action` — `{ disputeId, action: INVESTIGATE|REFUND|REJECT|RESOLVE }`
+- `GET  /api/admin/liquidity` — per-bank positions from `treasury_liquidity`; filter: `?currency=`, `?bank=`
+- `GET  /api/admin/reconciliation` — summary `{ totalTransactions, matched, mismatched, pending }`
+- `GET  /api/admin/reconciliation/runs` — list reconciliation runs
+- `GET  /api/admin/reconciliation/run/:runId` — run detail + items
+- `GET  /api/admin/reconciliation/alerts` — open alerts; filter: `?status=`, `?severity=`
+- `POST /api/admin/reconciliation/run` — trigger manual run `{ provider, dateRangeHours }`
+- `POST /api/admin/reconciliation/alert-action` — `{ alertId, action: RESOLVE|IGNORE }`
+- `GET  /health` — public health check
+
+**Audit Logging:** Every POST action writes to `admin_action_logs` with `{ adminId, adminEmail, action, entityId, entityType, payload, ip, timestamp }`.
+
+**New Firestore collections:** `support_tickets`, `disputes`, `admin_action_logs`.
+**Files:** `server/index.ts`, `server/firebaseAdmin.ts`, `server/middleware/auth.ts`, `server/middleware/auditLog.ts`, `server/middleware/validate.ts`, `server/routes/payouts.ts`, `server/routes/fraudAlerts.ts`, `server/routes/supportTickets.ts`, `server/routes/disputes.ts`, `server/routes/liquidity.ts`, `server/routes/reconciliation.ts`.
+**Config:** `FIREBASE_SERVICE_ACCOUNT` env var (JSON string) required in production; `ADMIN_API_PORT` (default: 4000).
+
 ## External Dependencies
 - **Firebase:** Authentication, Firestore (database for user data, family features, wallet, campaigns, admin logs, reconciliation, treasury), Firebase Storage (for KYC documents).
 - **Expo SDK:** Core framework for React Native development.
