@@ -153,10 +153,44 @@ service cloud.firestore {
 
     match /reconciliation_reports/{docId} {
       allow read: if isAdmin();
+      allow create: if isBackend();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /reconciliation_runs/{docId} {
+      allow read: if isAdmin();
       allow write: if isBackend();
     }
 
+    match /reconciliation_items/{docId} {
+      allow read: if isAdmin();
+      allow create: if isBackend();
+      allow update: if false;
+      allow delete: if false;
+    }
+
     match /reconciliation_alerts/{docId} {
+      allow read: if isAdmin();
+      allow write: if isBackend();
+    }
+
+    match /reconciliation_audit_log/{docId} {
+      allow read: if isAdmin();
+      allow create: if isBackend();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // transaction_flags — written by reconciliation engine, never modifies source data
+    match /transaction_flags/{txId} {
+      allow read: if isAdmin();
+      allow create: if isBackend();
+      allow update: if isBackend();
+      allow delete: if false;
+    }
+
+    match /provider_settlement_reports/{docId} {
       allow read: if isAdmin();
       allow write: if isBackend();
     }

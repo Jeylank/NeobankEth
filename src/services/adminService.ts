@@ -331,6 +331,44 @@ export const adminService = {
 
   // ─── System Health & Monitoring ──────────────────────────────────────────
 
+  // ─── GET /api/admin/reconciliation ───────────────────────────────────────
+
+  /**
+   * getReconciliationAdminSummary
+   * Equivalent to GET /api/admin/reconciliation.
+   * Returns { totalTransactions, matched, mismatched, pending } from
+   * the reconciliation_reports collection (written by runDailyReconciliation).
+   */
+  async getReconciliationAdminSummary() {
+    const { reconciliationService } = await import('./reconciliationService');
+    return reconciliationService.getAdminReconciliationSummary();
+  },
+
+  /**
+   * getReconciliationReportsByRun — detailed per-transaction report for a run.
+   */
+  async getReconciliationReportsByRun(runId: string) {
+    const { reconciliationService } = await import('./reconciliationService');
+    return reconciliationService.getReportsByRun(runId);
+  },
+
+  /**
+   * getMismatchedReconciliationReports — all MISMATCH records across all runs.
+   */
+  async getMismatchedReconciliationReports() {
+    const { reconciliationService } = await import('./reconciliationService');
+    return reconciliationService.getMismatchedReports();
+  },
+
+  /**
+   * triggerDailyReconciliation — manually trigger the reconciliation job
+   * from the admin console (as opposed to the scheduled cron).
+   */
+  async triggerDailyReconciliation() {
+    const { reconciliationService } = await import('./reconciliationService');
+    return reconciliationService.runDailyReconciliation({ triggeredBy: 'admin' });
+  },
+
   // ─── Recurring Support Scheduler ─────────────────────────────────────────
 
   /** getSchedulerRuns — list recent RECURRING_SUPPORT cron runs */
