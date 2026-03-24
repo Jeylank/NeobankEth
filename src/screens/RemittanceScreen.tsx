@@ -20,6 +20,9 @@ import DeliveryTimeBadge from '../components/DeliveryTimeBadge';
 import { RateLockTimer } from '../components/RateLockTimer';
 import { estimateDeliveryTime } from '../services/deliveryEstimator';
 import { rateLockService } from '../services/rateLockService';
+import TrustBadges from '../components/TrustBadges';
+import AnimatedPressable from '../components/AnimatedPressable';
+import SmartEmptyState from '../components/SmartEmptyState';
 import '../i18n';
 
 const COLORS = {
@@ -93,16 +96,32 @@ export default function RemittanceScreen() {
 
   const sendMutation = useMutation({
     mutationFn: remittanceApi.initiateTransfer,
-    onSuccess: () => {
-      Alert.alert(t('common.success'), t('remittance.transferSuccess'));
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      const recipientObj = beneficiariesData?.beneficiaries?.find((b: any) => b.id === selectedBeneficiary);
+      navigation.replace('TransferSuccess', {
+        recipientName:   selectedRecipientName ?? recipientObj?.name ?? 'Your recipient',
+        sentAmount:      parseFloat(amount),
+        sentCurrency:    fromCurrency,
+        receiveAmount:   parseFloat(convertedAmount),
+        receiveCurrency: toCurrency,
+        deliveryTime:    '1–2 business days',
+        txId:            data?.txId ?? 'tx-' + Date.now(),
+      });
       setAmount('');
       setDescription('');
       setSelectedBeneficiary(null);
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['balance'] });
     },
     onError: (error: any) => {
-      Alert.alert(t('common.error'), error.message || t('remittance.transferFailed') || 'Failed to initiate transfer');
+      Alert.alert(
+        'Something went wrong',
+        error.message || 'Please try again or contact support.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: handleSend },
+        ]
+      );
     },
   });
 
@@ -217,6 +236,16 @@ export default function RemittanceScreen() {
           <Text style={styles.exchangeRate}>
             1 {fromCurrency} = {getExchangeRate().toFixed(4)} {toCurrency}
           </Text>
+          {toCurrency === 'ETB' && (
+            <View style={styles.bestRatePill}>
+              <View style={styles.bestRateDot} />
+              <Text style={styles.bestRateText}>Best available</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.rateTooltip}>
+          <Ionicons name="information-circle-outline" size={14} color={COLORS.gray} />
+          <Text style={styles.rateTooltipText}>Rate includes all fees. No hidden charges.</Text>
         </View>
 
         <View style={styles.amountRow}>
@@ -393,10 +422,13 @@ export default function RemittanceScreen() {
         {loadingBeneficiaries ? (
           <ActivityIndicator color={COLORS.primary} />
         ) : beneficiariesData?.beneficiaries?.length === 0 ? (
-          <View style={styles.emptyBeneficiary}>
-            <Ionicons name="people-outline" size={40} color={COLORS.gray} />
-            <Text style={styles.emptyText}>No beneficiaries added yet</Text>
-          </View>
+          <SmartEmptyState
+            icon="people-outline"
+            title="No recipients added yet"
+            subtitle="Add a recipient to start sending money to Ethiopia"
+            ctaLabel="Add Recipient"
+            onCta={() => navigation.navigate('Recipients')}
+          />
         ) : (
           beneficiariesData?.beneficiaries?.map((beneficiary) => (
             <TouchableOpacity
@@ -436,10 +468,29 @@ export default function RemittanceScreen() {
         />
       </View>
 
-      <TouchableOpacity
+      {/* Trust signals */}
+      <View style={{ marginHorizontal: 16, marginBottom: 12 }}>
+        <TrustBadges variant="row" />
+        <View style={styles.trustMessages}>
+          {[
+            { icon: 'lock-closed', text: 'Guaranteed rate for 60 seconds' },
+            { icon: 'shield-checkmark', text: 'Secure transfer powered by licensed partners' },
+            { icon: 'people', text: 'Trusted by Ethiopian diaspora worldwide' },
+          ].map((item) => (
+            <View key={item.text} style={styles.trustRow}>
+              <Ionicons name={item.icon as any} size={14} color={COLORS.primary} />
+              <Text style={styles.trustRowText}>{item.text}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <AnimatedPressable
         style={[styles.sendButton, sendMutation.isPending && styles.sendButtonDisabled]}
         onPress={handleSend}
         disabled={sendMutation.isPending}
+        hapticStyle="success"
+        scaleDown={0.98}
       >
         {sendMutation.isPending ? (
           <ActivityIndicator color={COLORS.white} />
@@ -449,7 +500,7 @@ export default function RemittanceScreen() {
             <Text style={styles.sendButtonText}>{t('remittance.sendMoney')}</Text>
           </>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       <View style={styles.bottomPadding} />
     </ScrollView>
@@ -578,6 +629,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.gray,
     marginLeft: 8,
+    flex: 1,
+  },
+  bestRatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    gap: 5,
+  },
+  bestRateDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  bestRateText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  rateTooltip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 4,
+    paddingBottom: 6,
+  },
+  rateTooltipText: {
+    fontSize: 12,
+    color: COLORS.gray,
+    fontStyle: 'italic',
   },
   convertedAmount: {
     backgroundColor: COLORS.lightGray,
@@ -662,5 +746,19 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  trustMessages: {
+    marginTop: 10,
+    gap: 6,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  trustRowText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
   },
 });

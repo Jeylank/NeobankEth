@@ -1,17 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import AnimatedPressable from './AnimatedPressable';
 
-const COLORS = {
-  primary: '#006633',
-  gold: '#FFD700',
-  white: '#FFFFFF',
-  gray: '#6B7280',
-  lightGray: '#F3F4F6',
-  text: '#1F2937',
-  green: '#10B981',
-};
+const PRIMARY = '#006633';
+const GOLD    = '#F59E0B';
+const WHITE   = '#FFFFFF';
+const GRAY    = '#6B7280';
+const BG      = '#F3F4F6';
+const TEXT    = '#1F2937';
+const GREEN   = '#10B981';
 
 interface BankOfferCardProps {
   bank: string;
@@ -24,6 +23,8 @@ interface BankOfferCardProps {
   sendCurrency?: string;
   selected?: boolean;
   bestRate?: boolean;
+  mostPopular?: boolean;
+  fastest?: boolean;
   onSelect: () => void;
 }
 
@@ -37,116 +38,170 @@ export default function BankOfferCard({
   sendCurrency = 'EUR',
   selected = false,
   bestRate = false,
+  mostPopular = false,
+  fastest = false,
   onSelect,
 }: BankOfferCardProps) {
   const { t } = useTranslation();
 
+  const borderAnim = useRef(new Animated.Value(selected ? 1 : 0)).current;
+  const glowAnim   = useRef(new Animated.Value(selected ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(borderAnim, { toValue: selected ? 1 : 0, useNativeDriver: false, speed: 20 }),
+      Animated.timing(glowAnim,   { toValue: selected ? 1 : 0, duration: 250, useNativeDriver: false }),
+    ]).start();
+  }, [selected]);
+
+  const borderColor = borderAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [bestRate ? GOLD : '#E5E7EB', PRIMARY],
+  });
+  const bgColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#FFFFFF', '#F0FFF4'],
+  });
+
+  const CURR_SYM: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
+  const sym = CURR_SYM[sendCurrency] ?? '';
+
   return (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        selected && styles.cardSelected,
-        bestRate && styles.cardBest,
-      ]}
-      onPress={onSelect}
-      activeOpacity={0.7}
-    >
-      {bestRate && (
-        <View style={styles.bestBadge}>
-          <Ionicons name="star" size={12} color={COLORS.white} />
-          <Text style={styles.bestBadgeText}>{t('fxMarketplace.bestRate')}</Text>
-        </View>
-      )}
+    <AnimatedPressable onPress={onSelect} hapticStyle="medium">
+      <Animated.View style={[s.card, { borderColor, backgroundColor: bgColor }]}>
 
-      <View style={styles.header}>
-        <View style={styles.bankInfo}>
-          <View style={styles.bankIcon}>
-            <Ionicons name="business" size={20} color={COLORS.primary} />
+        {/* Top badges row */}
+        {(bestRate || mostPopular || fastest) && (
+          <View style={s.badgesRow}>
+            {bestRate && (
+              <View style={[s.badge, s.badgeGold]}>
+                <Ionicons name="star" size={11} color="#92400E" />
+                <Text style={[s.badgeText, { color: '#92400E' }]}>{t('fxMarketplace.bestRate')}</Text>
+              </View>
+            )}
+            {mostPopular && (
+              <View style={[s.badge, s.badgeBlue]}>
+                <Ionicons name="trending-up" size={11} color="#1D4ED8" />
+                <Text style={[s.badgeText, { color: '#1D4ED8' }]}>Most Popular</Text>
+              </View>
+            )}
+            {fastest && (
+              <View style={[s.badge, s.badgeGreen]}>
+                <Ionicons name="flash" size={11} color="#065F46" />
+                <Text style={[s.badgeText, { color: '#065F46' }]}>Fastest</Text>
+              </View>
+            )}
           </View>
-          <Text style={styles.bankName}>{bank}</Text>
-        </View>
-        {selected && (
-          <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
         )}
-      </View>
 
-      <View style={styles.detailsGrid}>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>{t('fxMarketplace.rate')}</Text>
-          <Text style={styles.detailValue}>{rate.toFixed(2)}</Text>
+        {/* Bank header */}
+        <View style={s.header}>
+          <View style={s.bankInfo}>
+            <View style={[s.bankIcon, selected && s.bankIconSelected]}>
+              <Ionicons name="business" size={20} color={selected ? WHITE : PRIMARY} />
+            </View>
+            <View>
+              <Text style={s.bankName}>{bank}</Text>
+              {bestRate && (
+                <Text style={s.bestRateLabel}>Best available rate</Text>
+              )}
+            </View>
+          </View>
+          {selected && (
+            <Animated.View style={{ opacity: borderAnim }}>
+              <View style={s.checkCircle}>
+                <Ionicons name="checkmark" size={16} color={WHITE} />
+              </View>
+            </Animated.View>
+          )}
         </View>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>{t('fxMarketplace.receive')}</Text>
-          <Text style={styles.receiveValue}>
-            {receiveAmount.toLocaleString()} {currency}
-          </Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>{t('fxMarketplace.fee')}</Text>
-          <Text style={styles.detailValue}>
-            {sendCurrency === 'EUR' ? '€' : sendCurrency === 'USD' ? '$' : sendCurrency === 'GBP' ? '£' : ''}{fee.toFixed(2)}
-          </Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>{t('fxMarketplace.delivery')}</Text>
-          <View style={styles.deliveryRow}>
-            <Ionicons name="time-outline" size={14} color={COLORS.green} />
-            <Text style={styles.deliveryValue}>{deliveryTime}</Text>
+
+        {/* Rate highlight for best rate */}
+        {bestRate && (
+          <View style={s.rateHighlight}>
+            <View style={s.greenDot} />
+            <Text style={s.rateHighlightText}>Best available · No hidden charges</Text>
+          </View>
+        )}
+
+        {/* Details grid */}
+        <View style={s.grid}>
+          <View style={s.gridItem}>
+            <Text style={s.gridLabel}>{t('fxMarketplace.rate')}</Text>
+            <Text style={s.gridValue}>{rate.toFixed(2)}</Text>
+          </View>
+          <View style={s.gridItem}>
+            <Text style={s.gridLabel}>{t('fxMarketplace.receive')}</Text>
+            <Text style={[s.gridValue, { color: PRIMARY, fontSize: 16 }]}>
+              {receiveAmount.toLocaleString()} {currency}
+            </Text>
+          </View>
+          <View style={s.gridItem}>
+            <Text style={s.gridLabel}>{t('fxMarketplace.fee')}</Text>
+            <Text style={s.gridValue}>{sym}{fee.toFixed(2)}</Text>
+          </View>
+          <View style={s.gridItem}>
+            <Text style={s.gridLabel}>{t('fxMarketplace.delivery')}</Text>
+            <View style={s.deliveryRow}>
+              <Ionicons name="time-outline" size={13} color={GREEN} />
+              <Text style={[s.gridValue, { color: GREEN }]}>{deliveryTime}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <TouchableOpacity
-        style={[styles.selectButton, selected && styles.selectButtonActive]}
-        onPress={onSelect}
-        activeOpacity={0.8}
-      >
-        <Text style={[styles.selectButtonText, selected && styles.selectButtonTextActive]}>
-          {selected ? t('fxMarketplace.selected') : t('fxMarketplace.select')}
-        </Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
+        {/* Select button */}
+        <AnimatedPressable
+          style={[s.selectBtn, selected && s.selectBtnActive]}
+          onPress={onSelect}
+          hapticStyle={selected ? 'none' : 'medium'}
+          scaleDown={0.98}
+        >
+          <Text style={[s.selectBtnText, selected && s.selectBtnTextActive]}>
+            {selected ? t('fxMarketplace.selected') : t('fxMarketplace.select')}
+          </Text>
+          {selected && <Ionicons name="checkmark" size={16} color={WHITE} />}
+        </AnimatedPressable>
+      </Animated.View>
+    </AnimatedPressable>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    marginBottom: 14,
+    borderWidth: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  cardSelected: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
-    backgroundColor: '#F0FFF4',
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+    flexWrap: 'wrap',
   },
-  cardBest: {
-    borderColor: COLORS.gold,
-    borderWidth: 2,
-  },
-  bestBadge: {
-    position: 'absolute',
-    top: -1,
-    right: 16,
-    backgroundColor: COLORS.gold,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
     gap: 4,
   },
-  bestBadgeText: {
-    color: '#1F2937',
+  badgeGold: {
+    backgroundColor: '#FEF3C7',
+  },
+  badgeBlue: {
+    backgroundColor: '#DBEAFE',
+  },
+  badgeGreen: {
+    backgroundColor: '#D1FAE5',
+  },
+  badgeText: {
     fontSize: 11,
     fontWeight: '700',
   },
@@ -154,7 +209,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   bankInfo: {
     flexDirection: 'row',
@@ -162,67 +217,108 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   bankIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.primary + '15',
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: PRIMARY + '15',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankIconSelected: {
+    backgroundColor: PRIMARY,
   },
   bankName: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
+    color: TEXT,
   },
-  detailsGrid: {
+  bestRateLabel: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  checkCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rateHighlight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  greenDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  rateHighlightText: {
+    fontSize: 12,
+    color: '#065F46',
+    fontWeight: '600',
+  },
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 14,
   },
-  detailItem: {
+  gridItem: {
     width: '50%',
     marginBottom: 10,
   },
-  detailLabel: {
-    fontSize: 12,
-    color: COLORS.gray,
+  gridLabel: {
+    fontSize: 11,
+    color: GRAY,
     marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    fontWeight: '500',
   },
-  detailValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  receiveValue: {
+  gridValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: TEXT,
   },
   deliveryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  deliveryValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  selectButton: {
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 8,
-    paddingVertical: 10,
+  selectBtn: {
+    backgroundColor: BG,
+    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
   },
-  selectButtonActive: {
-    backgroundColor: COLORS.primary,
+  selectBtnActive: {
+    backgroundColor: PRIMARY,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  selectButtonText: {
+  selectBtnText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontWeight: '700',
+    color: TEXT,
   },
-  selectButtonTextActive: {
-    color: COLORS.white,
+  selectBtnTextActive: {
+    color: WHITE,
   },
 });

@@ -1,0 +1,228 @@
+You are upgrading the UI/UX of a fintech mobile app called Habeshare to a world-class standard similar to Wise and Remitly.
+
+Stack:
+
+- React Native (Expo)
+- TypeScript
+- Tailwind styling
+- Firebase backend already integrated
+
+DO NOT break existing features or flows.
+
+Focus on:
+
+- visual polish
+- micro-interactions
+- trust signals
+- smooth animations
+- user confidence
+
+---
+
+1️⃣ ADD MICRO-INTERACTIONS (ANIMATIONS)
+
+Install and use:
+
+- react-native-reanimated
+- react-native-gesture-handler
+
+Enhance these interactions:
+
+A. Button press:
+
+- slight scale down (0.97)
+- spring back animation
+
+B. Screen transitions:
+
+- smooth fade + slide
+
+C. Card selection:
+
+- highlight selected bank with animated border + checkmark
+
+D. Loading states:
+
+- skeleton loaders instead of spinners
+
+---
+
+2️⃣ TRUST SIGNALS (VERY IMPORTANT)
+
+Users must feel money is safe.
+
+Add to RemittanceScreen and confirmation:
+
+- “Guaranteed rate for 60 seconds”
+- “Secure transfer powered by licensed partners”
+- “Trusted by Ethiopian diaspora worldwide”
+
+Add visual badges:
+
+✔ Secure
+✔ Fast
+✔ Transparent
+
+---
+
+3️⃣ LIVE STATUS PROGRESS UI
+
+Upgrade TransferTrackingScreen:
+
+Replace plain list with:
+
+Step progress UI:
+
+[✓] Initiated
+[✓] FX Conversion
+[●] Processing
+[ ] Sent
+[ ] Delivered
+
+Add animated progress bar.
+
+---
+
+4️⃣ FX RATE CONFIDENCE UI
+
+On RemittanceScreen:
+
+Add:
+
+- rate lock countdown timer (already exists → improve styling)
+- green indicator if rate is “Best available”
+- small tooltip:
+
+“Rate includes all fees. No hidden charges.”
+
+---
+
+5️⃣ SMART EMPTY STATES
+
+Replace blank screens with friendly UX:
+
+Example:
+
+“No transfers yet
+Send your first support to your family”
+
+Add CTA button:
+
+“Send Money”
+
+---
+
+6️⃣ SUCCESS & CONFIRMATION EXPERIENCE
+
+After successful transfer:
+
+Create success screen:
+
+- large green check animation
+- message:
+
+“Money on the way to Meron Tadesse”
+
+- show:
+  amount sent
+  receiver amount
+  delivery estimate
+
+Buttons:
+
+- Track transfer
+- Send again
+
+---
+
+7️⃣ IMPROVE TYPOGRAPHY & SPACING
+
+Standardize:
+
+- headings: bold, larger size
+- amounts: very prominent
+- secondary text: muted gray
+
+Use spacing:
+
+- padding: 16–20px
+- card radius: 16–20
+- soft shadows
+
+---
+
+8️⃣ ADD HAPTIC FEEDBACK
+
+Use Expo Haptics:
+
+- success vibration on transfer complete
+- light feedback on button press
+
+---
+
+9️⃣ POLISH BANK OFFER CARDS
+
+Enhance BankOfferCard:
+
+- highlight best rate with gold badge
+- animate selection
+- show “Most popular” or “Fastest”
+
+---
+
+🔟 LOADING EXPERIENCE
+
+Replace all spinners with:
+
+- skeleton cards
+- shimmer effect
+
+---
+
+11️⃣ ERROR HANDLING UI
+
+Friendly error messages:
+
+Instead of:
+
+“Error occurred”
+
+Use:
+
+“Something went wrong
+Please try again”
+
+Add retry button.
+
+---
+
+12️⃣ DARK MODE SUPPORT
+
+Ensure UI works in:
+
+- light mode
+- dark mode
+
+Use existing theme context.
+
+---
+
+13️⃣ PERFORMANCE OPTIMIZATION
+
+- memoize heavy components
+- avoid unnecessary re-renders
+- lazy load screens
+
+---
+
+OUTPUT:
+
+- Clean, production-ready React Native components
+- Maintain current architecture
+- Improve UI without breaking logic
+- Keep TypeScript strict
+- Follow existing folder structure
+
+Goal:
+
+Make Habeshare feel like a premium fintech app users trust immediately.

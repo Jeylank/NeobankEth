@@ -44,6 +44,11 @@ The application is built with Expo SDK 50, React Native 0.73, React Navigation 6
 - Intuitive navigation with React Navigation.
 - Clear presentation of financial data, including donut charts for allocation tracking and progress visualization for campaigns.
 - Color-coded badges for delivery time estimates.
+- **World-class UX system:** `AnimatedPressable` (spring scale + haptics on press), `SkeletonLoader` (shimmer cards), `TrustBadges` (row/compact variants), `SmartEmptyState` (icon + CTA), `TransferSuccessScreen` (animated checkmark, transfer details, Track/Send Again/Done). expo-haptics installed.
+- **RemittanceScreen enhancements:** "Best available" green indicator on exchange rate, tooltip "Rate includes all fees. No hidden charges.", TrustBadges row above send button, 3 trust messages (Guaranteed rate / Secure transfer / Trusted), SmartEmptyState for no recipients, send success navigates to TransferSuccessScreen instead of Alert, error dialog includes Retry button.
+- **TransferTrackingScreen v2:** Back button, animated overall progress bar (% complete), fade-in step animations, step descriptions, "In Progress" pill, delivered success banner, trust footer note. Replaces spinners with SkeletonLoader.
+- **BankOfferCard v2:** Animated border + background on selection, "Most Popular" / "Fastest" badges, "Best available · No hidden charges" highlight row, improved grid labels (uppercase), AnimatedPressable wrapper with haptics.
+- **TransferSuccessScreen:** New screen at route `TransferSuccess`. Spring-scale animated green check circle, slide-up detail card (sent/received/delivery), trust note, Track Transfer + Send Again + Done buttons. Triggered on successful remittance.
 
 ## Admin Operations API (Express Server)
 

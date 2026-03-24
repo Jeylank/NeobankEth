@@ -33,6 +33,7 @@ import TransparentFXScreen from '../screens/TransparentFXScreen';
 import SecuritySettingsScreen from '../screens/SecuritySettingsScreen';
 import FxMarketplaceScreen from '../screens/FxMarketplaceScreen';
 import TransferTrackingScreen from '../screens/TransferTrackingScreen';
+import TransferSuccessScreen from '../screens/TransferSuccessScreen';
 import RecipientsScreen from '../screens/RecipientsScreen';
 import AdminConsoleScreen from '../screens/admin/AdminConsoleScreen';
 import AdminOverviewScreen from '../screens/admin/AdminOverviewScreen';
@@ -165,7 +166,8 @@ export default function RootNavigator() {
           <Stack.Screen name="TransparentFX" component={TransparentFXScreen} options={{ title: 'Transparent FX' }} />
           <Stack.Screen name="SecuritySettings" component={SecuritySettingsScreen} options={{ title: 'Security' }} />
           <Stack.Screen name="FxMarketplace" component={FxMarketplaceScreen} options={{ title: 'FX Marketplace' }} />
-          <Stack.Screen name="TransferTracking" component={TransferTrackingScreen} options={{ title: 'Track Transfer' }} />
+          <Stack.Screen name="TransferTracking" component={TransferTrackingScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="TransferSuccess" component={TransferSuccessScreen} options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="Recipients" component={RecipientsScreen} options={{ title: 'Recipients' }} />
           <Stack.Screen name="AdminConsole" component={AdminConsoleScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminOverview" component={AdminOverviewScreen} options={{ title: 'Overview' }} />
