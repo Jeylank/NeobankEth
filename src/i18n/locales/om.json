@@ -756,6 +756,7 @@
     "reconciliationReports": "Gabaasaalee Waldorgommii",
     "settlementEngine": "Injina Qindaa'inaa",
     "systemMonitor": "Hordoffii Sirna",
+    "schedulerRuns": "Hojjachiisa Deeggarsa Deddeebi'aa",
     "accessDenied": "Hayyamni Dhorkamaadha",
     "accessDeniedMsg": "Konsoolii bulchiinsaa galchuuf hayyamni hin jiru. Hayyama argachuuf bulchiinsaa quunnamaa.",
     "loading": "Fe'amaa jira...",
@@ -1170,6 +1171,23 @@
       "NEGATIVE_EXPOSURE": "Saaxilamummaa Salphaa",
       "BATCH_FAILURE": "Kuusaan Fashale"
     }
+  },
+  "schedulerRuns": {
+    "title": "Hojjachiisa Deeggarsa Deddeebi'aa",
+    "subtitle": "Seenaa hojjataa kafaltii ofumaa",
+    "totalRuns": "Hojjachiisa Waliigalaa",
+    "successful": "Milkaa'e",
+    "failed": "Fashale",
+    "totalProcessed": "Waliigala Hojjatame",
+    "totalFailed": "Waliigala Fashale",
+    "recentRuns": "Hojjachiisa Dhiyoo",
+    "noRuns": "Hojjachiisi hin jiru",
+    "noRunsHint": "Hojjachiisni erga hojjataan meeshaa deeggarsa deddeebi'aa qabate as ni mul'ata.",
+    "runDetail": "Ibsa Hojjachiisaa",
+    "failedExecutions": "Raawwii Fashalan",
+    "successExecutions": "Raawwii Milkaa'an",
+    "noExecutions": "Hojjachiisa kanaaf mirkaneessaa hin jiru.",
+    "runErrors": "Dogoggora Sadarkaa Hojjachiisaa"
   },
   "systemMonitor": {
     "title": "Hordoffii Sirna",

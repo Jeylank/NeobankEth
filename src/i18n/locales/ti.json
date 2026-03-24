@@ -756,6 +756,7 @@
     "reconciliationReports": "ናይ ማዛዛን ሪፖርቶች",
     "settlementEngine": "ናይ ምትፍፋን ሞተር",
     "systemMonitor": "ምክትታል ስርዓት",
+    "schedulerRuns": "ናይ ደጋጊ ደገፍ ሩጫታት",
     "accessDenied": "ኣገባብ ተኸልኪሉ",
     "accessDeniedMsg": "ናይ ኣስተዳደር ኮንሶል ንምእታው ፍቓድ የብልካን። ፍቓድ ንምርካብ ኣስተዳዳሪኹም ኣዘራርቡ።",
     "loading": "ይጸዓን ኣሎ...",
@@ -1170,6 +1171,23 @@
       "NEGATIVE_EXPOSURE": "ኣሉታዊ ተቓሊዕነት",
       "BATCH_FAILURE": "ቡድን ፍሽለት"
     }
+  },
+  "schedulerRuns": {
+    "title": "ናይ ደጋጊ ደገፍ ሩጫታት",
+    "subtitle": "ታሪኽ ናይ ኣውቶማቲክ ክፍሊት ቅደም-ሱዑ",
+    "totalRuns": "ጠቕላላ ሩጫታት",
+    "successful": "ዝተዓወቱ",
+    "failed": "ዝፈሸሉ",
+    "totalProcessed": "ጠቕላላ ዝሰርሑ",
+    "totalFailed": "ጠቕላላ ዝፈሸሉ",
+    "recentRuns": "ናይ ቀረባ ሩጫታት",
+    "noRuns": "ክሳብ ሕጂ ሩጫ የለን",
+    "noRunsHint": "ሩጫታት ቅደም-ሱዑ ናይ ደጋጊ ደገፍ ምስ ሰርሐ ኣብዚ ክርአ እዩ።",
+    "runDetail": "ናይ ሩጫ ሓበሬታ",
+    "failedExecutions": "ዝፈሸሉ ምፍጻማት",
+    "successExecutions": "ዝተዓወቱ ምፍጻማት",
+    "noExecutions": "ናይዚ ሩጫ ናይ ምፍጻም መዝገባት የለን።",
+    "runErrors": "ናይ ሩጫ ደረጃ ጌጋታት"
   },
   "systemMonitor": {
     "title": "ምክትታል ስርዓት",

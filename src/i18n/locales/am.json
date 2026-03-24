@@ -756,6 +756,7 @@
     "reconciliationReports": "የማጣጣሚያ ሪፖርቶች",
     "settlementEngine": "የሰፈራ ሞተር",
     "systemMonitor": "የሥርዓት ክትትል",
+    "schedulerRuns": "ተደጋጋሚ ድጋፍ ሩጫዎች",
     "accessDenied": "ተደራሽነት ተከልክሏል",
     "accessDeniedMsg": "የአስተዳዳሪ ኮንሶሉን ለመድረስ ፈቃድ የለዎትም። ተደራሽነት ለማግኘት አስተዳዳሪዎን ያነጋግሩ።",
     "loading": "በመጫን ላይ...",
@@ -1170,6 +1171,23 @@
       "NEGATIVE_EXPOSURE": "አሉታዊ ተጋላጭነት",
       "BATCH_FAILURE": "ቡድን ውድቀት"
     }
+  },
+  "schedulerRuns": {
+    "title": "ተደጋጋሚ ድጋፍ ሩጫዎች",
+    "subtitle": "የራስ-ሰር ክፍያ ሠሪ ታሪክ",
+    "totalRuns": "ጠቅላላ ሩጫዎች",
+    "successful": "የተሳካ",
+    "failed": "ያልተሳካ",
+    "totalProcessed": "ጠቅላላ የተሰሩ",
+    "totalFailed": "ጠቅላላ ያልተሳካ",
+    "recentRuns": "የቅርብ ጊዜ ሩጫዎች",
+    "noRuns": "እስካሁን ምንም ሩጫ የለም",
+    "noRunsHint": "ሩጫዎች ሠሪው ተደጋጋሚ ድጋፍ ዕቃዎችን ሲያስኬድ እዚህ ይታያሉ።",
+    "runDetail": "የሩጫ ዝርዝሮች",
+    "failedExecutions": "ያልተሳካ ፈጻሚዎች",
+    "successExecutions": "የተሳካ ፈጻሚዎች",
+    "noExecutions": "ለዚህ ሩጫ ምንም የፈጻሚ መዝገቦች የሉም።",
+    "runErrors": "የሩጫ ደረጃ ስህተቶች"
   },
   "systemMonitor": {
     "title": "የሥርዓት ክትትል",

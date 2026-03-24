@@ -112,6 +112,13 @@ const MENU_ITEMS = [
     color: '#DC2626',
     bg: '#FEF2F2',
   },
+  {
+    key: 'schedulerRuns',
+    screen: 'AdminSchedulerRuns',
+    icon: 'repeat-outline' as const,
+    color: '#0891B2',
+    bg: '#ECFEFF',
+  },
 ];
 
 function AdminConsoleContent() {

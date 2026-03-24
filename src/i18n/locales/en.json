@@ -756,6 +756,7 @@
     "reconciliationReports": "Reconciliation Reports",
     "settlementEngine": "Settlement Engine",
     "systemMonitor": "System Monitor",
+    "schedulerRuns": "Recurring Support Runs",
     "accessDenied": "Access Denied",
     "accessDeniedMsg": "You do not have permission to access the admin console. Contact your administrator for access.",
     "loading": "Loading...",
@@ -1171,6 +1172,23 @@
       "NEGATIVE_EXPOSURE": "Negative Exposure",
       "BATCH_FAILURE": "Batch Failure"
     }
+  },
+  "schedulerRuns": {
+    "title": "Recurring Support Runs",
+    "subtitle": "Automated payment scheduler history",
+    "totalRuns": "Total Runs",
+    "successful": "Successful",
+    "failed": "Failed",
+    "totalProcessed": "Total Processed",
+    "totalFailed": "Total Failed",
+    "recentRuns": "Recent Runs",
+    "noRuns": "No runs yet",
+    "noRunsHint": "Runs will appear here after the scheduler processes due recurring support items.",
+    "runDetail": "Run Details",
+    "failedExecutions": "Failed Executions",
+    "successExecutions": "Successful Executions",
+    "noExecutions": "No execution records for this run.",
+    "runErrors": "Run-Level Errors"
   },
   "systemMonitor": {
     "title": "System Monitor",

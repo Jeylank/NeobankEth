@@ -331,6 +331,20 @@ export const adminService = {
 
   // ─── System Health & Monitoring ──────────────────────────────────────────
 
+  // ─── Recurring Support Scheduler ─────────────────────────────────────────
+
+  /** getSchedulerRuns — list recent RECURRING_SUPPORT cron runs */
+  async getSchedulerRuns() {
+    const { scheduledSupportExecutionService } = await import('./recurringSupport/scheduledSupportExecutionService');
+    return scheduledSupportExecutionService.getSchedulerRuns(50);
+  },
+
+  /** getSchedulerRunDetails — list all executions for a specific runId */
+  async getSchedulerRunDetails(runId: string) {
+    const { scheduledSupportExecutionService } = await import('./recurringSupport/scheduledSupportExecutionService');
+    return scheduledSupportExecutionService.getSchedulerRunDetails(runId);
+  },
+
   /** getSystemHealth — DB status, uptime, env validation for /api/health */
   async getSystemHealth() {
     const { systemHealthService } = await import('./systemHealthService');

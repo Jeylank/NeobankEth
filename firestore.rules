@@ -225,6 +225,13 @@ service cloud.firestore {
       allow write: if isBackend();
     }
 
+    match /scheduled_support_executions/{execId} {
+      allow read: if isAdmin();
+      allow create: if isBackend();
+      allow update: if isBackend();
+      allow delete: if false;
+    }
+
     // ── Partner Settlements — admin only ──────────────────────────────────────
 
     match /partner_settlements/{docId} {

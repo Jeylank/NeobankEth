@@ -59,6 +59,7 @@ import AdminSettlementAlertsScreen from '../screens/admin/AdminSettlementAlertsS
 import AdminSettlementReconciliationScreen from '../screens/admin/AdminSettlementReconciliationScreen';
 import AdminSchedulerHistoryScreen from '../screens/admin/AdminSchedulerHistoryScreen';
 import AdminSystemMonitorScreen from '../screens/admin/AdminSystemMonitorScreen';
+import AdminSchedulerRunsScreen from '../screens/admin/AdminSchedulerRunsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -191,6 +192,7 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminSettlementReconciliation" component={AdminSettlementReconciliationScreen} options={{ title: 'Settlement Reconciliation' }} />
           <Stack.Screen name="AdminSchedulerHistory" component={AdminSchedulerHistoryScreen} options={{ title: 'Scheduler Run History' }} />
           <Stack.Screen name="AdminSystemMonitor" component={AdminSystemMonitorScreen} options={{ title: 'System Monitor' }} />
+          <Stack.Screen name="AdminSchedulerRuns" component={AdminSchedulerRunsScreen} options={{ title: 'Recurring Support Runs' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
