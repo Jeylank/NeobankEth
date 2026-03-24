@@ -1162,11 +1162,28 @@
     "runNow": "ሕጂ ኣሂድ",
     "runScheduler": "ቅደም ሱዑ ኣሂድ",
     "runSchedulerConfirm": "ዕለታዊ ናይ ምትፍፋን ቅደም ሱዑ ብኢድ ኣሂዱ? ክፉት ግዴታታት ቡድን ይኸውን፣ ዝሓለፉ ይፈልጥ፣ ናይ ኩሎም ወሃቢ ምምጥጣን ይካሂድ።",
+    "schedulerHistory": "ታሪኽ ቅደም ሱዑ",
     "alertType": {
       "SETTLEMENT_OVERDUE": "ምትፍፋን ዝሓለፈ",
       "SETTLEMENT_MISMATCH": "ምትፍፋን ዘይሰማምዕ",
       "NEGATIVE_EXPOSURE": "ኣሉታዊ ተቓሊዕነት",
       "BATCH_FAILURE": "ቡድን ፍሽለት"
     }
+  },
+  "schedulerHistory": {
+    "title": "ታሪኽ ናይ ቅደም ሱዑ ሩጫ",
+    "subtitle": "ጌጋ ናይ ባዕዳዊ cron ስራሕ",
+    "totalRuns": "ጠቕላላ ሩጫታት",
+    "successRate": "ናይ ዕዉትነት ሚዛን",
+    "lastSettlement": "ናይ መጠረሽታ ምትፍፋን",
+    "lastOverdue": "ናይ መጠረሽታ ምርመራ ዝሓለፈ",
+    "scheduleInfo": "02:00 UTC – ዕለታዊ ምትፍፋን  •  03:00 UTC – ምምጥጣን  •  ሰዓታዊ – ምርኣይ ዝሓለፈ",
+    "runLog": "ምዝገባ ሩጫ",
+    "noRuns": "ገና ዝዓለቡ ሩጫታት የለዉን",
+    "noRunsSub": "ሩጫታት ምስ ዝሰርሕ ባዕዳዊ ሠሪ ይረኣዩ",
+    "legend": "ናይ ኩነታት ምልክታት",
+    "legendSuccess": "ኩሎም ስራሓት ብዘይ ጌጋ ተዛዚሞም",
+    "legendPartial": "ገሊኦም ስራሓት ፈሺሎም፣ ካልኦት ዓዊቶም",
+    "legendFailed": "ኩሎም ስራሓት ፈሺሎም"
   }
 }

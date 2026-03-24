@@ -381,6 +381,7 @@ function AdminSettlementOverviewContent() {
               <NavCard label={t('settlementEngine.batches')}        icon="cube-outline"          color={C.blue}   bg={C.blueL}   screen="AdminSettlementBatches" />
               <NavCard label={t('settlementEngine.alerts')}         icon="warning-outline"       color={C.red}    bg={C.redL}    screen="AdminSettlementAlerts" />
               <NavCard label={t('settlementEngine.reconciliation')} icon="git-compare-outline"   color={C.purple} bg={C.purpleL} screen="AdminSettlementReconciliation" />
+              <NavCard label={t('settlementEngine.schedulerHistory')} icon="time-outline"        color={C.cyan}   bg={C.cyanL}   screen="AdminSchedulerHistory" />
             </View>
           </>
         )}

@@ -1163,11 +1163,28 @@
     "runNow": "Run Now",
     "runScheduler": "Run Scheduler",
     "runSchedulerConfirm": "Manually trigger the daily settlement scheduler? This will batch open obligations, detect overdue items, and run reconciliation for all providers.",
+    "schedulerHistory": "Scheduler History",
     "alertType": {
       "SETTLEMENT_OVERDUE": "Settlement Overdue",
       "SETTLEMENT_MISMATCH": "Settlement Mismatch",
       "NEGATIVE_EXPOSURE": "Negative Exposure",
       "BATCH_FAILURE": "Batch Failure"
     }
+  },
+  "schedulerHistory": {
+    "title": "Scheduler Run History",
+    "subtitle": "Backend cron job execution log",
+    "totalRuns": "Total Runs",
+    "successRate": "Success Rate",
+    "lastSettlement": "Last Settlement",
+    "lastOverdue": "Last Overdue Check",
+    "scheduleInfo": "02:00 UTC – Daily settlement  •  03:00 UTC – Reconciliation  •  Hourly – Overdue detection",
+    "runLog": "Run Log",
+    "noRuns": "No runs recorded yet",
+    "noRunsSub": "Runs appear here once the backend worker executes",
+    "legend": "Status Legend",
+    "legendSuccess": "All tasks completed without error",
+    "legendPartial": "Some tasks failed, others succeeded",
+    "legendFailed": "All tasks failed"
   }
 }

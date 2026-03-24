@@ -1162,11 +1162,28 @@
     "runNow": "አሁን አሂድ",
     "runScheduler": "ሠሪ አሂድ",
     "runSchedulerConfirm": "ዕለታዊ ሰፈራ ሠሪን እጅ በእጅ ያስነሱ? ይህ ክፍት ግዴታዎችን ይቡድናል፣ ያለፉ ንጥሎች ያወሳድዳል፣ ለሁሉም አቅራቢዎች ማጣጣሚያ ያካሂዳል።",
+    "schedulerHistory": "የሠሪ ታሪክ",
     "alertType": {
       "SETTLEMENT_OVERDUE": "ሰፈራ ያለፈ",
       "SETTLEMENT_MISMATCH": "ሰፈራ አልተጣጣመም",
       "NEGATIVE_EXPOSURE": "አሉታዊ ተጋላጭነት",
       "BATCH_FAILURE": "ቡድን ውድቀት"
     }
+  },
+  "schedulerHistory": {
+    "title": "የሠሪ ሩጫ ታሪክ",
+    "subtitle": "የኋላ ሰው ክሮን ሥራ የምፈጸሚ ምዝገባ",
+    "totalRuns": "ጠቅላላ ሩጫዎች",
+    "successRate": "የስኬት ምጣኔ",
+    "lastSettlement": "ናይ መጠረሽታ ሰፈራ",
+    "lastOverdue": "ናይ መጠረሽታ ያለፈ ፍተሻ",
+    "scheduleInfo": "02:00 UTC – ዕለታዊ ሰፈራ  •  03:00 UTC – ማጣጣሚያ  •  ሰዓታዊ – ያለፈ ምልከታ",
+    "runLog": "የሩጫ ምዝገባ",
+    "noRuns": "እስካሁን ምንም ሩጫዎች አልተመዘገቡም",
+    "noRunsSub": "ሩጫዎቹ በኋላ ሰው ሠሪ ሲፈጸሙ ይታያሉ",
+    "legend": "የሁኔታ ምልክቶች",
+    "legendSuccess": "ሁሉም ተግባሮች ያለ ስህተት ተጠናቅቀዋል",
+    "legendPartial": "አንዳንድ ተግባሮች ወድቀዋል፣ ሌሎቹ ተሳክተዋል",
+    "legendFailed": "ሁሉም ተግባሮች ወድቀዋል"
   }
 }

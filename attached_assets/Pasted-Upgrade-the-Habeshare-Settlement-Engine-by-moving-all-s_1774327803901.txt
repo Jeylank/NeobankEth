@@ -1,0 +1,190 @@
+Upgrade the Habeshare Settlement Engine by moving all schedulers to a backend worker with cron jobs.
+
+Current system:
+
+- Node.js + Express backend
+- Firebase Firestore
+- Settlement logic already exists
+- Admin console already exists
+
+DO NOT break existing admin APIs or payout logic.
+
+---
+
+1️⃣ CREATE WORKER PROCESS
+
+Create a new folder:
+
+src/workers/
+
+Add file:
+
+src/workers/settlementWorker.ts
+
+This worker must run independently from Express server.
+
+---
+
+2️⃣ ADD CRON SCHEDULER
+
+Use node-cron.
+
+Install if needed:
+npm install node-cron
+
+Inside settlementWorker.ts:
+
+- Run daily settlement job at 02:00 AM
+- Run reconciliation job at 03:00 AM
+- Run overdue detection every hour
+
+---
+
+3️⃣ DAILY SETTLEMENT JOB
+
+Create function:
+
+processDailySettlement()
+
+Logic:
+
+- fetch settlement obligations with status OPEN
+- group by provider + currency + date
+- create one batch per group
+- mark obligations as PROCESSING
+- prevent duplicate batches (idempotent)
+
+Firestore collection:
+
+settlement_batches
+
+Example:
+
+{
+batchId: "BATCH123",
+provider: "CHAPA",
+currency: "ETB",
+totalAmount: 120000,
+status: "PROCESSING",
+createdAt: timestamp
+}
+
+---
+
+4️⃣ RECONCILIATION JOB
+
+Create function:
+
+runReconciliation()
+
+Logic:
+
+- fetch completed settlement batches
+- compare with provider reports (mock for now)
+- mark:
+  MATCHED
+  MISMATCHED
+- create reconciliation_reports collection
+- generate alerts if mismatch
+
+---
+
+5️⃣ OVERDUE DETECTOR
+
+Create function:
+
+detectOverdueSettlements()
+
+Logic:
+
+- find obligations older than threshold (e.g. 24h)
+- mark as OVERDUE
+- create HIGH severity alert
+
+---
+
+6️⃣ SCHEDULER RUN HISTORY
+
+Create collection:
+
+scheduler_runs
+
+Example:
+
+{
+job: "settlement",
+status: "SUCCESS",
+startedAt: timestamp,
+finishedAt: timestamp,
+processedCount: 120
+}
+
+Log every run of:
+
+- settlement job
+- reconciliation job
+- overdue detector
+
+---
+
+7️⃣ AUDIT LOGGING
+
+Extend existing auditService:
+
+Log events:
+
+SETTLEMENT_BATCH_CREATED
+SETTLEMENT_MARKED_SETTLED
+SETTLEMENT_MARKED_FAILED
+SETTLEMENT_ALERT_RAISED
+
+---
+
+8️⃣ ADMIN API FOR HISTORY
+
+Add route:
+
+GET /api/admin/scheduler-history
+
+Return:
+
+- last runs
+- job status
+- processed counts
+- failures
+
+---
+
+9️⃣ INTEGRATE WORKER
+
+Update server.ts:
+
+- start worker on server start OR
+- run worker as separate process
+
+Example:
+
+import './workers/settlementWorker'
+
+---
+
+🔟 SAFETY REQUIREMENTS
+
+- idempotency for batch creation
+- retry failed jobs
+- never duplicate settlements
+- TypeScript strict typing
+
+---
+
+OUTPUT:
+
+Production-ready TypeScript code for:
+
+- settlementWorker
+- cron jobs
+- scheduler history
+- admin endpoint
+- audit logging
+
+Do not modify existing payout logic.

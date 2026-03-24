@@ -1162,11 +1162,28 @@
     "runNow": "Amma Hojjadhu",
     "runScheduler": "Yeroo Hojjachiisi",
     "runSchedulerConfirm": "Hojjachiisa qindaa'ina guyyaa akka hojjatuu harkaan kakaasuu? Kun dirqama banaa kuusaa, kan dabree argaa, fi waldorgommii kan aburii hundaaf ni hojjata.",
+    "schedulerHistory": "Seenaa Yeroo Hojjataa",
     "alertType": {
       "SETTLEMENT_OVERDUE": "Qindaa'ina Dabree",
       "SETTLEMENT_MISMATCH": "Qindaa'ina Wal Hin Siiqne",
       "NEGATIVE_EXPOSURE": "Saaxilamummaa Salphaa",
       "BATCH_FAILURE": "Kuusaan Fashale"
     }
+  },
+  "schedulerHistory": {
+    "title": "Seenaa Yeroo Hojjataa",
+    "subtitle": "Galmee hojii cron duuba",
+    "totalRuns": "Hojjachiisa Waliigalaa",
+    "successRate": "Hanga Milkaa'inaa",
+    "lastSettlement": "Qindaa'ina Darbee",
+    "lastOverdue": "Sakkata'a Dabree Darbee",
+    "scheduleInfo": "02:00 UTC – Qindaa'ina guyyaa  •  03:00 UTC – Waldorgommii  •  Saatii – Arguu dabree",
+    "runLog": "Galmee Hojjachiisa",
+    "noRuns": "Hojjachiisaaleen ammaatti hin galmaa'in",
+    "noRunsSub": "Hojjachiisaaleen erga hojjachiisaan duuba hojjatee booda ni mul'atu",
+    "legend": "Agarsiiftuu Haala",
+    "legendSuccess": "Hojiiwwan hundumtuu dogoggora malee xumuramaniiru",
+    "legendPartial": "Hojiiwwan tokko tokko fashalan, kanneen biroo milkaa'an",
+    "legendFailed": "Hojiiwwan hundumtuu fashalan"
   }
 }
