@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -75,6 +76,7 @@ export default function WalletScreen() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const userId = user?.uid ?? '';
+  const navigation = useNavigation<any>();
 
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
@@ -655,7 +657,7 @@ export default function WalletScreen() {
         </ScrollView>
 
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity style={styles.quickAction} onPress={() => { setAddAmount(''); setShowAddMoneyModal(true); }}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('FundingMethod')}>
             <View style={[styles.quickActionIcon, { backgroundColor: COLORS.success + '15' }]}>
               <Ionicons name="add-circle-outline" size={24} color={COLORS.success} />
             </View>

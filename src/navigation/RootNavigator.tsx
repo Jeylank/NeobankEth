@@ -15,6 +15,9 @@ import BillPaymentsScreen from '../screens/BillPaymentsScreen';
 import BankAccountsScreen from '../screens/BankAccountsScreen';
 import ChapaPaymentScreen from '../screens/ChapaPaymentScreen';
 import TelebirrPaymentScreen from '../screens/TelebirrPaymentScreen';
+import FundingMethodScreen from '../screens/FundingMethodScreen';
+import BankTransferFundingScreen from '../screens/BankTransferFundingScreen';
+import CardTopUpScreen from '../screens/CardTopUpScreen';
 import KYCScreen from '../screens/KYCScreen';
 import SupportScreen from '../screens/SupportScreen';
 import RemittanceTrackingScreen from '../screens/RemittanceTrackingScreen';
@@ -147,6 +150,9 @@ export default function RootNavigator() {
           <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
           <Stack.Screen name="BillPayments" component={BillPaymentsScreen} options={{ title: 'Pay Bills' }} />
           <Stack.Screen name="BankAccounts" component={BankAccountsScreen} options={{ title: 'Linked Accounts' }} />
+          <Stack.Screen name="FundingMethod" component={FundingMethodScreen} options={{ title: 'Add Funds' }} />
+          <Stack.Screen name="BankTransferFunding" component={BankTransferFundingScreen} options={{ title: 'Bank Transfer' }} />
+          <Stack.Screen name="CardTopUp" component={CardTopUpScreen} options={{ title: 'Card Payment' }} />
           <Stack.Screen name="ChapaPayment" component={ChapaPaymentScreen} options={{ title: 'Chapa Payment' }} />
           <Stack.Screen name="TelebirrPayment" component={TelebirrPaymentScreen} options={{ title: 'Telebirr Payment' }} />
           <Stack.Screen name="KYC" component={KYCScreen} options={{ title: 'Identity Verification' }} />
