@@ -88,28 +88,19 @@ async function saveLocalFxConversions(conversions: FxConversion[]): Promise<void
 
 class WalletService {
   private useLocalFallback = false;
-  private offlineMode = false;
 
   private enableFallback(): void {
-    if (IS_DEV) {
-      if (!this.useLocalFallback) {
-        console.warn('Firestore unavailable for wallet — using local fallback (dev mode)');
-        this.useLocalFallback = true;
-      }
-    } else {
-      this.offlineMode = true;
+    if (!this.useLocalFallback) {
+      console.warn('Firestore unavailable for wallet — using local storage fallback');
+      this.useLocalFallback = true;
     }
   }
 
   isOffline(): boolean {
-    return this.offlineMode && !IS_DEV;
+    return this.useLocalFallback;
   }
 
   async createWallet(userId: string): Promise<Wallet> {
-    if (this.offlineMode && !IS_DEV) {
-      throw new Error('OFFLINE');
-    }
-
     const now = new Date().toISOString();
     const wallet: Wallet = {
       userId,
@@ -130,7 +121,6 @@ class WalletService {
     } catch (error) {
       console.error('Firestore createWallet failed:', error);
       this.enableFallback();
-      if (!IS_DEV) throw new Error('OFFLINE');
       await saveLocalWallet(userId, wallet);
       return wallet;
     }
@@ -138,7 +128,6 @@ class WalletService {
 
   async getWallet(userId: string): Promise<Wallet | null> {
     if (this.useLocalFallback) {
-      if (!IS_DEV && this.offlineMode) return null;
       return getLocalWallet(userId);
     }
 
@@ -149,7 +138,6 @@ class WalletService {
     } catch (error) {
       console.error('Firestore getWallet failed:', error);
       this.enableFallback();
-      if (!IS_DEV) return null;
       return getLocalWallet(userId);
     }
   }
@@ -162,10 +150,6 @@ class WalletService {
     provider?: string,
     providerRef?: string
   ): Promise<LedgerEntry> {
-    if (this.offlineMode && !IS_DEV) {
-      throw new Error('OFFLINE');
-    }
-
     const now = new Date().toISOString();
     const entry: LedgerEntry = {
       entryId: `entry_${Date.now()}`,
@@ -212,7 +196,6 @@ class WalletService {
       if (error?.message === 'Wallet not found') throw error;
       console.error('Firestore creditWallet failed:', error);
       this.enableFallback();
-      if (!IS_DEV) throw new Error('OFFLINE');
 
       const wallet = await getLocalWallet(userId);
       if (!wallet) throw new Error('Wallet not found');
@@ -234,10 +217,6 @@ class WalletService {
     category: LedgerCategory,
     txId?: string
   ): Promise<LedgerEntry> {
-    if (this.offlineMode && !IS_DEV) {
-      throw new Error('OFFLINE');
-    }
-
     const now = new Date().toISOString();
     const entry: LedgerEntry = {
       entryId: `entry_${Date.now()}`,
@@ -286,7 +265,6 @@ class WalletService {
       if (error?.message === 'Wallet not found' || error?.message === 'Insufficient balance') throw error;
       console.error('Firestore debitWallet failed:', error);
       this.enableFallback();
-      if (!IS_DEV) throw new Error('OFFLINE');
 
       const wallet = await getLocalWallet(userId);
       if (!wallet) throw new Error('Wallet not found');
@@ -303,10 +281,6 @@ class WalletService {
   }
 
   async reserveFunds(userId: string, currency: WalletCurrency, amount: number): Promise<LedgerEntry> {
-    if (this.offlineMode && !IS_DEV) {
-      throw new Error('OFFLINE');
-    }
-
     const now = new Date().toISOString();
     const entry: LedgerEntry = {
       entryId: `entry_${Date.now()}`,
@@ -353,7 +327,6 @@ class WalletService {
       if (error?.message === 'Wallet not found' || error?.message === 'Insufficient balance') throw error;
       console.error('Firestore reserveFunds failed:', error);
       this.enableFallback();
-      if (!IS_DEV) throw new Error('OFFLINE');
 
       const wallet = await getLocalWallet(userId);
       if (!wallet) throw new Error('Wallet not found');
@@ -370,10 +343,6 @@ class WalletService {
   }
 
   async releaseReservation(userId: string, currency: WalletCurrency, amount: number, reservationEntryId?: string): Promise<LedgerEntry> {
-    if (this.offlineMode && !IS_DEV) {
-      throw new Error('OFFLINE');
-    }
-
     const now = new Date().toISOString();
     const entry: LedgerEntry = {
       entryId: `entry_${Date.now()}`,
@@ -421,7 +390,6 @@ class WalletService {
       if (error?.message === 'Wallet not found' || error?.message === 'Insufficient reservation') throw error;
       console.error('Firestore releaseReservation failed:', error);
       this.enableFallback();
-      if (!IS_DEV) throw new Error('OFFLINE');
 
       const wallet = await getLocalWallet(userId);
       if (!wallet) throw new Error('Wallet not found');
@@ -445,10 +413,6 @@ class WalletService {
     category: LedgerCategory,
     txId?: string
   ): Promise<LedgerEntry> {
-    if (this.offlineMode && !IS_DEV) {
-      throw new Error('OFFLINE');
-    }
-
     const now = new Date().toISOString();
     const entry: LedgerEntry = {
       entryId: `entry_${Date.now()}`,
@@ -496,7 +460,6 @@ class WalletService {
       if (error?.message === 'Wallet not found' || error?.message === 'Insufficient reservation') throw error;
       console.error('Firestore confirmReservation failed:', error);
       this.enableFallback();
-      if (!IS_DEV) throw new Error('OFFLINE');
 
       const wallet = await getLocalWallet(userId);
       if (!wallet) throw new Error('Wallet not found');
@@ -517,7 +480,6 @@ class WalletService {
     const fetchLimit = activityLimit || 50;
 
     if (this.useLocalFallback) {
-      if (!IS_DEV && this.offlineMode) return [];
       const entries = await getLocalEntries(userId);
       return entries.slice(0, fetchLimit);
     }
@@ -533,7 +495,6 @@ class WalletService {
     } catch (error) {
       console.error('Firestore getWalletActivity failed:', error);
       this.enableFallback();
-      if (!IS_DEV) return [];
       const entries = await getLocalEntries(userId);
       return entries.slice(0, fetchLimit);
     }
@@ -545,10 +506,6 @@ class WalletService {
     toCurrency: WalletCurrency,
     amount: number
   ): Promise<FxConversion> {
-    if (this.offlineMode && !IS_DEV) {
-      throw new Error('OFFLINE');
-    }
-
     const rate = await this.getExchangeRate(fromCurrency, toCurrency);
     const fee = Math.round(amount * 0.015 * 100) / 100;
     const netAmount = amount - fee;
@@ -589,7 +546,6 @@ class WalletService {
     } catch (error) {
       console.error('Firestore convertCurrency record failed:', error);
       this.enableFallback();
-      if (!IS_DEV) return conversion;
       const conversions = await getLocalFxConversions();
       conversions.unshift(conversion);
       await saveLocalFxConversions(conversions);

@@ -103,6 +103,10 @@ export default function WalletScreen() {
   const [allEntries, setAllEntries] = useState<LedgerEntry[]>([]);
 
   const loadData = useCallback(async () => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     setError(null);
     try {
       let w = await walletService.getWallet(userId);
@@ -112,9 +116,11 @@ export default function WalletScreen() {
       setWallet(w);
       const e = await walletService.getWalletActivity(userId, 10);
       setEntries(e);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load wallet data:', err);
-      setError(t('common.error'));
+      if (err?.message !== 'OFFLINE') {
+        setError(t('common.error'));
+      }
     } finally {
       setLoading(false);
     }
