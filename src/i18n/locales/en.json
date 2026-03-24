@@ -687,7 +687,20 @@
     "securityAlert": "Security Alert",
     "newLogin": "New Login Detected",
     "passwordChanged": "Password Changed",
-    "unreadCount": "{{count}} unread"
+    "unreadCount": "{{count}} unread",
+    "tapToView": "Tap to view",
+    "pushDenied": "Notifications are disabled",
+    "pushDeniedSub": "Enable notifications in Settings to receive transfer updates"
+  },
+  "sendAgain": {
+    "sendAgain": "Send Again",
+    "contributeAgain": "Contribute Again",
+    "prefillBanner": "Prefilled from {{source}}",
+    "clearPrefill": "Clear",
+    "rateRefreshed": "Rate refreshed — transfer details changed",
+    "noTransfers": "No transfers yet",
+    "noTransfersSub": "Send your first support to your family in Ethiopia",
+    "sendNow": "Send Money"
   },
   "referral": {
     "title": "Refer a Friend",

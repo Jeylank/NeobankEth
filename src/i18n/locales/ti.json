@@ -650,7 +650,20 @@
     "securityAlert": "ናይ ድሕንነት ማንቃዒ",
     "newLogin": "ሓዲሽ ምእታው ተረኺቡ",
     "passwordChanged": "ምስጢራዊ ቃል ተቐይሩ",
-    "unreadCount": "{{count}} ዘይተነብቡ"
+    "unreadCount": "{{count}} ዘይተነብቡ",
+    "tapToView": "ንምርኣይ ጠውቕ",
+    "pushDenied": "ምልክታ ተዓጺዩ",
+    "pushDeniedSub": "ናይ ምስክርነት ምዕራፋት ንምፍላጥ ምልክታ ኣብርህ"
+  },
+  "sendAgain": {
+    "sendAgain": "ደጊምካ ስደድ",
+    "contributeAgain": "ደጊምካ ተሳተፍ",
+    "prefillBanner": "ካብ {{source}} ቅድሚኡ ተሞሊኡ",
+    "clearPrefill": "ጽሃፍ",
+    "rateRefreshed": "ዋጋ ሓዲሱ — ዝርዝራት ተቐይሩ",
+    "noTransfers": "ምስክርነት የለን",
+    "noTransfersSub": "ንስድራቤትካ ሓገዝ ስደድ",
+    "sendNow": "ገንዘብ ስደድ"
   },
   "transparentFX": {
     "title": "ግሉጽ ምንዛሪ",

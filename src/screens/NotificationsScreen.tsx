@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
 import {
   subscribeToNotifications,
@@ -18,6 +19,7 @@ import {
   markAllNotificationsAsRead,
 } from '../services/firestoreNotifications';
 import type { Notification } from '../services/firestoreNotifications';
+import { SkeletonCard } from '../components/SkeletonLoader';
 
 const COLORS = {
   primary: '#006633',
@@ -47,10 +49,38 @@ const NOTIFICATION_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap;
   system: { icon: 'information-circle', color: COLORS.purple },
 };
 
+function resolveNotificationScreen(notification: Notification): { screen: string; params?: any } | null {
+  const data = notification.data ?? {};
+  const type  = notification.type;
+
+  if (data.txId || type === 'remittance') {
+    return data.txId
+      ? { screen: 'TransferTracking', params: { txId: data.txId } }
+      : { screen: 'RemittanceTracking' };
+  }
+  if (data.requestId || type === 'family_request') {
+    return { screen: 'FamilyRequests', params: { requestId: data.requestId } };
+  }
+  if (data.campaignId) {
+    return { screen: 'SupportCampaigns', params: { campaignId: data.campaignId } };
+  }
+  if (data.scheduleId) {
+    return { screen: 'RecurringSupport', params: { scheduleId: data.scheduleId } };
+  }
+  if (type === 'transaction') {
+    return { screen: 'Transactions' };
+  }
+  if (type === 'security') {
+    return { screen: 'SecuritySettings' };
+  }
+  return null;
+}
+
 export default function NotificationsScreen() {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const userId = user?.uid ?? '';
+  const { t }        = useTranslation();
+  const { user }     = useAuth();
+  const navigation   = useNavigation<any>();
+  const userId       = user?.uid ?? '';
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +127,10 @@ export default function NotificationsScreen() {
         console.error('Failed to mark as read:', err);
       }
     }
+    const dest = resolveNotificationScreen(notification);
+    if (dest) {
+      navigation.navigate(dest.screen, dest.params);
+    }
   };
 
   const filteredNotifications = activeFilter === 'all'
@@ -137,8 +171,11 @@ export default function NotificationsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+        <View style={styles.skeletonContainer}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </View>
       </SafeAreaView>
     );
@@ -256,6 +293,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  skeletonContainer: {
+    flex: 1,
+    padding: 16,
+    gap: 12,
   },
   headerRow: {
     flexDirection: 'row',

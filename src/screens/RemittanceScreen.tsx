@@ -64,6 +64,8 @@ export default function RemittanceScreen() {
   const prefilled = route.params?.prefilled;
   const selectedQuote = route.params?.selectedQuote;
   const incomingRecipient = route.params?.selectedRecipient;
+  const prefillSource: string | undefined = route.params?.prefillSource;
+  const [showPrefillBanner, setShowPrefillBanner] = useState(!!prefilled && !!prefillSource);
   const [amount, setAmount] = useState(prefilled ? String(route.params?.amount ?? '') : '');
   const [fromCurrency, setFromCurrency] = useState(prefilled ? (route.params?.fromCurrency ?? 'USD') : 'USD');
   const [toCurrency, setToCurrency] = useState(prefilled ? (route.params?.toCurrency ?? 'ETB') : 'ETB');
@@ -72,6 +74,18 @@ export default function RemittanceScreen() {
   const [paymentMethod, setPaymentMethod] = useState(prefilled ? (route.params?.paymentMethod ?? 'wallet') : 'wallet');
   const [payoutMethod, setPayoutMethod] = useState(prefilled ? (route.params?.payoutMethod ?? 'bank_account') : 'bank_account');
   const [selectedRecipientName, setSelectedRecipientName] = useState<string | null>(incomingRecipient?.name || null);
+
+  const clearPrefill = () => {
+    setShowPrefillBanner(false);
+    setAmount('');
+    setFromCurrency('USD');
+    setToCurrency('ETB');
+    setSelectedBeneficiary(null);
+    setDescription('');
+    setPaymentMethod('wallet');
+    setPayoutMethod('bank_account');
+    setSelectedRecipientName(null);
+  };
 
   React.useEffect(() => {
     if (incomingRecipient) {
@@ -186,6 +200,19 @@ export default function RemittanceScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {showPrefillBanner && prefillSource && (
+        <View style={styles.prefillBanner}>
+          <View style={styles.prefillBannerLeft}>
+            <Ionicons name="information-circle" size={16} color="#065F46" />
+            <Text style={styles.prefillBannerText}>
+              {t('sendAgain.prefillBanner', { source: prefillSource })}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={clearPrefill} style={styles.prefillClearBtn}>
+            <Text style={styles.prefillClearText}>{t('sendAgain.clearPrefill')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>{t('dashboard.totalBalance')}</Text>
         <Text style={styles.balanceAmount}>
@@ -511,6 +538,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.lightGray,
+  },
+  prefillBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#D1FAE5',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#6EE7B7',
+  },
+  prefillBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  prefillBannerText: {
+    fontSize: 13,
+    color: '#065F46',
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  prefillClearBtn: {
+    paddingLeft: 12,
+  },
+  prefillClearText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#059669',
   },
   balanceCard: {
     backgroundColor: COLORS.primary,

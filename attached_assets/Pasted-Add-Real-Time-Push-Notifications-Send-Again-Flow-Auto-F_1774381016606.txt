@@ -1,0 +1,186 @@
+Add Real-Time Push Notifications + Send Again Flow + Auto-Fill Behavior to the Habeshare React Native app.
+
+Stack:
+- React Native (Expo)
+- TypeScript
+- Firebase Auth
+- Firestore
+- Existing remittance screens
+- Existing wallet, recipients, tracking, family wallet, family requests
+
+Do NOT break existing flows.
+
+=====================================
+1. PUSH NOTIFICATION SETUP
+=====================================
+
+Integrate Firebase push notifications in the app.
+
+Requirements:
+- request notification permission
+- get device push token
+- register token with backend using:
+  POST /api/notifications/register-token
+- unregister token on logout if appropriate
+- listen for foreground notifications
+- handle notification tap navigation
+
+Create service:
+
+src/services/pushNotifications.ts
+
+Functions:
+- requestPushPermission()
+- getAndRegisterPushToken()
+- unregisterPushToken()
+- handleForegroundNotification()
+- handleNotificationNavigation(data)
+
+=====================================
+2. NOTIFICATIONS SCREEN
+=====================================
+
+If not already complete, create or extend:
+
+src/screens/NotificationsScreen.tsx
+
+Features:
+- fetch user notifications from Firestore or backend
+- unread/read state
+- filter by type
+- mark as read
+- tap notification to navigate to relevant screen
+
+Navigation examples:
+- transfer_completed -> TransferTrackingScreen
+- family_request_received -> FamilyRequestsScreen
+- campaign contribution -> CampaignDetailScreen
+- recurring support -> FamilyWallet / recurring support history
+
+=====================================
+3. SEND AGAIN FLOW
+=====================================
+
+Add "Send Again" behavior to remittance history and tracking screens.
+
+Screens to update:
+- RemittanceTrackingScreen
+- TransferTrackingScreen
+- any transaction history cards
+
+Behavior:
+When user taps "Send Again":
+- open RemittanceScreen
+- prefill:
+  - selected recipient
+  - payout method
+  - bank / institution if available
+  - last used amount
+  - currency
+  - quote-related values should NOT be reused directly if expired
+- user can edit before sending
+
+Create utility:
+src/services/sendAgainService.ts
+
+Functions:
+- buildSendAgainPayload(transaction)
+- navigateToSendAgain(navigation, transaction)
+
+=====================================
+4. AUTO-FILL BEHAVIOR
+=====================================
+
+Improve auto-fill across remittance flow.
+
+RemittanceScreen should auto-fill from:
+- selected saved recipient
+- send again payload
+- family request approval payload
+- family wallet member selection
+- FX marketplace selection
+
+Auto-fill fields:
+- recipient name
+- bank / mobile wallet / payout method
+- account number or phone if available
+- preferred bank
+- amount (if appropriate)
+- currency
+- selected quote summary
+- quoteId only if still valid
+
+If user changes amount or payout method after selecting a quote:
+- clear selected quote automatically
+- show small helper message: "Rate refreshed because transfer details changed"
+
+=====================================
+5. SEND AGAIN BUTTONS
+=====================================
+
+Add visible "Send Again" buttons on:
+- completed transfer cards
+- failed transfer cards
+- family support history
+- campaign contribution history (optional: "Contribute Again")
+
+Use existing Habeshare design system.
+
+=====================================
+6. AUTO-FILL UI STATE
+=====================================
+
+In RemittanceScreen show prefilled summary card when data came from:
+- send again
+- saved recipient
+- family request
+- family wallet
+
+Example:
+"Prefilled from your previous transfer to Meron Tadesse"
+
+Allow user to clear prefilled data.
+
+=====================================
+7. NOTIFICATION BADGES
+=====================================
+
+Add unread badge count to bell icon.
+Refresh badge in real time when new notification is written.
+
+=====================================
+8. I18N
+=====================================
+
+Add all new text to:
+- English
+- Amharic
+- Oromifa
+- Tigrinya
+
+No hardcoded UI strings.
+
+=====================================
+9. ERROR HANDLING
+=====================================
+
+If push permission is denied:
+- app still works
+- show non-blocking warning
+
+If send again data is incomplete:
+- prefill what is available
+- let user complete missing fields manually
+
+=====================================
+10. DELIVERABLES
+=====================================
+
+Generate:
+- pushNotifications service
+- updated NotificationsScreen
+- sendAgain service
+- updated RemittanceScreen auto-fill logic
+- updated tracking/history screens with Send Again actions
+- badge updates
+- full i18n wiring

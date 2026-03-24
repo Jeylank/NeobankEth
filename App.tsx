@@ -6,9 +6,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider } from './src/hooks/useAuth';
+import { AuthProvider, useAuth } from './src/hooks/useAuth';
 import { ThemeProvider, useTheme } from './src/theme';
 import RootNavigator from './src/navigation/RootNavigator';
+import {
+  getAndRegisterPushToken,
+  setupNotificationTapHandler,
+  handleForegroundNotification,
+  setNotificationNavigationHandler,
+} from './src/services/pushNotifications';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
@@ -22,6 +28,34 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function PushNotificationBootstrap() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.uid || Platform.OS === 'web') return;
+
+    let cleanupTap: (() => void) | null = null;
+    let cleanupFg: (() => void) | null = null;
+
+    (async () => {
+      await getAndRegisterPushToken(user.uid);
+
+      cleanupTap = await setupNotificationTapHandler();
+
+      cleanupFg = await handleForegroundNotification((title, body, _data) => {
+        console.log('[Push] Foreground notification:', title, body);
+      });
+    })();
+
+    return () => {
+      cleanupTap?.();
+      cleanupFg?.();
+    };
+  }, [user?.uid]);
+
+  return null;
+}
 
 function AppContent() {
   const { isDark, colors } = useTheme();
@@ -73,6 +107,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
+            <PushNotificationBootstrap />
             <AppContent />
           </AuthProvider>
         </ThemeProvider>

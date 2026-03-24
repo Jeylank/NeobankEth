@@ -650,7 +650,20 @@
     "securityAlert": "የደህንነት ማንቂያ",
     "newLogin": "አዲስ መግቢያ ተገኝቷል",
     "passwordChanged": "የይለፍ ቃል ተቀይሯል",
-    "unreadCount": "{{count}} ያልተነበቡ"
+    "unreadCount": "{{count}} ያልተነበቡ",
+    "tapToView": "ለማየት ጫን",
+    "pushDenied": "ማሳወቂያዎች ተዘግተዋል",
+    "pushDeniedSub": "ዝውውሮችን ለማወቅ ማሳወቂያዎችን አንቃ"
+  },
+  "sendAgain": {
+    "sendAgain": "እንደገና ላክ",
+    "contributeAgain": "እንደገና ተሳተፍ",
+    "prefillBanner": "ከ {{source}} አስቀድሞ ተሞልቷል",
+    "clearPrefill": "አጽዳ",
+    "rateRefreshed": "ተመን ዳግም ተሰልቷል — ዝርዝሮች ተለውጠዋል",
+    "noTransfers": "ምንም ዝውውሮች የሉም",
+    "noTransfersSub": "ለቤተሰብዎ ድጋፍ ይላኩ",
+    "sendNow": "ገንዘብ ላክ"
   },
   "transparentFX": {
     "title": "ግልጽ ምንዛሬ",

@@ -6,14 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { remittanceApi } from '../services/api';
+import { SmartEmptyState } from '../components/SmartEmptyState';
+import { SkeletonCard } from '../components/SkeletonLoader';
+import { navigateToSendAgain } from '../services/sendAgainService';
 
 const COLORS = {
   primary: '#006633',
@@ -30,18 +33,19 @@ const COLORS = {
 };
 
 const STATUS_CONFIG: Record<string, { color: string; icon: keyof typeof Ionicons.glyphMap; label: string }> = {
-  pending: { color: COLORS.warning, icon: 'time', label: 'Pending' },
-  processing: { color: COLORS.info, icon: 'sync', label: 'Processing' },
-  sent: { color: COLORS.info, icon: 'paper-plane', label: 'Sent' },
-  completed: { color: COLORS.success, icon: 'checkmark-circle', label: 'Completed' },
-  failed: { color: COLORS.error, icon: 'close-circle', label: 'Failed' },
-  cancelled: { color: COLORS.textSecondary, icon: 'ban', label: 'Cancelled' },
+  pending:    { color: COLORS.warning,       icon: 'time',             label: 'Pending' },
+  processing: { color: COLORS.info,          icon: 'sync',             label: 'Processing' },
+  sent:       { color: COLORS.info,          icon: 'paper-plane',      label: 'Sent' },
+  completed:  { color: COLORS.success,       icon: 'checkmark-circle', label: 'Completed' },
+  failed:     { color: COLORS.error,         icon: 'close-circle',     label: 'Failed' },
+  cancelled:  { color: COLORS.textSecondary, icon: 'ban',              label: 'Cancelled' },
 };
 
 export default function RemittanceTrackingScreen() {
   const navigation = useNavigation<any>();
+  const { t }      = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing]   = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['remittances'],
@@ -57,32 +61,25 @@ export default function RemittanceTrackingScreen() {
   const filteredRemittances = React.useMemo(() => {
     if (!data?.remittances) return [];
     if (!searchQuery.trim()) return data.remittances;
-    
     return data.remittances.filter((r: any) =>
       r.reference?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.beneficiaryName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [data?.remittances, searchQuery]);
 
-  const getStatusConfig = (status: string) => {
-    return STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  };
+  const getStatusConfig = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   const renderTimeline = (remittance: any) => {
     const steps = [
-      { key: 'initiated', label: 'Transfer Initiated', time: remittance.createdAt },
-      { key: 'processing', label: 'Processing', time: remittance.processingAt },
-      { key: 'sent', label: 'Money Sent', time: remittance.sentAt },
-      { key: 'completed', label: 'Delivered', time: remittance.completedAt },
+      { key: 'initiated',  label: 'Transfer Initiated', time: remittance.createdAt },
+      { key: 'processing', label: 'Processing',         time: remittance.processingAt },
+      { key: 'sent',       label: 'Money Sent',         time: remittance.sentAt },
+      { key: 'completed',  label: 'Delivered',          time: remittance.completedAt },
     ];
 
     const currentStep = steps.findIndex(s => !remittance[s.key + 'At'] && s.key !== 'initiated');
@@ -93,32 +90,17 @@ export default function RemittanceTrackingScreen() {
         {steps.map((step, index) => (
           <View key={step.key} style={styles.timelineStep}>
             <View style={styles.timelineDotContainer}>
-              <View
-                style={[
-                  styles.timelineDot,
-                  index <= effectiveStep && styles.timelineDotActive,
-                ]}
-              >
+              <View style={[styles.timelineDot, index <= effectiveStep && styles.timelineDotActive]}>
                 {index < effectiveStep && (
                   <Ionicons name="checkmark" size={12} color={COLORS.white} />
                 )}
               </View>
               {index < steps.length - 1 && (
-                <View
-                  style={[
-                    styles.timelineLine,
-                    index < effectiveStep && styles.timelineLineActive,
-                  ]}
-                />
+                <View style={[styles.timelineLine, index < effectiveStep && styles.timelineLineActive]} />
               )}
             </View>
             <View style={styles.timelineContent}>
-              <Text
-                style={[
-                  styles.timelineLabel,
-                  index <= effectiveStep && styles.timelineLabelActive,
-                ]}
-              >
+              <Text style={[styles.timelineLabel, index <= effectiveStep && styles.timelineLabelActive]}>
                 {step.label}
               </Text>
               {step.time && (
@@ -127,6 +109,68 @@ export default function RemittanceTrackingScreen() {
             </View>
           </View>
         ))}
+      </View>
+    );
+  };
+
+  const renderCard = (remittance: any) => {
+    const statusConfig = getStatusConfig(remittance.status);
+    const isDone = ['completed', 'failed', 'cancelled'].includes(remittance.status);
+
+    return (
+      <View key={remittance.id} style={styles.remittanceCard}>
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={styles.reference}>#{remittance.reference}</Text>
+            <Text style={styles.date}>{formatDate(remittance.createdAt)}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
+            <Ionicons name={statusConfig.icon} size={14} color={statusConfig.color} />
+            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.transferDetails}>
+          <View style={styles.transferRow}>
+            <Text style={styles.transferLabel}>Recipient</Text>
+            <Text style={styles.transferValue}>{remittance.beneficiaryName}</Text>
+          </View>
+          <View style={styles.transferRow}>
+            <Text style={styles.transferLabel}>Amount</Text>
+            <Text style={styles.transferValue}>
+              {remittance.amount?.toLocaleString()} {remittance.fromCurrency}
+            </Text>
+          </View>
+          <View style={styles.transferRow}>
+            <Text style={styles.transferLabel}>Recipient Gets</Text>
+            <Text style={styles.transferValueHighlight}>
+              {remittance.recipientAmount?.toLocaleString()} {remittance.toCurrency}
+            </Text>
+          </View>
+        </View>
+
+        {renderTimeline(remittance)}
+
+        <View style={styles.cardActions}>
+          {!isDone && (
+            <TouchableOpacity
+              style={styles.trackBtn}
+              onPress={() => navigation.navigate('TransferTracking', { txId: remittance.reference || remittance.id })}
+            >
+              <Ionicons name="locate" size={16} color={COLORS.primary} />
+              <Text style={styles.trackBtnText}>Track Live</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.sendAgainBtn, isDone && styles.sendAgainBtnFull]}
+            onPress={() => navigateToSendAgain(navigation, remittance)}
+          >
+            <Ionicons name="paper-plane" size={16} color={COLORS.white} />
+            <Text style={styles.sendAgainBtnText}>{t('sendAgain.sendAgain')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -156,73 +200,24 @@ export default function RemittanceTrackingScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+          <View style={styles.skeletonContainer}>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
           </View>
         ) : filteredRemittances.length > 0 ? (
-          filteredRemittances.map((remittance: any) => {
-            const statusConfig = getStatusConfig(remittance.status);
-            return (
-              <View key={remittance.id} style={styles.remittanceCard}>
-                <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={styles.reference}>#{remittance.reference}</Text>
-                    <Text style={styles.date}>{formatDate(remittance.createdAt)}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
-                    <Ionicons name={statusConfig.icon} size={14} color={statusConfig.color} />
-                    <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                      {statusConfig.label}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.transferDetails}>
-                  <View style={styles.transferRow}>
-                    <Text style={styles.transferLabel}>Recipient</Text>
-                    <Text style={styles.transferValue}>{remittance.beneficiaryName}</Text>
-                  </View>
-                  <View style={styles.transferRow}>
-                    <Text style={styles.transferLabel}>Amount</Text>
-                    <Text style={styles.transferValue}>
-                      {remittance.amount?.toLocaleString()} {remittance.fromCurrency}
-                    </Text>
-                  </View>
-                  <View style={styles.transferRow}>
-                    <Text style={styles.transferLabel}>Recipient Gets</Text>
-                    <Text style={styles.transferValueHighlight}>
-                      {remittance.recipientAmount?.toLocaleString()} {remittance.toCurrency}
-                    </Text>
-                  </View>
-                </View>
-
-                {renderTimeline(remittance)}
-
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, marginTop: 8, backgroundColor: COLORS.primary + '10', borderRadius: 8 }}
-                  onPress={() => navigation.navigate('TransferTracking', { txId: remittance.reference || remittance.id })}
-                >
-                  <Ionicons name="locate" size={16} color={COLORS.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.primary }}>Track Live</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })
+          filteredRemittances.map(renderCard)
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="paper-plane-outline" size={48} color={COLORS.textSecondary} />
-            <Text style={styles.emptyTitle}>No Transfers Found</Text>
-            <Text style={styles.emptyText}>
-              {searchQuery
-                ? 'No transfers match your search'
-                : 'Your remittance history will appear here'}
-            </Text>
-          </View>
+          <SmartEmptyState
+            icon="paper-plane-outline"
+            title={searchQuery ? 'No Transfers Found' : t('sendAgain.noTransfers')}
+            subtitle={searchQuery ? 'No transfers match your search' : t('sendAgain.noTransfersSub')}
+            ctaLabel={searchQuery ? undefined : t('sendAgain.sendNow')}
+            onCta={searchQuery ? undefined : () => navigation.navigate('Remittance')}
+          />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -269,9 +264,8 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
+  skeletonContainer: {
+    gap: 12,
   },
   remittanceCard: {
     backgroundColor: COLORS.white,
@@ -334,6 +328,7 @@ const styles = StyleSheet.create({
   },
   timeline: {
     paddingLeft: 8,
+    marginBottom: 12,
   },
   timelineStep: {
     flexDirection: 'row',
@@ -381,22 +376,42 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  emptyState: {
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  trackBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 40,
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary + '10',
+    borderRadius: 8,
   },
-  emptyTitle: {
-    fontSize: 18,
+  trackBtnText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.text,
-    marginTop: 16,
+    color: COLORS.primary,
   },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 8,
+  sendAgainBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  sendAgainBtnFull: {
+    flex: 2,
+  },
+  sendAgainBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.white,
   },
 });

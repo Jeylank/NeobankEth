@@ -650,7 +650,20 @@
     "securityAlert": "Akeekkachiisa Nageenya",
     "newLogin": "Seensa Haaraan Argame",
     "passwordChanged": "Jechni Icciitii Jijjiirame",
-    "unreadCount": "{{count}} hin dubbifamne"
+    "unreadCount": "{{count}} hin dubbifamne",
+    "tapToView": "Ilaaluuf tuqi",
+    "pushDenied": "Beeksisni cufameera",
+    "pushDeniedSub": "Ergaawwan dabarsuu hordofuuf beeksisa qindeessi"
+  },
+  "sendAgain": {
+    "sendAgain": "Irra Deebi'ii Ergi",
+    "contributeAgain": "Irra Deebi'ii Hirmaadhu",
+    "prefillBanner": "{{source}} irraa dursanii guutame",
+    "clearPrefill": "Haquu",
+    "rateRefreshed": "Gatiin haaromfame — ibsi jijjiirame",
+    "noTransfers": "Ergaa hin jiru",
+    "noTransfersSub": "Maatii keessaniif gargaarsa erguuf jalqabaa",
+    "sendNow": "Maallaqa Ergi"
   },
   "transparentFX": {
     "title": "Jijjiirraa Ifaa",
