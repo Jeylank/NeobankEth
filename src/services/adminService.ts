@@ -329,6 +329,20 @@ export const adminService = {
     return settlementSchedulerService.shouldAutoRun();
   },
 
+  // ─── System Health & Monitoring ──────────────────────────────────────────
+
+  /** getSystemHealth — DB status, uptime, env validation for /api/health */
+  async getSystemHealth() {
+    const { systemHealthService } = await import('./systemHealthService');
+    return systemHealthService.getHealthStatus();
+  },
+
+  /** getSystemSummary — aggregate error/job/fraud/webhook counts for admin monitor */
+  async getSystemSummary() {
+    const { systemHealthService } = await import('./systemHealthService');
+    return systemHealthService.getSystemSummary();
+  },
+
   /** getSettlementDashboardSummary — aggregate stats specifically for the overview widgets */
   async getSettlementDashboardSummary() {
     const { settlementService } = await import('./settlement/settlementService');

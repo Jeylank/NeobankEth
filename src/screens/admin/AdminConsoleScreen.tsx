@@ -105,6 +105,13 @@ const MENU_ITEMS = [
     color: '#0891B2',
     bg: '#ECFEFF',
   },
+  {
+    key: 'systemMonitor',
+    screen: 'AdminSystemMonitor',
+    icon: 'pulse-outline' as const,
+    color: '#DC2626',
+    bg: '#FEF2F2',
+  },
 ];
 
 function AdminConsoleContent() {

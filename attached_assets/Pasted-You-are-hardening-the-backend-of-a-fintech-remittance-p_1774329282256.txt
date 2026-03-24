@@ -1,0 +1,201 @@
+You are hardening the backend of a fintech remittance platform called Habeshare for production deployment.
+
+Current stack:
+
+- Node.js + Express + TypeScript
+- Firebase Admin + Firestore
+- FX Marketplace
+- Treasury Service
+- Wallet Ledger
+- Payment Router
+- Bank Connectors
+- Fraud Monitoring
+- Admin APIs
+
+Do NOT break existing functionality.
+
+Add the following production-grade systems:
+
+---
+
+1️⃣ GLOBAL ERROR HANDLING
+
+Create:
+src/middleware/errorHandler.ts
+
+Requirements:
+
+- handle all custom errors (FxQuoteExpiredError, LiquidityError, etc.)
+- return structured response:
+
+{
+success: false,
+errorCode: "QUOTE_EXPIRED",
+message: "Quote expired, please refresh"
+}
+
+- log all errors to Firestore "system_errors"
+
+---
+
+2️⃣ REQUEST LOGGING + TRACE IDs
+
+Create:
+src/middleware/requestLogger.ts
+
+Requirements:
+
+- generate unique requestId per request
+- log:
+  method
+  endpoint
+  userId
+  requestId
+  timestamp
+- attach requestId to response headers
+
+---
+
+3️⃣ RATE LIMITING
+
+Add middleware:
+
+src/middleware/rateLimiter.ts
+
+Rules:
+
+- /api/payout → max 5 requests/min/user
+- /api/fx/quotes → max 10 requests/min/user
+- /api/auth → max 10/min/IP
+
+Reject with:
+429 TOO MANY REQUESTS
+
+---
+
+4️⃣ IDEMPOTENCY PROTECTION
+
+Enhance payout route:
+
+- require idempotencyKey header
+- store keys in Firestore collection: idempotency_keys
+- prevent duplicate transfers
+
+---
+
+5️⃣ WEBHOOK SECURITY
+
+Enhance:
+POST /api/webhooks/bank
+
+Requirements:
+
+- verify HMAC signature
+- reject invalid requests
+- log all webhook events to Firestore "webhook_events"
+
+---
+
+6️⃣ RETRY + DEAD LETTER QUEUE
+
+Enhance queue system:
+
+- max retries: 3
+- exponential backoff (2s → 5s → 15s)
+- failed jobs go to "dead_letter_queue"
+
+Firestore collection:
+
+dead_letter_queue
+
+---
+
+7️⃣ RECONCILIATION SERVICE
+
+Create:
+src/services/reconciliationService.ts
+
+Cron job daily:
+
+- fetch transactions
+- compare with partner data
+- detect mismatches
+- store in:
+
+reconciliation_reports
+
+---
+
+8️⃣ FRAUD RISK SCORING
+
+Enhance fraudService:
+
+Add risk scoring:
+
+- large transaction
+- rapid transactions
+- failed attempts
+- new account
+
+If risk > threshold:
+
+mark transaction:
+REVIEW_REQUIRED
+
+---
+
+9️⃣ SECRETS MANAGEMENT
+
+Ensure:
+
+- no API keys in code
+- use environment variables
+- validate required env vars at startup
+
+---
+
+🔟 HEALTH CHECK ENDPOINT
+
+Add:
+
+GET /api/health
+
+Return:
+
+{
+status: "ok",
+uptime: seconds,
+db: "connected"
+}
+
+---
+
+11️⃣ FIRESTORE SECURITY
+
+Ensure only backend writes:
+
+transactions
+ledger_entries
+audit_logs
+fx_quotes
+treasury_liquidity
+
+---
+
+12️⃣ ADMIN MONITORING EXTENSION
+
+Enhance admin APIs:
+
+GET /api/admin/system
+
+Return:
+
+- error count
+- failed jobs
+- liquidity summary
+- fraud alerts
+- webhook failures
+
+---
+
+Write clean, production-ready TypeScript code with proper structure and comments.
