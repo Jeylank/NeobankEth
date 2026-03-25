@@ -120,7 +120,9 @@ export const firebaseAuth = {
   getIdToken: async () => {
     const user = auth.currentUser;
     if (user) {
-      return await user.getIdToken();
+      // forceRefresh: true — always fetches a fresh token from Firebase servers,
+      // bypassing any locally cached token that may be stale or corrupted.
+      return await user.getIdToken(/* forceRefresh */ true);
     }
     return null;
   },

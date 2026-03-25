@@ -82,11 +82,18 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
       });
 
       if (!intentRes.ok) {
-        const { error } = await intentRes.json();
-        throw new Error(error ?? 'Failed to create payment intent.');
+        let errorMsg = `Payment service error (${intentRes.status})`;
+        try {
+          const data = await intentRes.json();
+          errorMsg = data.error ?? data.message ?? errorMsg;
+        } catch {
+          // Response was not JSON (e.g. proxy error page when server is down)
+        }
+        throw new Error(errorMsg);
       }
 
-      const { clientSecret } = await intentRes.json();
+      const body = await intentRes.json();
+      const clientSecret: string = body.clientSecret;
 
       // 3. Confirm card payment with Stripe.js (card details never touch our servers)
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
