@@ -59,3 +59,4 @@ ADMIN_API_PORT = "5000"
 
 [userenv.development]
 DISABLE_MAINTENANCE_MODE = "true"
+SIMULATION_API_KEY = "hsim_fe20b92f2662c9f4477fd5d33d7b378c91db8f185e43e7b7"

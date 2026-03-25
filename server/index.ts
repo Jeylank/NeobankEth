@@ -27,6 +27,7 @@ import reconciliationRouter from './routes/reconciliation';
 import riskControlsRouter   from './routes/adminRiskControls';
 import systemConfigRouter   from './routes/systemConfigRoutes';
 import paymentsRouter       from './routes/payments';
+import simulationRouter    from './routes/simulation';
 import { systemConfigService } from './services/systemConfigService';
 import { getStripeSync }    from './stripeClient';
 import { stripePaymentService } from './services/stripePaymentService';
@@ -130,6 +131,7 @@ app.use(API_PREFIX, reconciliationRouter);
 app.use(API_PREFIX, riskControlsRouter);
 app.use(API_PREFIX, systemConfigRouter);
 app.use('/api',     paymentsRouter);
+app.use('/api/v1',  simulationRouter);
 
 // ─── Static Web App (Expo dist) ───────────────────────────────────────────────
 // Serve the pre-built Expo web bundle and fall back to index.html so the
@@ -245,6 +247,13 @@ app.listen(PORT, () => {
   console.log(`    GET  /api/payments/publishable-key`);
   console.log(`    POST /api/payments/create-intent`);
   console.log(`    POST /api/payments/webhook`);
+  console.log('  Simulation API (v1):');
+  console.log(`    GET  /api/v1/health`);
+  console.log(`    POST /api/v1/wallet/topup`);
+  console.log(`    GET  /api/v1/fx/quotes`);
+  console.log(`    GET  /api/v1/wallet/:userId`);
+  const simBase = `https://${(process.env.REPLIT_DOMAINS ?? 'localhost:5000').split(',')[0]}`;
+  console.log(`  Sim base URL: ${simBase}/api/v1  (X-API-Key required if SIMULATION_API_KEY is set)`);
 });
 
 export default app;

@@ -35,6 +35,18 @@ The application leverages Expo SDK 50, React Native 0.73, React Navigation 6, an
 -   Enhanced interactive elements such as `AnimatedPressable`, `SkeletonLoader`, `TrustBadges`, and `SmartEmptyState`.
 -   Improved remittance and transfer tracking screens with better visual feedback and user guidance.
 
+**Simulation Integration API (v1):**
+-   **Base URL:** `https://{REPLIT_DOMAIN}/api/v1` (live at the same Express server, port 5000).
+-   **Auth:** `X-API-Key` header (value stored in `SIMULATION_API_KEY` dev env var). No key configured = open demo mode.
+-   **File:** `server/routes/simulation.ts`
+-   **Endpoints:**
+    -   `GET  /api/v1/health` — public health check, lists endpoints.
+    -   `POST /api/v1/wallet/topup` — body: `{ userId, amount, currency }` → creates a real Stripe PaymentIntent, returns `{ transactionId, clientSecret, amount, currency, status }`.
+    -   `GET  /api/v1/fx/quotes` — query: `?from=EUR&to=ETB` (optional). Returns live-ish FX rates with small random jitter. 15 pairs: EUR/USD/GBP/ETB cross-rates.
+    -   `GET  /api/v1/wallet/:userId` — reads Firestore wallet if available, falls back to demo zeros.
+-   **CORS:** Open (`*`) — external simulation apps can call directly from the browser.
+-   **Simulation app env:** Set `VITE_NEOBANK_API_URL=https://{REPLIT_DOMAIN}/api/v1` and `VITE_API_KEY={SIMULATION_API_KEY}`.
+
 **Admin Operations API (Express Server):**
 -   A unified Node.js/Express/TypeScript server on **port 5000** serving both the API and the static Expo web app.
 -   Workflow: `Admin API` (`npm run server:admin` with `--transpile-only` for fast startup). Single workflow, no separate static server needed.
