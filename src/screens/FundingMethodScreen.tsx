@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { AnimatedPressable } from '../components/AnimatedPressable';
+import AnimatedPressable from '../components/AnimatedPressable';
 
 const COLORS = {
   primary:       '#006633',
