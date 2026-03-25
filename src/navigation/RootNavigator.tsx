@@ -40,6 +40,8 @@ import TransferSuccessScreen from '../screens/TransferSuccessScreen';
 import RecipientsScreen from '../screens/RecipientsScreen';
 import PersonalInformationScreen from '../screens/PersonalInformationScreen';
 import AboutScreen from '../screens/AboutScreen';
+import TwoFactorVerifyScreen from '../screens/TwoFactorVerifyScreen';
+import TwoFactorSetupScreen from '../screens/TwoFactorSetupScreen';
 import AdminConsoleScreen from '../screens/admin/AdminConsoleScreen';
 import AdminOverviewScreen from '../screens/admin/AdminOverviewScreen';
 import AdminPayoutMonitoringScreen from '../screens/admin/AdminPayoutMonitoringScreen';
@@ -125,7 +127,7 @@ function MainTabs() {
 }
 
 export default function RootNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, pending2FA } = useAuth();
 
   if (isLoading) {
     return (
@@ -147,7 +149,9 @@ export default function RootNavigator() {
         },
       }}
     >
-      {isAuthenticated ? (
+      {pending2FA ? (
+        <Stack.Screen name="TwoFactorVerify" component={TwoFactorVerifyScreen} options={{ headerShown: false }} />
+      ) : isAuthenticated ? (
         <>
           <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
           <Stack.Screen name="BillPayments" component={BillPaymentsScreen} options={{ title: 'Pay Bills' }} />
@@ -179,6 +183,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Recipients" component={RecipientsScreen} options={{ title: 'Recipients' }} />
           <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} options={{ title: 'Personal Information' }} />
           <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Habeshare' }} />
+          <Stack.Screen name="TwoFactorSetup" component={TwoFactorSetupScreen} options={{ title: 'Two-Factor Authentication' }} />
           <Stack.Screen name="AdminConsole" component={AdminConsoleScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminOverview" component={AdminOverviewScreen} options={{ title: 'Overview' }} />
           <Stack.Screen name="AdminPayoutMonitoring" component={AdminPayoutMonitoringScreen} options={{ title: 'Payout Monitoring' }} />
