@@ -28,6 +28,7 @@ import riskControlsRouter   from './routes/adminRiskControls';
 import systemConfigRouter   from './routes/systemConfigRoutes';
 import paymentsRouter       from './routes/payments';
 import simulationRouter    from './routes/simulation';
+import adminUsersRouter    from './routes/adminUsers';
 import { systemConfigService } from './services/systemConfigService';
 import { getStripeSync }    from './stripeClient';
 import { stripePaymentService } from './services/stripePaymentService';
@@ -130,6 +131,7 @@ app.use(API_PREFIX, liquidityRouter);
 app.use(API_PREFIX, reconciliationRouter);
 app.use(API_PREFIX, riskControlsRouter);
 app.use(API_PREFIX, systemConfigRouter);
+app.use(API_PREFIX, adminUsersRouter);
 app.use('/api',     paymentsRouter);
 app.use('/api/v1',  simulationRouter);
 
@@ -243,6 +245,11 @@ app.listen(PORT, () => {
   console.log(`    GET  ${API_PREFIX}/system-config`);
   console.log(`    POST ${API_PREFIX}/system-config`);
   console.log(`    POST ${API_PREFIX}/system-config/refresh`);
+  console.log('  User Management:');
+  console.log(`    POST ${API_PREFIX}/users/bootstrap  (ADMIN_BOOTSTRAP_SECRET — first admin only)`);
+  console.log(`    POST ${API_PREFIX}/users/promote    (requires existing admin)`);
+  console.log(`    POST ${API_PREFIX}/users/demote     (requires existing admin)`);
+  console.log(`    GET  ${API_PREFIX}/users/:uid/claims`);
   console.log('  Payments (Stripe):');
   console.log(`    GET  /api/payments/publishable-key`);
   console.log(`    POST /api/payments/create-intent`);
