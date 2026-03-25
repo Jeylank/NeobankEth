@@ -76,9 +76,14 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 // ─── Global Maintenance Mode Gate ─────────────────────────────────────────────
-// Health check is always public; all other routes respect maintenanceMode.
+// Health check, Stripe webhook, and publishable-key are always bypassed.
+const MAINTENANCE_BYPASS = [
+  '/health',
+  '/api/payments/webhook',
+  '/api/payments/publishable-key',
+];
 app.use(async (req: Request, res: Response, next: NextFunction) => {
-  if (req.path === '/health') return next();
+  if (MAINTENANCE_BYPASS.some((p) => req.path.startsWith(p))) return next();
   try {
     const inMaintenance = await systemConfigService.isMaintenanceMode();
     if (inMaintenance) {
@@ -200,6 +205,7 @@ app.listen(PORT, () => {
   console.log(`    POST ${API_PREFIX}/system-config`);
   console.log(`    POST ${API_PREFIX}/system-config/refresh`);
   console.log('  Payments (Stripe):');
+  console.log(`    GET  /api/payments/publishable-key`);
   console.log(`    POST /api/payments/create-intent`);
   console.log(`    POST /api/payments/webhook`);
 });

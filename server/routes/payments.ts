@@ -19,8 +19,22 @@ import { Router, Request, Response } from 'express';
 import { stripePaymentService }      from '../services/stripePaymentService';
 import { verifyUser, UserAuthRequest } from '../middleware/verifyUser';
 import { systemConfigService }       from '../services/systemConfigService';
+import { getStripePublishableKey }   from '../stripeClient';
 
 const router = Router();
+
+// ─── GET /api/payments/publishable-key ────────────────────────────────────────
+// Public — safe to expose; the publishable key is intended for client-side use.
+
+router.get('/payments/publishable-key', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const publishableKey = await getStripePublishableKey();
+    res.status(200).json({ publishableKey });
+  } catch (err: any) {
+    console.error('[GET /payments/publishable-key]', err.message);
+    res.status(500).json({ error: 'Could not fetch publishable key.' });
+  }
+});
 
 // ─── POST /api/payments/create-intent ─────────────────────────────────────────
 
