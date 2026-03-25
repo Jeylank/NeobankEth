@@ -86,7 +86,12 @@ const MAINTENANCE_BYPASS = [
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   // Non-API paths (static files / SPA) are never gated by maintenance mode.
   // Specific API paths (webhook, publishable-key) are also explicitly bypassed.
-  if (!req.path.startsWith('/api/') || MAINTENANCE_BYPASS.some((p) => req.path.startsWith(p))) {
+  // DISABLE_MAINTENANCE_MODE=true skips the check entirely (dev / testing).
+  if (
+    process.env.DISABLE_MAINTENANCE_MODE === 'true' ||
+    !req.path.startsWith('/api/') ||
+    MAINTENANCE_BYPASS.some((p) => req.path.startsWith(p))
+  ) {
     return next();
   }
   try {
@@ -152,9 +157,22 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ─── Process Stability ────────────────────────────────────────────────────────
+// Catch unhandled errors so they are logged but don't silently crash the server.
+
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err.message, err.stack);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+
 // ─── Stripe Initialisation ────────────────────────────────────────────────────
-// Runs the stripe-replit-sync migration (idempotent) and starts the backfill.
-// Failures are non-fatal — the payment routes work independently of the sync.
+// Runs the stripe-replit-sync schema migration and registers the managed webhook.
+// The syncBackfill is intentionally NOT called on startup — it opens a persistent
+// pg connection pool whose idle-timeout teardown can drain the Node event loop
+// and crash the server process. Payments work correctly without the backfill.
 
 async function initStripe(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
@@ -171,11 +189,6 @@ async function initStripe(): Promise<void> {
     const webhookBaseUrl = `https://${(process.env.REPLIT_DOMAINS ?? '').split(',')[0]}`;
     await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/payments/webhook`);
     console.log('[Stripe] Managed webhook configured.');
-
-    // Run backfill async so server starts immediately.
-    stripeSync.syncBackfill()
-      .then(() => console.log('[Stripe] Data backfill complete.'))
-      .catch((err: Error) => console.error('[Stripe] Backfill error:', err.message));
   } catch (err: any) {
     console.error('[Stripe] Initialisation error (non-fatal):', err.message);
   }

@@ -56,3 +56,6 @@ build = ["npx", "expo", "export", "--platform", "web"]
 
 [userenv.shared]
 ADMIN_API_PORT = "5000"
+
+[userenv.development]
+DISABLE_MAINTENANCE_MODE = "true"
