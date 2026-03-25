@@ -11,6 +11,7 @@ import {
 } from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clientRiskService } from './riskControls/clientRiskService';
+import { cache } from '../utils/cache';
 import type {
   FxQuoteRecord,
   FxQuoteStatus,
@@ -25,6 +26,10 @@ import type {
 const IS_DEV = __DEV__;
 const QUOTE_TTL_MS = 5 * 60 * 1000;
 const LOCAL_QUOTES_KEY = 'fx_quotes_local';
+
+const FX_QUOTES_CACHE_TTL_MS   = 30_000;  // 30 s — avoids duplicate quote generation within a session
+const PROVIDER_HEALTH_TTL_MS   = 15_000;  // 15 s — stale-while-using window for provider health
+const PROVIDER_HEALTH_CACHE_KEY = 'fx:provider_health';
 const LOCAL_RESERVATIONS_KEY = 'fx_reservations_local';
 const LOCAL_AUDIT_KEY = 'fx_audit_local';
 
@@ -236,12 +241,32 @@ export const fxMarketplaceService = {
     payoutMethod: string;
   }): Promise<FxQuoteRecord[]> {
     const { userId, amount, currency, payoutMethod } = params;
+
+    // ── Quote cache (30 s) ────────────────────────────────────────────────────
+    // Returning the same quotes within the cache window prevents duplicate quote
+    // documents being created when a user taps "refresh rates" in quick succession.
+    const quoteCacheKey = `fx:quotes:${userId}:${amount}:${currency}:${payoutMethod}`;
+    const cachedQuotes = cache.get<FxQuoteRecord[]>(quoteCacheKey);
+    if (cachedQuotes) {
+      return cachedQuotes;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const rateCfg = BASE_RATES[currency];
     if (!rateCfg) {
       throw new Error(`Unsupported currency: ${currency}`);
     }
 
-    const healthyProviders = PROVIDER_HEALTH.filter(p => {
+    // ── Provider health cache (15 s) ──────────────────────────────────────────
+    // In production, PROVIDER_HEALTH would be populated by real API health checks.
+    // We cache the resolved snapshot to avoid redundant checks per request.
+    let providerSnapshot = cache.get<FxProviderHealth[]>(PROVIDER_HEALTH_CACHE_KEY);
+    if (!providerSnapshot) {
+      providerSnapshot = [...PROVIDER_HEALTH];
+      cache.set(PROVIDER_HEALTH_CACHE_KEY, providerSnapshot, PROVIDER_HEALTH_TTL_MS);
+    }
+
+    const healthyProviders = providerSnapshot.filter(p => {
       if (!p.healthy) return false;
       const etbNeeded = amount * rateCfg.base;
       if (p.availableLiquidityETB < etbNeeded) return false;
@@ -295,6 +320,9 @@ export const fxMarketplaceService = {
       providerCount: quotes.length,
       timestamp: now(),
     });
+
+    // Store in cache to prevent duplicate quote generation within the TTL window.
+    cache.set(quoteCacheKey, quotes, FX_QUOTES_CACHE_TTL_MS);
 
     return quotes;
   },
@@ -609,23 +637,41 @@ export const fxMarketplaceService = {
     };
   },
 
+  /**
+   * Returns the current provider health snapshot.
+   * Served from the 15-second in-memory cache where possible.
+   */
   getProviderHealth(): FxProviderHealth[] {
-    return [...PROVIDER_HEALTH];
+    const cached = cache.get<FxProviderHealth[]>(PROVIDER_HEALTH_CACHE_KEY);
+    if (cached) return cached;
+    const snapshot = [...PROVIDER_HEALTH];
+    cache.set(PROVIDER_HEALTH_CACHE_KEY, snapshot, PROVIDER_HEALTH_TTL_MS);
+    return snapshot;
   },
 
+  /**
+   * Update a provider's health status.
+   * Invalidates the provider-health cache so the next call re-reads fresh data.
+   */
   setProviderHealth(provider: string, healthy: boolean): void {
     const p = PROVIDER_HEALTH.find(h => h.provider === provider);
     if (p) {
       p.healthy = healthy;
       p.lastCheckedAt = now();
+      cache.invalidate(PROVIDER_HEALTH_CACHE_KEY);
     }
   },
 
+  /**
+   * Update a provider's available liquidity.
+   * Invalidates the provider-health cache so quotes reflect the new figure.
+   */
   setProviderLiquidity(provider: string, amount: number): void {
     const p = PROVIDER_HEALTH.find(h => h.provider === provider);
     if (p) {
       p.availableLiquidityETB = amount;
       p.lastCheckedAt = now();
+      cache.invalidate(PROVIDER_HEALTH_CACHE_KEY);
     }
   },
 };

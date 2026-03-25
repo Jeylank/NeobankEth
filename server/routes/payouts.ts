@@ -6,11 +6,17 @@
  * Returns paginated payout transactions from `payout_transactions` collection.
  * Supports query filters: status, provider, dateFrom, dateTo.
  * Never modifies any transaction data.
+ *
+ * Global safety guards:
+ *   - Checks systemConfigService.isSystemEnabled() — rejects if platform disabled.
+ *   - Checks systemConfigService.isPayoutEnabled() — rejects payout reads when
+ *     payouts are administratively disabled (signals potential fraud response).
  */
 
 import { Router, Request, Response } from 'express';
 import { adminDb } from '../firebaseAdmin';
 import { verifyAdmin, AuthRequest } from '../middleware/auth';
+import { systemConfigService } from '../services/systemConfigService';
 import type { Query, CollectionReference } from 'firebase-admin/firestore';
 
 const router = Router();
@@ -18,6 +24,24 @@ const PAYOUTS_COL = 'payout_transactions';
 
 router.get('/payouts', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
+    // ── Global system-config guards ───────────────────────────────────────────
+    const [systemEnabled, payoutEnabled] = await Promise.all([
+      systemConfigService.isSystemEnabled(),
+      systemConfigService.isPayoutEnabled(),
+    ]);
+
+    if (!systemEnabled) {
+      console.warn('[/payouts] Blocked — SYSTEM_DISABLED');
+      res.status(503).json({ error: 'SYSTEM_DISABLED', message: 'The platform is currently disabled.' });
+      return;
+    }
+    if (!payoutEnabled) {
+      console.warn('[/payouts] Blocked — PAYOUT_DISABLED');
+      res.status(503).json({ error: 'PAYOUT_DISABLED', message: 'Payout operations are currently disabled.' });
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const { status, provider, dateFrom, dateTo, limit: limitParam, page } = req.query as Record<string, string>;
 
     const pageLimit = Math.min(parseInt(limitParam ?? '50', 10), 200);

@@ -23,6 +23,8 @@ import disputesRouter       from './routes/disputes';
 import liquidityRouter      from './routes/liquidity';
 import reconciliationRouter from './routes/reconciliation';
 import riskControlsRouter   from './routes/adminRiskControls';
+import systemConfigRouter   from './routes/systemConfigRoutes';
+import { systemConfigService } from './services/systemConfigService';
 
 const app  = express();
 const PORT = parseInt(process.env.ADMIN_API_PORT ?? '4000', 10);
@@ -44,6 +46,27 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
+// ─── Global Maintenance Mode Gate ─────────────────────────────────────────────
+// Health check is always public; all other routes respect maintenanceMode.
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  if (req.path === '/health') return next();
+  try {
+    const inMaintenance = await systemConfigService.isMaintenanceMode();
+    if (inMaintenance) {
+      console.warn(`[MaintenanceMode] Request blocked: ${req.method} ${req.path}`);
+      res.status(503).json({
+        error:   'MAINTENANCE_MODE',
+        message: 'The platform is currently undergoing scheduled maintenance. Please try again later.',
+      });
+      return;
+    }
+  } catch {
+    // If we cannot reach Firestore to check maintenance status, allow the
+    // request through — the individual route guards will apply their own checks.
+  }
+  next();
+});
+
 // ─── Health Check (public) ────────────────────────────────────────────────────
 
 app.get('/health', (_req: Request, res: Response) => {
@@ -61,6 +84,7 @@ app.use(API_PREFIX, disputesRouter);
 app.use(API_PREFIX, liquidityRouter);
 app.use(API_PREFIX, reconciliationRouter);
 app.use(API_PREFIX, riskControlsRouter);
+app.use(API_PREFIX, systemConfigRouter);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 
@@ -105,7 +129,13 @@ app.listen(PORT, () => {
   console.log(`    POST ${API_PREFIX}/risk-flags/:userId/freeze`);
   console.log(`    POST ${API_PREFIX}/risk-flags/:userId/unfreeze`);
   console.log(`    POST ${API_PREFIX}/risk-flags/:userId/review`);
+  console.log(`    POST ${API_PREFIX}/risk-flags/:userId/active`);
   console.log(`    GET  ${API_PREFIX}/risk-summary`);
+  console.log(`    GET  ${API_PREFIX}/risk-blocked-metrics`);
+  console.log('  System Config:');
+  console.log(`    GET  ${API_PREFIX}/system-config`);
+  console.log(`    POST ${API_PREFIX}/system-config`);
+  console.log(`    POST ${API_PREFIX}/system-config/refresh`);
 });
 
 export default app;

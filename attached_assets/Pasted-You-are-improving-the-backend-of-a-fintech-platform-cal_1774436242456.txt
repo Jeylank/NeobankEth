@@ -1,0 +1,185 @@
+You are improving the backend of a fintech platform called Habeshare.
+
+Stack:
+Node.js
+Express
+TypeScript
+Firebase Admin
+Firestore
+
+The system already includes:
+
+- remittance API
+- FX marketplace
+- treasury service
+- payout connectors
+- fraud monitoring
+- admin console
+
+Do NOT break existing logic.
+
+Add a global system configuration + kill switch + caching layer.
+
+---
+
+1️⃣ SYSTEM CONFIG SERVICE
+
+Create:
+
+src/services/systemConfigService.ts
+
+Purpose:
+Centralized control for runtime feature flags and system safety.
+
+Firestore collection:
+
+system_config
+
+Document example:
+
+{
+systemEnabled: true,
+payoutEnabled: true,
+fxMarketplaceEnabled: true,
+walletEnabled: true,
+maintenanceMode: false,
+updatedAt: timestamp
+}
+
+Functions:
+
+getConfig()
+updateConfig(partialConfig)
+isSystemEnabled()
+isPayoutEnabled()
+isFxEnabled()
+isWalletEnabled()
+isMaintenanceMode()
+
+Cache config in memory (refresh every 30 seconds)
+
+---
+
+2️⃣ GLOBAL KILL SWITCH (CRITICAL)
+
+Integrate system checks into all critical services:
+
+- payoutService
+- fxMarketplaceService
+- walletService
+- remittance routes
+
+Before executing actions:
+
+if (!systemConfigService.isSystemEnabled())
+throw "SYSTEM_DISABLED"
+
+if (!systemConfigService.isPayoutEnabled())
+block payouts
+
+if (!systemConfigService.isFxEnabled())
+block FX quotes
+
+if (maintenanceMode === true)
+return maintenance response
+
+---
+
+3️⃣ ADMIN TOGGLE ENDPOINTS
+
+Create route:
+
+src/routes/systemConfigRoutes.ts
+
+Endpoints:
+
+GET /api/admin/system-config
+POST /api/admin/system-config
+
+POST body example:
+
+{
+payoutEnabled: false
+}
+
+Security:
+
+- verify Firebase admin role
+- log all changes in audit_logs
+
+Audit example:
+
+{
+action: "SYSTEM_CONFIG_UPDATED",
+changes: {...},
+adminId: "UID123"
+}
+
+---
+
+4️⃣ CACHE LAYER (PERFORMANCE)
+
+Add in-memory caching for:
+
+- FX quotes (30 seconds)
+- system config (30 seconds)
+- provider health (15 seconds)
+
+Create helper:
+
+src/utils/cache.ts
+
+Functions:
+
+get(key)
+set(key, value, ttl)
+invalidate(key)
+
+Use cache in:
+
+fxMarketplaceService
+systemConfigService
+provider health checks
+
+---
+
+5️⃣ SAFE FALLBACKS
+
+If Firestore fails:
+
+- system defaults to SAFE mode:
+  - payouts disabled
+  - FX disabled
+
+Never allow unsafe execution.
+
+---
+
+6️⃣ TYPES
+
+Add TypeScript types:
+
+SystemConfig
+SystemConfigUpdateRequest
+
+---
+
+7️⃣ LOGGING
+
+Log:
+
+- system disabled events
+- blocked payouts
+- config changes
+- cache hits/misses
+
+---
+
+8️⃣ OUTPUT
+
+Generate production-ready TypeScript code with:
+
+- comments
+- error handling
+- modular structure
+- no breaking changes
