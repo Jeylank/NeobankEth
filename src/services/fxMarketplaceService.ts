@@ -10,6 +10,7 @@ import {
   orderBy,
 } from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clientRiskService } from './riskControls/clientRiskService';
 import type {
   FxQuoteRecord,
   FxQuoteStatus,
@@ -303,6 +304,12 @@ export const fxMarketplaceService = {
     quoteId: string;
   }): Promise<{ quote: FxQuoteRecord; reservation: FxReservation }> {
     const { userId, quoteId } = params;
+
+    // ── Risk Controls Layer ───────────────────────────────────────────────
+    if (userId) {
+      await clientRiskService.runFxMarketplaceChecks(userId);
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     const quote = await getQuoteById(quoteId);
     if (!quote) {

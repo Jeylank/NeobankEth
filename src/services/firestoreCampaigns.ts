@@ -13,6 +13,7 @@ import {
 } from './firebase';
 import { remittanceApi } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clientRiskService } from './riskControls/clientRiskService';
 import type { SupportCampaign, CampaignContribution, CampaignCategory } from '../types';
 
 const LOCAL_CAMPAIGNS_KEY = 'support_campaigns_local';
@@ -238,6 +239,12 @@ class CampaignService {
     if (this.offlineMode && !IS_DEV) {
       throw new Error('OFFLINE');
     }
+
+    // ── Risk Controls Layer ───────────────────────────────────────────────
+    if (data.userId && !this.useLocalFallback) {
+      await clientRiskService.runCampaignChecks(data.userId, data.amount, data.currency);
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     const now = new Date().toISOString();
     const contributionData = {

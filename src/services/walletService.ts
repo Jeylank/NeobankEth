@@ -14,6 +14,7 @@ import {
 } from './firebase';
 import { exchangeRatesApi } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clientRiskService } from './riskControls/clientRiskService';
 import type {
   Wallet,
   LedgerEntry,
@@ -150,6 +151,11 @@ class WalletService {
     provider?: string,
     providerRef?: string
   ): Promise<LedgerEntry> {
+    // ── Risk Controls Layer (TOPUP only) ────────────────────────────────────
+    if (category === 'TOPUP' && userId && !this.useLocalFallback) {
+      await clientRiskService.runTopupChecks(userId, amount, currency);
+    }
+    // ───────────────────────────────────────────────────────────────────────
     const now = new Date().toISOString();
     const entry: LedgerEntry = {
       entryId: `entry_${Date.now()}`,

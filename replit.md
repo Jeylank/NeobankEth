@@ -42,8 +42,9 @@ The application leverages Expo SDK 50, React Native 0.73, React Navigation 6, an
 -   **Audit Logging:** All critical admin actions are logged to `admin_action_logs`.
 
 **Risk Controls Layer:**
+-   **Client Integration (COMPLETE):** `src/services/riskControls/clientRiskService.ts` — shared enforcement layer using Firebase client SDK. Integrated into all 6 financial paths: remittance, wallet top-up (TOPUP category), recurring support worker (graceful frozen-user skip), campaign contributions, FX marketplace quote selection, and referral rewards. 30 Jest tests in `server/tests/riskControls.test.ts`. Run: `npm run test:risk`.
 -   Integrated backend safety layer with services for:
-    -   **Kill Switches:** Temporarily disable platform features.
+    -   **Kill Switches:** Temporarily disable platform features (6 kill switches: remittance, topup, recurring_support, campaign_payout, fx_marketplace, referral_rewards).
     -   **Transaction & Velocity Limits:** Configurable limits for transfers and other financial activities.
     -   **Safety Guards:** Pre-flight checks for user status, KYC, liquidity, and repeated failures.
 -   **Typed Errors:** Provides structured error responses for specific risk control failures.

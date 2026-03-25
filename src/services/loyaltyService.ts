@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clientRiskService } from './riskControls/clientRiskService';
 
 interface ReferralInfo {
   referralCode: string;
@@ -171,6 +172,14 @@ class LoyaltyService {
   }
 
   async completeReferral(userId: number, referralId: string): Promise<void> {
+    // ── Risk Controls Layer ────────────────────────────────────────────────
+    try {
+      await clientRiskService.runReferralRewardChecks(String(userId));
+    } catch (riskErr: any) {
+      console.warn(`[LoyaltyService] Referral reward blocked by risk controls: ${riskErr.message}`);
+      throw riskErr;
+    }
+    // ──────────────────────────────────────────────────────────────────────
     try {
       const referrals = await this.getReferrals(userId);
       const referral = referrals.find(r => r.id === referralId);

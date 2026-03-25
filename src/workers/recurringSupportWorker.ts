@@ -40,6 +40,14 @@ import {
 import { db } from '../services/firebase';
 import { scheduledSupportExecutionService } from '../services/recurringSupport/scheduledSupportExecutionService';
 import type { RecurringSupportSchedulerRun } from '../services/recurringSupport/scheduledSupportExecutionService';
+import {
+  clientRiskService,
+  FeatureDisabledError,
+  UserFrozenError,
+  ReviewRequiredError,
+  LimitExceededError,
+  VelocityLimitExceededError,
+} from '../services/riskControls/clientRiskService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -132,6 +140,43 @@ export async function processRecurringSupport(
   const runIdPlaceholder = `rs_run_${Date.now()}`;
 
   try {
+    // ── Global kill switch check ──────────────────────────────────────────
+    try {
+      await clientRiskService.checkKillSwitch('recurring_support_enabled');
+    } catch (killSwitchErr) {
+      const reason = killSwitchErr instanceof FeatureDisabledError
+        ? 'Kill switch: recurring_support_enabled is OFF'
+        : 'Risk controls unavailable';
+      console.warn(`[RecurringSupportWorker] ${reason} — aborting run`);
+      errors.push({ scheduleId: 'GLOBAL', userId: 'N/A', reason });
+      const abortDuration = Date.now() - startMs;
+      await scheduledSupportExecutionService.logRun({
+        jobType: 'RECURRING_SUPPORT',
+        triggeredBy,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        durationMs: abortDuration,
+        processedCount: 0,
+        successCount: 0,
+        failedCount: 0,
+        errors,
+        status: 'FAILED',
+      });
+      return {
+        runId: runIdPlaceholder,
+        jobType: 'RECURRING_SUPPORT',
+        triggeredBy,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        durationMs: abortDuration,
+        processedCount: 0,
+        successCount: 0,
+        failedCount: 0,
+        errors,
+        status: 'FAILED',
+      };
+    }
+
     // ── Query all due recurring schedules via collectionGroup ──
     const now = isoNow();
     const schedulesQuery = query(
@@ -159,6 +204,34 @@ export async function processRecurringSupport(
       const executedAt = isoNow();
 
       try {
+        // 0. Risk Controls — check user state and limits before anything
+        try {
+          await clientRiskService.runRecurringSupportChecks(userId, schedule.amount ?? 0, schedule.currency ?? 'USD');
+        } catch (riskErr: any) {
+          if (riskErr instanceof UserFrozenError || riskErr instanceof ReviewRequiredError) {
+            // Soft skip: user frozen or in review — write an audit entry, do NOT DLQ
+            console.warn(`[RecurringSupportWorker] Skipping schedule ${scheduleId} (user ${userId}): ${riskErr.message}`);
+            try {
+              await addDoc(collection(db, 'users', userId, 'recurring_audit_log'), {
+                action: 'execution_skipped_risk',
+                scheduleId,
+                details: {
+                  riskCode: riskErr.code,
+                  reason: riskErr.message,
+                  triggeredBy,
+                },
+                timestamp: executedAt,
+                createdAt: executedAt,
+              });
+            } catch (_) {}
+            failedCount++;
+            errors.push({ scheduleId, userId, reason: `Risk skip: ${riskErr.code} — ${riskErr.message}` });
+            continue;
+          }
+          // Hard block (kill switch, limit exceeded, velocity) — fall through to normal error path
+          throw riskErr;
+        }
+
         // 1. Validate user status
         const userValidation = await validateUserStatus(userId);
         if (!userValidation.valid) {

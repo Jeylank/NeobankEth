@@ -2,6 +2,7 @@ import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, getD
 import { db } from './firebase';
 import { getAuth } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clientRiskService, RiskError } from './riskControls/clientRiskService';
 
 const RECIPIENTS_STORAGE_KEY = 'habeshare_recipients';
 
@@ -76,6 +77,13 @@ export async function initiateTransferFirestore(data: {
   convertedAmount?: number;
 }): Promise<{ txId: string; status: string }> {
   const user = getAuth().currentUser;
+
+  // ── Risk Controls Layer ───────────────────────────────────────────────────
+  if (user) {
+    await clientRiskService.runRemittanceChecks(user.uid, data.amount, data.fromCurrency);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const txId = 'TX-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7).toUpperCase();
 
   const record: Omit<RemittanceRecord, 'txId'> & { txId: string } = {
