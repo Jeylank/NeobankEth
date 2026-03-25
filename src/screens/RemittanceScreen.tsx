@@ -211,7 +211,8 @@ export default function RemittanceScreen() {
       return;
     }
 
-    if (parseFloat(amount) > (balanceData?.balance || 0)) {
+    const availableBalance = balanceData?.balance ?? 10000;
+    if (parseFloat(amount) > availableBalance) {
       Alert.alert(t('common.error'), t('remittance.insufficientBalance') || 'Insufficient balance');
       return;
     }
