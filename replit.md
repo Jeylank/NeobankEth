@@ -1,92 +1,60 @@
 # Habeshare Mobile App
 
 ## Overview
-Habeshare is a non-custodial mobile banking application built with Expo React Native, offering web support. It facilitates financial services such as remittance tracking, bill payments, and KYC verification, primarily for the Ethiopian diaspora, without holding user funds directly. All transactions are processed through licensed financial institutions in Ethiopia. The project aims to provide a comprehensive and secure platform for managing financial interactions with Ethiopia, including features like family support automation, group funding (Family Circle, Support Campaigns), and multi-currency management with transparent FX services.
+Habeshare is a non-custodial mobile banking application for the Ethiopian diaspora, built with Expo React Native and offering web support. It enables financial services like remittance tracking, bill payments, and KYC verification by acting as an intermediary for transactions processed through licensed Ethiopian financial institutions. The platform aims to simplify financial interactions with Ethiopia, including features such as family support automation, group funding (Family Circle, Support Campaigns), and multi-currency management with transparent FX services. The project's vision is to provide a secure and comprehensive financial bridge to Ethiopia without holding user funds directly.
 
 ## User Preferences
 I want to interact with you in a clear and concise manner. Prioritize high-level architectural and design decisions over minute implementation details. When proposing changes or explaining concepts, focus on the 'why' before the 'how'. For development tasks, I prefer an iterative approach, with clear checkpoints and opportunities for feedback. Do not introduce new external dependencies or significant architectural changes without prior discussion and approval.
 
 ## System Architecture
-The application is built with Expo SDK 50, React Native 0.73, React Navigation 6, and TypeScript. Firebase is used for authentication and notifications, with TanStack React Query for data fetching.
+The application leverages Expo SDK 50, React Native 0.73, React Navigation 6, and TypeScript. Firebase handles authentication and notifications, while TanStack React Query manages data fetching.
 
 **Core Features & Technical Implementations:**
-- **User Authentication & KYC:** Firebase for authentication, phone number pre-validation (+251), and ID document scanning/upload integrated with Firebase Storage.
-- **Multi-Language Support:** Comprehensive i18n with support for English, Amharic, Oromo, and Tigrinya.
-- **Non-Custodial Model:** Habeshare acts as an intermediary, with funds processed by Ethiopian financial institutions. The system maintains transaction status summaries (Money Sent, Delivered, Pending) instead of wallet balances.
-- **Family Support Features:**
-    - **Family Wallet:** Track monthly support for family members, with allocation tracking and a "Send Now" option. Data persisted in Firebase Firestore.
-    - **Family Request:** Allows family members in Ethiopia to request financial support, with approval/decline workflows and notification integration.
-    - **Recurring Support Automation:** Schedule automated payments (weekly, monthly, etc.) with CRUD operations, execution history, and a processing engine for payouts.
-    - **Family Circle (Group Support):** Enables multiple diaspora members to pool contributions for a shared family member, with tracking and payout processing.
-- **Support Campaigns:** Fundraising functionality for various causes (medical, education, emergency) with contribution tracking and goal-based completion.
-- **Multi-Currency Wallet:** Ledger-based architecture for EUR/USD/GBP balances, immutable ledger entries, wallet operations (credit, debit, reservation), and currency conversion with FX rates. Top-up options include Card, Chapa, and Telebirr.
-- **Transparent FX:** Displays live foreign exchange rate comparisons from competing banks, a rate calculator with fee breakdowns, and quick conversion links.
-- **Notifications System:** In-app notifications with type-based filtering, read/unread states, and unread counts, connected to Firestore. Notification tap navigates to the relevant screen (TransferTracking, FamilyRequests, SupportCampaigns, RecurringSupport, Transactions, SecuritySettings) based on notification type and data payload.
-- **Push Notifications:** `src/services/pushNotifications.ts` — handles Expo push token registration (POSTed to backend `/api/notifications/register-token`), permission requests, foreground notification handler, and tap-to-navigate via `setNotificationNavigationHandler`. `PushNotificationBootstrap` component in `App.tsx` initializes the service after user login. Fully web-safe (all native calls guarded by `Platform.OS !== 'web'`).
-- **Send Again:** `src/services/sendAgainService.ts` — `buildSendAgainPayload(tx)` and `navigateToSendAgain(navigation, tx)` pre-populate RemittanceScreen from any past transaction. Every card on RemittanceTrackingScreen has a "Send Again" green button. RemittanceScreen shows a dismissible green prefill banner (with Clear button) when arriving from a "Send Again" action.
-- **Security:** Session management (auto-logout), biometric confirmation for sensitive actions, input sanitization, amount validation, account masking, and security settings.
-- **Payout Connectors:** Integration with Chapa, Telebirr, and various Ethiopian banks (Dashen, Awash, CBE, Abyssinia) for initiating and tracking payouts, including retry mechanisms.
-- **Admin Operations Console:** A suite of admin screens for monitoring payouts, fraud alerts, support tickets, disputes, liquidity, partner settlements (net balance by provider), and reconciliation reports (daily mismatch tracking), with role-based access control. Includes `AdminSystemMonitorScreen` (health banner, infrastructure cards, operational metrics, 5 security control badges) and `AdminSchedulerHistoryScreen` (cron job run history). Route: `AdminSystemMonitor` registered in RootNavigator; menu card added to AdminConsoleScreen.
-- **FX Marketplace:** Compares and selects best FX rates from various banks for remittances, including quote expiration, liquidity reservation, and audit logging.
-- **Reconciliation Engine:** A ledger-matching system comparing internal records with external provider settlement reports to detect discrepancies and generate alerts. Top-level facade at `src/services/reconciliationService.ts` with `runDailyReconciliation()`, `getAdminReconciliationSummary()`, `getMismatchedReports()`, `getTransactionFlag()`. Writes to: `reconciliation_reports` (per-transaction MATCHED/MISMATCH/MISSING schema), `transaction_flags` (RECONCILIATION_ALERT flags without modifying source data), `reconciliation_audit_log`. Emits audit events: `reconciliation_run_started`, `reconciliation_mismatch_detected`, `reconciliation_completed`. Admin endpoint: `adminService.getReconciliationAdminSummary()` → `{ totalTransactions, matched, mismatched, pending }`. Full engine at `src/services/reconciliation/` (reconciliation_runs, reconciliation_items, reconciliation_alerts, provider_settlement_reports).
-- **Treasury Engine:** Manages liquidity and settlement with defined liquidity pools, reservations, settlement obligations, and alerts for critical thresholds (e.g., low liquidity, overdue settlements).
-- **Settlement Engine:** Production-grade settlement orchestration in `src/services/settlement/`. Services: `settlementService` (obligation lifecycle, idempotency), `settlementLedgerService` (immutable movement ledger), `settlementBatchService` (daily batch process/settle/fail), `settlementReconciliationService` (partner-reported vs internal comparison), `settlementAlertsService` (overdue/mismatch/exposure alerts), `schedulerHistoryService` (Firestore `scheduler_runs` CRUD). Firestore collections: `se_obligations`, `settlement_batches`, `settlement_movements`, `settlement_alerts`, `settlement_reconciliation_reports`, `scheduler_runs`. Admin screens: `AdminSettlementOverviewScreen`, `AdminSettlementEngineObligationsScreen`, `AdminSettlementBatchesScreen`, `AdminSettlementAlertsScreen`, `AdminSettlementReconciliationScreen`, `AdminSchedulerHistoryScreen`.
-- **Recurring Support Backend Worker:** `src/workers/recurringSupportWorker.ts` — hourly cron job that uses Firestore `collectionGroup` to query all due `recurring_schedules` across all users. For each: validates user status + amount, creates payout job in `job_queue`, writes to `scheduled_support_executions`, advances `nextPayoutDate` only on success, sends failures to `dead_letter_queue`. Logs every run to `scheduler_runs` (job=`recurring_support`). Standalone runner: `scripts/runRecurringSupportWorker.ts` (`npm run worker:recurring-support`). Admin screen: `AdminSchedulerRunsScreen` with run history, per-run drill-down modal, failed execution list. Service: `src/services/recurringSupport/scheduledSupportExecutionService.ts` manages `scheduled_support_executions` collection + `getSchedulerRuns()` + `getSchedulerRunDetails(runId)`.
-- **Backend Settlement Worker:** `src/workers/settlementWorker.ts` exports three cron job functions (`processDailySettlement`, `runReconciliation`, `detectOverdueSettlements`, `runFullSettlementSchedule`). Standalone runner at `scripts/runSettlementWorker.ts` uses node-cron to schedule: 02:00 UTC daily settlement batching, 03:00 UTC reconciliation, hourly overdue detection. Run with `npm run worker:settlement`. All runs logged to `scheduler_runs` with status SUCCESS/PARTIAL/FAILED, duration, and error details.
-- **Advanced Remittance Features:**
-    - **Delivery Time Estimator:** Provides estimated delivery times based on payout method and bank.
-    - **Live Transfer Tracking:** Real-time, step-by-step tracking of remittances.
-    - **Rate Lock:** Allows users to lock in an FX rate for a limited time.
-    - **Smart Recipient List:** Manage and select saved recipients for quick transfers.
-    - **Transfer Fee Simulator:** Detailed breakdown of all transfer-related fees.
+-   **User Authentication & KYC:** Firebase-backed authentication with phone number validation and ID document scanning/upload.
+-   **Multi-Language Support:** Internationalization for English, Amharic, Oromo, and Tigrinya.
+-   **Non-Custodial Model:** Habeshare intermediates transactions, providing status summaries rather than managing user balances.
+-   **Family Support Features:** Includes Family Wallet for tracking monthly support, Family Request for inbound financial requests, Recurring Support Automation for scheduled payments, and Family Circle for group contributions.
+-   **Support Campaigns:** Fundraising functionality with contribution tracking and goal management.
+-   **Multi-Currency Wallet:** Ledger-based architecture for EUR/USD/GBP, supporting top-ups via Card, Chapa, and Telebirr.
+-   **Transparent FX:** Displays live foreign exchange rates from multiple banks, including a rate calculator and quick conversion links.
+-   **Notifications System:** In-app and push notifications for various events, with filtering, read/unread states, and navigation to relevant app sections.
+-   **Send Again:** Functionality to pre-populate remittance forms from past transactions.
+-   **Security:** Features like session management, biometric confirmation, input sanitization, and account masking.
+-   **Payout Connectors:** Integration with Chapa, Telebirr, and major Ethiopian banks for transaction processing and tracking.
+-   **Admin Operations Console:** A suite of admin screens for monitoring payouts, fraud alerts, support tickets, disputes, liquidity, partner settlements, and reconciliation, with role-based access control.
+-   **FX Marketplace:** Compares and selects optimal FX rates from various banks, including quote expiration and liquidity reservation.
+-   **Reconciliation Engine:** A system for matching internal transaction records with external settlement reports to identify and alert discrepancies.
+-   **Treasury Engine:** Manages liquidity pools, reservations, settlement obligations, and alerts for critical financial thresholds.
+-   **Settlement Engine:** Orchestrates settlement processes with services for obligation lifecycle, immutable ledger movements, batch processing, reconciliation, and alerts.
+-   **Backend Workers:** Dedicated workers for recurring support automation and settlement processes, including daily batching, reconciliation, and overdue detection.
+-   **Advanced Remittance Features:** Includes delivery time estimation, live transfer tracking, rate lock, smart recipient lists, and transfer fee simulation.
 
 **UI/UX:**
-- Consistent design across platforms (mobile and web).
-- Usage of custom Ethiopic fonts (NotoSansEthiopic).
-- Intuitive navigation with React Navigation.
-- Clear presentation of financial data, including donut charts for allocation tracking and progress visualization for campaigns.
-- Color-coded badges for delivery time estimates.
-- **World-class UX system:** `AnimatedPressable` (spring scale + haptics on press), `SkeletonLoader` (shimmer cards), `TrustBadges` (row/compact variants), `SmartEmptyState` (icon + CTA), `TransferSuccessScreen` (animated checkmark, transfer details, Track/Send Again/Done). expo-haptics installed.
-- **RemittanceScreen enhancements:** "Best available" green indicator on exchange rate, tooltip "Rate includes all fees. No hidden charges.", TrustBadges row above send button, 3 trust messages (Guaranteed rate / Secure transfer / Trusted), SmartEmptyState for no recipients, send success navigates to TransferSuccessScreen instead of Alert, error dialog includes Retry button.
-- **TransferTrackingScreen v2:** Back button, animated overall progress bar (% complete), fade-in step animations, step descriptions, "In Progress" pill, delivered success banner, trust footer note. Replaces spinners with SkeletonLoader.
-- **BankOfferCard v2:** Animated border + background on selection, "Most Popular" / "Fastest" badges, "Best available · No hidden charges" highlight row, improved grid labels (uppercase), AnimatedPressable wrapper with haptics.
-- **TransferSuccessScreen:** New screen at route `TransferSuccess`. Spring-scale animated green check circle, slide-up detail card (sent/received/delivery), trust note, Track Transfer + Send Again + Done buttons. Triggered on successful remittance.
+-   Consistent design across mobile and web platforms, utilizing custom Ethiopic fonts.
+-   Intuitive navigation and clear presentation of financial data, including charts and progress visualizations.
+-   Enhanced interactive elements such as `AnimatedPressable`, `SkeletonLoader`, `TrustBadges`, and `SmartEmptyState`.
+-   Improved remittance and transfer tracking screens with better visual feedback and user guidance.
 
-## Admin Operations API (Express Server)
+**Admin Operations API (Express Server):**
+-   A standalone Node.js/Express/TypeScript server providing API endpoints for admin functions.
+-   **Authorization:** Requires valid Firebase ID tokens with admin claims or roles.
+-   **Endpoints:** Covers payouts, fraud alerts, support tickets, disputes, liquidity, and reconciliation management.
+-   **Audit Logging:** All critical admin actions are logged to `admin_action_logs`.
 
-A standalone Node.js/Express/TypeScript server at `server/`. Run with `npm run server:admin` (default port 4000).
-
-**Authorization:** Every route requires a valid Firebase ID token (`Authorization: Bearer <token>`). The `verifyAdmin` middleware checks `isAdmin: true` custom claim OR `role: "admin"` in the Firestore `users` document.
-
-**Endpoints:**
-- `GET  /api/admin/payouts` — list payout transactions; filters: `?status=`, `?provider=`, `?dateFrom=`, `?dateTo=`
-- `GET  /api/admin/fraud-alerts` — list fraud alerts; filter: `?status=`
-- `POST /api/admin/fraud-action` — `{ txId, action: APPROVE|BLOCK|FREEZE }` → writes `transaction_flags`, audit log
-- `GET  /api/admin/support-tickets` — list support tickets; filter: `?status=`, `?userId=`
-- `POST /api/admin/support-action` — `{ ticketId, action: IN_REVIEW|RESOLVED|CLOSED }`
-- `GET  /api/admin/disputes` — list disputes; filter: `?status=`, `?userId=`
-- `POST /api/admin/dispute-action` — `{ disputeId, action: INVESTIGATE|REFUND|REJECT|RESOLVE }`
-- `GET  /api/admin/liquidity` — per-bank positions from `treasury_liquidity`; filter: `?currency=`, `?bank=`
-- `GET  /api/admin/reconciliation` — summary `{ totalTransactions, matched, mismatched, pending }`
-- `GET  /api/admin/reconciliation/runs` — list reconciliation runs
-- `GET  /api/admin/reconciliation/run/:runId` — run detail + items
-- `GET  /api/admin/reconciliation/alerts` — open alerts; filter: `?status=`, `?severity=`
-- `POST /api/admin/reconciliation/run` — trigger manual run `{ provider, dateRangeHours }`
-- `POST /api/admin/reconciliation/alert-action` — `{ alertId, action: RESOLVE|IGNORE }`
-- `GET  /health` — public health check
-
-**Audit Logging:** Every POST action writes to `admin_action_logs` with `{ adminId, adminEmail, action, entityId, entityType, payload, ip, timestamp }`.
-
-**New Firestore collections:** `support_tickets`, `disputes`, `admin_action_logs`.
-**Files:** `server/index.ts`, `server/firebaseAdmin.ts`, `server/middleware/auth.ts`, `server/middleware/auditLog.ts`, `server/middleware/validate.ts`, `server/routes/payouts.ts`, `server/routes/fraudAlerts.ts`, `server/routes/supportTickets.ts`, `server/routes/disputes.ts`, `server/routes/liquidity.ts`, `server/routes/reconciliation.ts`.
-**Config:** `FIREBASE_SERVICE_ACCOUNT` env var (JSON string) required in production; `ADMIN_API_PORT` (default: 4000).
+**Risk Controls Layer:**
+-   Integrated backend safety layer with services for:
+    -   **Kill Switches:** Temporarily disable platform features.
+    -   **Transaction & Velocity Limits:** Configurable limits for transfers and other financial activities.
+    -   **Safety Guards:** Pre-flight checks for user status, KYC, liquidity, and repeated failures.
+-   **Typed Errors:** Provides structured error responses for specific risk control failures.
+-   **Admin Endpoints:** Allows administrators to manage system controls, risk limits, and user risk flags (freeze/unfreeze/review).
 
 ## External Dependencies
-- **Firebase:** Authentication, Firestore (database for user data, family features, wallet, campaigns, admin logs, reconciliation, treasury), Firebase Storage (for KYC documents).
-- **Expo SDK:** Core framework for React Native development.
-- **React Native:** UI framework.
-- **React Navigation:** In-app navigation.
-- **TanStack React Query:** Data fetching and state management.
-- **Chapa API:** Payout connector.
-- **Telebirr API:** Payout connector.
-- **Ethiopian Bank APIs:** Integration with banks like Dashen, Awash, CBE, Abyssinia for payouts and FX quotes.
+-   **Firebase:** Authentication, Firestore (database), Firebase Storage (KYC documents).
+-   **Expo SDK:** Core framework.
+-   **React Native:** UI framework.
+-   **React Navigation:** In-app navigation.
+-   **TanStack React Query:** Data fetching.
+-   **Chapa API:** Payout connector.
+-   **Telebirr API:** Payout connector.
+-   **Ethiopian Bank APIs:** Integration with banks like Dashen, Awash, CBE, Abyssinia for payouts and FX quotes.

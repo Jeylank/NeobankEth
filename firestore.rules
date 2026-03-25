@@ -349,6 +349,23 @@ service cloud.firestore {
       allow write:  if isUser(userId);
     }
 
+    // ── Risk Controls Layer — admin only ──────────────────────────────────────
+
+    match /system_controls/{key} {
+      allow read:  if isAdmin();
+      allow write: if false; // admin server only
+    }
+
+    match /risk_limits/{key} {
+      allow read:  if isAdmin();
+      allow write: if false; // admin server only
+    }
+
+    match /risk_flags/{userId} {
+      allow read:  if isAdmin() || isUser(userId);
+      allow write: if false; // admin server only
+    }
+
     // ── Default deny — anything not explicitly matched is blocked ─────────────
     match /{document=**} {
       allow read, write: if false;

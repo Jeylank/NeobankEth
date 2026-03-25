@@ -22,6 +22,7 @@ import supportTicketsRouter from './routes/supportTickets';
 import disputesRouter       from './routes/disputes';
 import liquidityRouter      from './routes/liquidity';
 import reconciliationRouter from './routes/reconciliation';
+import riskControlsRouter   from './routes/adminRiskControls';
 
 const app  = express();
 const PORT = parseInt(process.env.ADMIN_API_PORT ?? '4000', 10);
@@ -59,6 +60,7 @@ app.use(API_PREFIX, supportTicketsRouter);
 app.use(API_PREFIX, disputesRouter);
 app.use(API_PREFIX, liquidityRouter);
 app.use(API_PREFIX, reconciliationRouter);
+app.use(API_PREFIX, riskControlsRouter);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 
@@ -93,6 +95,17 @@ app.listen(PORT, () => {
   console.log(`    GET  ${API_PREFIX}/reconciliation/alerts`);
   console.log(`    POST ${API_PREFIX}/reconciliation/run`);
   console.log(`    POST ${API_PREFIX}/reconciliation/alert-action`);
+  console.log('  Risk Controls:');
+  console.log(`    GET  ${API_PREFIX}/system-controls`);
+  console.log(`    POST ${API_PREFIX}/system-controls/:key`);
+  console.log(`    GET  ${API_PREFIX}/risk-limits`);
+  console.log(`    POST ${API_PREFIX}/risk-limits/:key`);
+  console.log(`    GET  ${API_PREFIX}/risk-flags`);
+  console.log(`    GET  ${API_PREFIX}/risk-flags/:userId`);
+  console.log(`    POST ${API_PREFIX}/risk-flags/:userId/freeze`);
+  console.log(`    POST ${API_PREFIX}/risk-flags/:userId/unfreeze`);
+  console.log(`    POST ${API_PREFIX}/risk-flags/:userId/review`);
+  console.log(`    GET  ${API_PREFIX}/risk-summary`);
 });
 
 export default app;

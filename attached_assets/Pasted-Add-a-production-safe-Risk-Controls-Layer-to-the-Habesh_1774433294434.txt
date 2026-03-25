@@ -1,0 +1,314 @@
+Add a production-safe "Risk Controls Layer" to the Habeshare backend before beta launch.
+
+Important:
+- This is a backend-only safety feature set.
+- Do NOT break existing payout, wallet, FX marketplace, treasury, or remittance logic.
+- Integrate cleanly into the current Node.js + TypeScript + Express + Firebase Admin + Firestore architecture.
+- Use strict TypeScript.
+- Keep all existing flows working, but enforce safety controls before risky actions execute.
+
+Build these 4 categories:
+
+1. Global kill switch
+2. Transaction / velocity limits
+3. Safety guards for risky operations
+4. Admin management endpoints
+
+--------------------------------
+1) GLOBAL KILL SWITCH
+--------------------------------
+
+Create service:
+
+src/services/riskControls/killSwitchService.ts
+
+Purpose:
+Allow admins to instantly pause critical operations across the platform.
+
+Supported kill switches:
+- remittance_enabled
+- wallet_topup_enabled
+- recurring_support_enabled
+- campaign_payout_enabled
+- fx_marketplace_enabled
+- referral_rewards_enabled
+
+Store config in Firestore collection:
+
+system_controls
+
+Example document:
+{
+  key: "remittance_enabled",
+  enabled: true,
+  updatedAt: timestamp,
+  updatedBy: "admin_uid",
+  reason: "optional text"
+}
+
+Functions:
+- isEnabled(controlKey)
+- setControl(controlKey, enabled, adminUid, reason)
+- getAllControls()
+
+Behavior:
+- before executing remittance, wallet top-up, FX quote selection, recurring support, or campaign payout, check the relevant kill switch
+- if disabled, return a structured error:
+  code: "FEATURE_DISABLED"
+  message: "This service is temporarily unavailable"
+
+--------------------------------
+2) TRANSACTION / VELOCITY LIMITS
+--------------------------------
+
+Create service:
+
+src/services/riskControls/limitsService.ts
+
+Purpose:
+Enforce configurable safety limits by user, currency, and transaction type.
+
+Store config in Firestore collection:
+
+risk_limits
+
+Example documents:
+{
+  key: "max_single_remittance_eur",
+  value: 1000,
+  currency: "EUR",
+  enabled: true,
+  updatedAt: timestamp
+}
+
+{
+  key: "max_daily_remittance_eur",
+  value: 3000,
+  currency: "EUR",
+  enabled: true,
+  updatedAt: timestamp
+}
+
+{
+  key: "max_weekly_topup_eur",
+  value: 5000,
+  currency: "EUR",
+  enabled: true,
+  updatedAt: timestamp
+}
+
+{
+  key: "max_hourly_transfer_count",
+  value: 5,
+  enabled: true,
+  updatedAt: timestamp
+}
+
+Implement checks for:
+- max single transfer amount
+- max daily transfer total
+- max weekly transfer total
+- max monthly transfer total
+- max daily wallet top-up total
+- max number of transfer attempts per hour
+- max number of failed payouts per day
+- max campaign contribution amount
+- max recurring support amount
+
+Use existing transaction collections and timestamps to calculate aggregates.
+
+Return structured errors:
+- LIMIT_EXCEEDED
+- VELOCITY_LIMIT_EXCEEDED
+
+Functions:
+- validateRemittanceLimits(userId, amount, currency)
+- validateWalletTopupLimits(userId, amount, currency)
+- validateCampaignContributionLimits(userId, amount, currency)
+- validateRecurringSupportLimits(userId, amount, currency)
+- validateVelocity(userId)
+
+--------------------------------
+3) SAFETY GUARDS FOR RISKY OPERATIONS
+--------------------------------
+
+Create service:
+
+src/services/riskControls/safetyGuardsService.ts
+
+Purpose:
+Run pre-flight checks before risky financial actions.
+
+Checks to implement:
+- user KYC must be verified before remittance above threshold
+- wallet must have sufficient available balance
+- selected FX quote must still be valid
+- treasury reservation must exist before payout execution
+- provider must be healthy
+- provider liquidity must be sufficient
+- user account must not be frozen or blocked
+- repeated failed transfers should trigger REVIEW_REQUIRED
+- optional biometric confirmation flag can be required for high-value transfers
+
+Create Firestore collection:
+
+risk_flags
+
+Example document:
+{
+  userId: "uid123",
+  isFrozen: false,
+  isBlocked: false,
+  reviewRequired: false,
+  reason: null,
+  updatedAt: timestamp
+}
+
+Functions:
+- validateUserRiskState(userId)
+- validatePayoutPreconditions(txId, userId)
+- requireEnhancedKycIfNeeded(userId, amount, currency)
+- markReviewRequired(userId, reason)
+- freezeUser(userId, reason)
+- unfreezeUser(userId)
+
+Behavior:
+- if review required, transaction should not proceed automatically
+- return:
+  code: "REVIEW_REQUIRED"
+  message: "This transaction requires manual review"
+
+--------------------------------
+4) ADMIN MANAGEMENT ENDPOINTS
+--------------------------------
+
+Create routes:
+
+src/routes/adminRiskControls.ts
+
+Admin-only endpoints:
+
+GET /api/admin/system-controls
+POST /api/admin/system-controls/:key
+
+GET /api/admin/risk-limits
+POST /api/admin/risk-limits/:key
+
+GET /api/admin/risk-flags
+POST /api/admin/risk-flags/:userId/freeze
+POST /api/admin/risk-flags/:userId/unfreeze
+POST /api/admin/risk-flags/:userId/review
+
+GET /api/admin/risk-summary
+
+Risk summary response should include:
+- remittance_enabled status
+- wallet_topup_enabled status
+- users frozen count
+- users in review count
+- limit breaches today
+- velocity breaches today
+- failed payouts today
+- blocked transactions today
+
+All admin endpoints must require admin auth.
+
+--------------------------------
+5) AUDIT LOGGING
+--------------------------------
+
+Every admin action or blocked operation must create audit logs.
+
+Add event types:
+- kill_switch_changed
+- limit_changed
+- user_frozen
+- user_unfrozen
+- review_required
+- limit_exceeded
+- velocity_blocked
+- feature_disabled_blocked
+- payout_blocked_by_safety_guard
+
+Use existing audit log pattern.
+
+--------------------------------
+6) ENFORCEMENT IN EXISTING FLOWS
+--------------------------------
+
+Integrate these checks into existing flows without changing business logic:
+
+Before remittance initiation:
+- check remittance kill switch
+- check user risk state
+- check limits
+- check velocity
+- check KYC if amount above threshold
+
+Before wallet top-up:
+- check wallet_topup_enabled
+- check top-up limits
+
+Before recurring support execution:
+- check recurring_support_enabled
+- check user frozen/review state
+- check recurring support limits
+
+Before campaign payout:
+- check campaign_payout_enabled
+- check treasury reservation and provider health
+
+Before FX quote selection:
+- check fx_marketplace_enabled
+
+Before payout execution:
+- validatePayoutPreconditions()
+
+--------------------------------
+7) FIRESTORE INDEX / SCHEMA NOTES
+--------------------------------
+
+Add any necessary indexes or helper queries for:
+- transactions by userId + createdAt
+- failed payouts by userId + createdAt
+- audit logs by eventType + createdAt
+- risk_flags by userId
+
+Use top-level collections unless existing structure already has a better pattern.
+
+--------------------------------
+8) ERROR HANDLING
+--------------------------------
+
+Create typed custom errors:
+- FeatureDisabledError
+- LimitExceededError
+- VelocityLimitExceededError
+- ReviewRequiredError
+- UserFrozenError
+- SafetyGuardError
+
+Use structured JSON responses:
+{
+  code: "...",
+  message: "...",
+  details: { ... }
+}
+
+--------------------------------
+9) OUTPUT
+--------------------------------
+
+Generate:
+- killSwitchService.ts
+- limitsService.ts
+- safetyGuardsService.ts
+- adminRiskControls.ts
+- any needed types
+- integration into existing remittance / wallet / payout flows
+- audit log events
+- Firestore collection usage
+
+Do not build frontend screens.
+Do not remove any current functionality.
+Focus on backend safety, reliability, and beta-launch protection.
