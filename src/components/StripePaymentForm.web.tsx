@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -45,17 +45,12 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
   const stripe   = useStripe();
   const elements = useElements();
 
-  const [cardHolder, setCardHolder] = useState('');
   const [processing, setProcessing] = useState(false);
   const [cardError,  setCardError]  = useState<string | null>(null);
 
   const handlePay = async () => {
     if (!stripe || !elements) {
       Alert.alert('Error', 'Stripe is not loaded yet. Please wait a moment and try again.');
-      return;
-    }
-    if (!cardHolder.trim()) {
-      Alert.alert('Missing Info', 'Please enter the card holder name.');
       return;
     }
 
@@ -96,12 +91,7 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
       // 3. Confirm card payment with Stripe.js (card details never touch our servers)
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
         clientSecret,
-        {
-          payment_method: {
-            card:             cardElement,
-            billing_details: { name: cardHolder },
-          },
-        },
+        { payment_method: { card: cardElement } },
       );
 
       if (stripeError) {
@@ -127,18 +117,6 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
 
   return (
     <View>
-      {/* Card holder name */}
-      <Text style={styles.label}>Card Holder Name</Text>
-      <TextInput
-        style={styles.textInput}
-        value={cardHolder}
-        onChangeText={setCardHolder}
-        placeholder="As printed on card"
-        autoCapitalize="words"
-        placeholderTextColor={COLORS.textSecondary}
-        editable={!processing}
-      />
-
       {/* Stripe hosted card element */}
       <Text style={styles.label}>Card Details</Text>
       <View style={styles.cardElementWrapper}>
@@ -252,16 +230,6 @@ const styles = StyleSheet.create({
     color:        COLORS.textSecondary,
     marginTop:    16,
     marginBottom: 6,
-  },
-  textInput: {
-    backgroundColor:  COLORS.white,
-    borderRadius:     12,
-    borderWidth:      1.5,
-    borderColor:      COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical:  14,
-    fontSize:         16,
-    color:            COLORS.text,
   },
   cardElementWrapper: {
     backgroundColor:  COLORS.white,

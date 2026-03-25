@@ -36,7 +36,7 @@ export async function verifyUser(
     (req as UserAuthRequest).userEmail = decoded.email ?? '';
     next();
   } catch (err: any) {
-    console.warn('[verifyUser] Token verification failed:', err.message);
+    console.warn('[verifyUser] Token verification failed:', err.code ?? err.message, err.message);
     res.status(401).json({ error: 'UNAUTHORIZED', message: 'Invalid or expired token.' });
   }
 }

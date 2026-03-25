@@ -9,6 +9,11 @@
 
 import * as admin from 'firebase-admin';
 
+// The Firebase project ID is used for token audience verification (verifyIdToken).
+// It is read from the same env var used by the client SDK so there is a single
+// source of truth and no mismatch between client and server.
+const FIREBASE_PROJECT_ID = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? '';
+
 function initApp(): admin.app.App {
   if (admin.apps.length > 0) {
     return admin.apps[0]!;
@@ -20,21 +25,25 @@ function initApp(): admin.app.App {
     const serviceAccount = JSON.parse(serviceAccountJson);
     return admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      projectId: serviceAccount.project_id ?? FIREBASE_PROJECT_ID,
     });
   }
 
-  // Option 2: Path to service account file
-  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (credPath) {
+  // Option 2 / 3: Application default credentials (Cloud Run, GCE, gcloud auth).
+  // verifyIdToken() fetches Google's public JWKS without needing an access token,
+  // but it MUST have the projectId to validate the token's audience claim.
+  // Providing projectId here makes token verification work in all environments,
+  // including Replit where application-default credentials are not available.
+  try {
     return admin.initializeApp({
       credential: admin.credential.applicationDefault(),
+      projectId:  FIREBASE_PROJECT_ID,
     });
+  } catch {
+    // Fallback: initialize with project ID only — verifyIdToken still works via
+    // Google's public key endpoint; Firestore admin ops are unavailable.
+    return admin.initializeApp({ projectId: FIREBASE_PROJECT_ID });
   }
-
-  // Option 3: Application default (gcloud auth, Cloud Run, etc.)
-  return admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-  });
 }
 
 export const firebaseApp = initApp();

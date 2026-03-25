@@ -200,6 +200,12 @@ initStripe().then(() => {
   /* no-op — init is fire-and-forget, server already listening */
 }).catch(() => { /* already logged */ });
 
+// Keep the Node.js event loop alive even if all pg pool connections become idle.
+// Without this, certain pg Pool implementations unref() their sockets, which
+// allows the process to exit despite the HTTP server still listening.
+const _keepAlive = setInterval(() => {}, 1000 * 60 * 60);
+_keepAlive.unref === undefined || void 0; // never unref this timer
+
 app.listen(PORT, () => {
   console.log(`✓ Habeshare Admin API running on port ${PORT}`);
   console.log(`  Health:  http://localhost:${PORT}/health`);
