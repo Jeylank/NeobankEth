@@ -1,12 +1,12 @@
 // ============================================================
-// Habeshare Firestore Security Rules
+// Habeshare Firestore Security Rules — Production Ready
 // ============================================================
 // Philosophy:
-//   - Users can read/write only their own data
-//   - Backend-only collections are locked to authenticated service accounts
-//   - Admin-only collections require a verified admin claim
-//   - Financial records (ledger, transactions) are append-only for users
-//     and write-protected from client SDK — backend writes only
+//   - Users read/write only their own data
+//   - Admin operations require verified admin claim (isAdmin)
+//   - Backend Admin SDK bypasses rules entirely — no extra rules needed
+//   - Financial tracking records are append-only for users (no update/delete)
+//   - Default deny: anything not explicitly matched is blocked
 // ============================================================
 
 rules_version = '2';
@@ -27,10 +27,12 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.admin == true;
     }
 
-    function isBackend() {
-      // Backend writes use a service account; client SDK never calls these
-      // In production: restrict to Firebase Admin SDK (service account)
-      return isAdmin();
+    function ownsResource() {
+      return isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    function writingAsOwner() {
+      return isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
     // ── User Profiles ─────────────────────────────────────────────────────────
@@ -38,313 +40,313 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isUser(userId) || isAdmin();
       allow write: if isUser(userId);
+
+      // Transactions subcollection — client-written, append-only
+      match /transactions/{txId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow create: if isUser(userId);
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // Recipients subcollection
+      match /recipients/{recId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow create: if isUser(userId);
+        allow update: if isUser(userId);
+        allow delete: if isUser(userId);
+      }
+
+      // Family wallet subcollection
+      match /family_wallet/{memberId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow write:  if isUser(userId);
+      }
+
+      // Recurring schedules per user
+      match /recurring_schedules/{scheduleId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow write:  if isUser(userId);
+      }
+
+      // Notifications subcollection
+      match /notifications/{notifId} {
+        allow read:   if isUser(userId);
+        allow write:  if false; // backend-only writes
+      }
     }
 
-    // ── Payout Transactions — append-only for backend ─────────────────────────
-    // Users can read their own. Backend writes. No client-side updates.
+    // ── Top-level Transactions — client-written, append-only ─────────────────
+    // App writes a copy here for admin reporting
 
-    match /payout_transactions/{txId} {
-      allow read: if isAuthenticated() &&
-                     (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isBackend();
-      allow update: if isBackend();
-      allow delete: if false;
-    }
-
-    // ── Ledger Entries — immutable, backend-only write ────────────────────────
-
-    match /ledger_entries/{entryId} {
-      allow read: if isAuthenticated() &&
-                     (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isBackend();
+    match /transactions/{txId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated() && writingAsOwner();
       allow update: if false;
       allow delete: if false;
+    }
+
+    // ── Wallets / Balances — client reads, backend writes ────────────────────
+
+    match /wallets/{userId} {
+      allow read:   if isUser(userId) || isAdmin();
+      allow write:  if false; // backend Admin SDK only
     }
 
     match /wallet_ledger/{entryId} {
-      allow read: if isAuthenticated() &&
-                     (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isBackend();
-      allow update: if false;
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write:  if false; // backend Admin SDK only
+    }
+
+    match /ledger_entries/{entryId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write:  if false; // backend Admin SDK only
+    }
+
+    // ── 2FA Collections — user read/write their own ───────────────────────────
+
+    match /two_factor_settings/{userId} {
+      allow read:   if isUser(userId) || isAdmin();
+      allow write:  if isUser(userId);
+    }
+
+    match /two_factor_challenges/{userId} {
+      allow read:   if isUser(userId) || isAdmin();
+      allow write:  if isUser(userId);
+    }
+
+    // ── Rate Locks — client creates and reads their own ───────────────────────
+
+    match /rate_locks/{lockId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated() && writingAsOwner();
+      allow update: if isAuthenticated() && ownsResource();
       allow delete: if false;
     }
 
-    // ── FX Quotes — backend writes, users read their own ─────────────────────
+    // ── FX Quotes & Reservations — client creates, backend updates ───────────
 
     match /fx_quotes/{quoteId} {
-      allow read: if isAuthenticated() &&
-                     (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isBackend();
-      allow update: if isBackend();
-      allow delete: if false;
-    }
-
-    match /fx_reservations/{resId} {
-      allow read: if isAuthenticated() &&
-                     (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isBackend();
-      allow update: if isBackend();
-      allow delete: if false;
-    }
-
-    // ── Audit Logs — immutable, backend-only ──────────────────────────────────
-
-    match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    match /settlement_admin_audit_log/{logId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    // ── Treasury — admin/backend only ─────────────────────────────────────────
-
-    match /treasury_liquidity/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    match /treasury_reservations/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    match /settlement_obligations/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    // ── Settlement Engine — admin/backend only ────────────────────────────────
-
-    match /se_obligations/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    match /settlement_batches/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    match /settlement_movements/{docId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    match /settlement_alerts/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    match /settlement_reconciliation_reports/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    // ── Reconciliation — admin/backend only ───────────────────────────────────
-
-    match /reconciliation_reports/{docId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    match /reconciliation_runs/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    match /reconciliation_items/{docId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    match /reconciliation_alerts/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    match /reconciliation_audit_log/{docId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    // transaction_flags — written by reconciliation engine, never modifies source data
-    match /transaction_flags/{txId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if isBackend();
-      allow delete: if false;
-    }
-
-    match /provider_settlement_reports/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
-    }
-
-    // ── Fraud Detection — admin/backend only ──────────────────────────────────
-
-    match /fraud_alerts/{alertId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated() && writingAsOwner();
       allow update: if isAdmin();
       allow delete: if false;
     }
 
-    match /fraud_risk_scores/{scoreId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
+    match /fx_reservations/{resId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated() && writingAsOwner();
+      allow update: if isAuthenticated() && ownsResource();
+      allow delete: if false;
+    }
+
+    match /fx_audit_log/{logId} {
+      allow read:   if isAdmin();
+      allow create: if isAuthenticated();
       allow update: if false;
       allow delete: if false;
     }
 
-    // ── Support Tickets — user creates, admin manages ─────────────────────────
+    // ── Payout Transactions — backend writes, users read own ─────────────────
 
-    match /support_tickets/{ticketId} {
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
-      allow create: if isSignedIn();
-      allow update: if isAdmin() || isBackend();
-      allow delete: if false;
+    match /payout_transactions/{txId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write:  if false; // backend Admin SDK only
     }
 
-    // ── Disputes — user creates, admin manages ────────────────────────────────
+    // ── Audit Logs — immutable, backend only ──────────────────────────────────
 
-    match /disputes/{disputeId} {
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
-      allow create: if isSignedIn();
-      allow update: if isAdmin() || isBackend();
-      allow delete: if false;
+    match /audit_logs/{logId} {
+      allow read:   if isAdmin();
+      allow write:  if false;
     }
-
-    // ── Admin Action Logs — immutable audit trail ─────────────────────────────
 
     match /admin_action_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin() || isBackend();
-      allow update: if false;
-      allow delete: if false;
+      allow read:   if isAdmin();
+      allow write:  if false;
     }
 
-    // ── System & Ops — backend-only write, admin read ─────────────────────────
-
-    match /system_errors/{errId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
+    match /settlement_admin_audit_log/{logId} {
+      allow read:   if isAdmin();
+      allow write:  if false;
     }
 
-    match /request_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
+    // ── Treasury — backend / admin only ──────────────────────────────────────
+
+    match /treasury_liquidity/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    match /idempotency_keys/{key} {
-      allow read: if isBackend();
-      allow write: if isBackend();
+    match /treasury_reservations/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    match /rate_limit_counters/{counterId} {
-      allow read: if isBackend();
-      allow write: if isBackend();
+    // ── Settlement Engine — backend / admin only ──────────────────────────────
+
+    match /settlement_obligations/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    match /job_queue/{jobId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
+    match /se_obligations/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    match /dead_letter_queue/{jobId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
+    match /settlement_batches/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    match /webhook_events/{eventId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if false;
-      allow delete: if false;
+    match /settlement_movements/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    match /scheduler_runs/{runId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
+    match /settlement_alerts/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    match /scheduled_support_executions/{execId} {
-      allow read: if isAdmin();
-      allow create: if isBackend();
-      allow update: if isBackend();
-      allow delete: if false;
+    match /settlement_reconciliation_reports/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    // ── Partner Settlements — admin only ──────────────────────────────────────
-
-    match /partner_settlements/{docId} {
-      allow read: if isAdmin();
-      allow write: if isBackend();
+    match /scheduler_runs/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
-    // ── Family Features — users own their data ────────────────────────────────
+    // ── Reconciliation Engine — backend / admin only ──────────────────────────
 
-    match /family_wallets/{walletId} {
-      allow read, write: if isAuthenticated() &&
-                            (resource.data.userId == request.auth.uid || isAdmin());
+    match /reconciliation_reports/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /reconciliation_runs/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /reconciliation_items/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /reconciliation_alerts/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /transaction_flags/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /reconciliation_audit_log/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /provider_settlement_reports/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    // ── Family Features ────────────────────────────────────────────────────────
+
+    match /family_wallet/{docId} {
+      allow read, write: if isAuthenticated() && (ownsResource() || isAdmin());
     }
 
     match /family_requests/{reqId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (ownsResource() || isAdmin());
+      allow delete: if false;
     }
 
     match /recurring_support/{docId} {
-      allow read, write: if isAuthenticated() &&
-                            (resource.data.userId == request.auth.uid || isAdmin());
+      allow read, write: if isAuthenticated() && (ownsResource() || isAdmin());
+    }
+
+    match /recurring_schedules/{docId} {
+      allow read, write: if isAuthenticated() && (ownsResource() || isAdmin());
+    }
+
+    match /scheduled_support_executions/{docId} {
+      allow read:  if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write: if false; // backend worker only
     }
 
     match /family_circles/{circleId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (ownsResource() || isAdmin());
     }
 
+    // ── Support Campaigns ──────────────────────────────────────────────────────
+
     match /support_campaigns/{campaignId} {
-      allow read: if isAuthenticated();
+      allow read:   if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() &&
                        (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
-    // ── Notifications — users read their own ──────────────────────────────────
+    // ── Top-level Notifications — backend writes ──────────────────────────────
 
     match /notifications/{notifId} {
-      allow read: if isAuthenticated() &&
-                     (resource.data.userId == request.auth.uid || isAdmin());
-      allow write: if isBackend();
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write:  if false;
     }
 
-    // ── KYC Documents — user uploads, admin reads ─────────────────────────────
+    // ── KYC Documents ─────────────────────────────────────────────────────────
 
     match /kyc_documents/{docId} {
-      allow read: if isAuthenticated() &&
-                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
       allow create: if isAuthenticated();
       allow update: if isAdmin();
       allow delete: if false;
+    }
+
+    // ── Admin Operations Console ───────────────────────────────────────────────
+
+    match /support_tickets/{ticketId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /disputes/{disputeId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ── Worker Queues — backend only ──────────────────────────────────────────
+
+    match /job_queue/{jobId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /dead_letter_queue/{jobId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    // ── Push Notification Tokens ──────────────────────────────────────────────
+
+    match /push_tokens/{userId} {
+      allow read:   if isUser(userId) || isAdmin();
+      allow write:  if isUser(userId);
     }
 
     // ── Default deny — anything not explicitly matched is blocked ─────────────
