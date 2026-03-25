@@ -43,25 +43,19 @@ router.post(
   verifyUser,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      // Global system + wallet guards.
-      // Skipped when DISABLE_MAINTENANCE_MODE=true (development / Replit preview)
-      // because the safe-mode fallback returns all-disabled when Firestore is
-      // not accessible without a service-account credential.
-      const devMode = process.env.DISABLE_MAINTENANCE_MODE === 'true';
-      if (!devMode) {
-        const [systemEnabled, walletEnabled] = await Promise.all([
-          systemConfigService.isSystemEnabled(),
-          systemConfigService.isWalletEnabled(),
-        ]);
+      // Global system + wallet guards (reads live Firestore system_config/global).
+      const [systemEnabled, walletEnabled] = await Promise.all([
+        systemConfigService.isSystemEnabled(),
+        systemConfigService.isWalletEnabled(),
+      ]);
 
-        if (!systemEnabled) {
-          res.status(503).json({ error: 'SYSTEM_DISABLED', message: 'The system is currently unavailable.' });
-          return;
-        }
-        if (!walletEnabled) {
-          res.status(503).json({ error: 'WALLET_DISABLED', message: 'Wallet top-up is currently unavailable.' });
-          return;
-        }
+      if (!systemEnabled) {
+        res.status(503).json({ error: 'SYSTEM_DISABLED', message: 'The system is currently unavailable.' });
+        return;
+      }
+      if (!walletEnabled) {
+        res.status(503).json({ error: 'WALLET_DISABLED', message: 'Wallet top-up is currently unavailable.' });
+        return;
       }
 
       const { amount, currency } = req.body as { amount?: unknown; currency?: unknown };
