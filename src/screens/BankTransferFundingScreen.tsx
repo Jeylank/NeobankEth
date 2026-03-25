@@ -1,22 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import * as Clipboard from 'expo-clipboard';
+import { useAuth } from '../hooks/useAuth';
 
 const COLORS = {
   primary:       '#006633',
   primaryLight:  '#E6F4EC',
   bank:          '#2563EB',
-  bankLight:     '#EFF6FF',
   white:         '#FFFFFF',
   background:    '#F5F7FA',
   text:          '#1F2937',
@@ -24,27 +25,42 @@ const COLORS = {
   border:        '#E5E7EB',
   success:       '#10B981',
   warning:       '#F59E0B',
+  copiedBg:      '#D1FAE5',
 };
 
-const BANK_DETAILS = [
-  { label: 'Bank Name',      value: 'Habeshare Partner Bank' },
-  { label: 'Account Name',   value: 'Habeshare Financial Services' },
-  { label: 'IBAN',           value: 'DE89 3704 0044 0532 0130 00' },
-  { label: 'BIC / SWIFT',    value: 'COBADEFFXXX' },
-  { label: 'Reference',      value: 'TOPUP-{YOUR-USER-ID}' },
-];
-
 export default function BankTransferFundingScreen() {
-  const { t }      = useTranslation();
-  const navigation = useNavigation<any>();
-  const route      = useRoute<any>();
+  const { t }            = useTranslation();
+  const navigation       = useNavigation<any>();
+  const route            = useRoute<any>();
+  const { user }         = useAuth();
 
   const amount   = route.params?.amount;
   const currency = route.params?.currency ?? 'EUR';
 
-  const handleCopy = (value: string) => {
-    // Clipboard would be used on native; on web we just show the text
-    console.log('Copy:', value);
+  const userId    = user?.uid ?? 'YOUR-USER-ID';
+  const shortId   = userId.slice(0, 8).toUpperCase();
+  const reference = `TOPUP-${shortId}`;
+
+  const BANK_DETAILS = [
+    { key: 'bankName',  label: 'Bank Name',      value: 'Habeshare Partner Bank',        icon: 'business'         },
+    { key: 'accName',   label: 'Account Name',   value: 'Habeshare Financial Services',  icon: 'person'           },
+    { key: 'iban',      label: 'IBAN',            value: 'DE89 3704 0044 0532 0130 00',   icon: 'card'             },
+    { key: 'swift',     label: 'BIC / SWIFT',     value: 'COBADEFFXXX',                   icon: 'globe'            },
+    { key: 'ref',       label: 'Reference',       value: reference,                        icon: 'pricetag'         },
+  ];
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = async (key: string, value: string) => {
+    try {
+      await Clipboard.setStringAsync(value);
+    } catch {
+      if (Platform.OS === 'web') {
+        try { await navigator.clipboard.writeText(value); } catch { /* ignore */ }
+      }
+    }
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
   };
 
   return (
@@ -69,18 +85,56 @@ export default function BankTransferFundingScreen() {
         )}
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('funding.bankDetails')}</Text>
-          {BANK_DETAILS.map((item) => (
-            <View key={item.label} style={styles.detailRow}>
-              <View style={styles.detailLeft}>
-                <Text style={styles.detailLabel}>{item.label}</Text>
-                <Text style={styles.detailValue}>{item.value}</Text>
-              </View>
-              <TouchableOpacity onPress={() => handleCopy(item.value)} style={styles.copyBtn}>
-                <Ionicons name="copy-outline" size={18} color={COLORS.primary} />
-              </TouchableOpacity>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>{t('funding.bankDetails')}</Text>
+            <View style={styles.tapHintRow}>
+              <Ionicons name="copy-outline" size={13} color={COLORS.textSecondary} />
+              <Text style={styles.tapHint}>Tap to copy</Text>
             </View>
-          ))}
+          </View>
+
+          {BANK_DETAILS.map((item) => {
+            const isCopied = copiedKey === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.detailRow, isCopied && styles.detailRowCopied]}
+                onPress={() => handleCopy(item.key, item.value)}
+                activeOpacity={0.6}
+              >
+                <View style={[styles.detailIconCircle, isCopied && styles.detailIconCircleCopied]}>
+                  <Ionicons
+                    name={item.icon as any}
+                    size={16}
+                    color={isCopied ? COLORS.success : COLORS.bank}
+                  />
+                </View>
+                <View style={styles.detailLeft}>
+                  <Text style={styles.detailLabel}>{item.label}</Text>
+                  <Text style={[styles.detailValue, isCopied && styles.detailValueCopied]}>
+                    {item.value}
+                  </Text>
+                </View>
+                <View style={[styles.copyBadge, isCopied && styles.copyBadgeCopied]}>
+                  <Ionicons
+                    name={isCopied ? 'checkmark' : 'copy-outline'}
+                    size={15}
+                    color={isCopied ? COLORS.success : COLORS.primary}
+                  />
+                  <Text style={[styles.copyBadgeText, isCopied && styles.copyBadgeTextCopied]}>
+                    {isCopied ? 'Copied!' : 'Copy'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.referenceNote}>
+          <Ionicons name="information-circle" size={18} color={COLORS.bank} />
+          <Text style={styles.referenceNoteText}>
+            Always include your reference code <Text style={styles.referenceHighlight}>{reference}</Text> so we can credit your account correctly.
+          </Text>
         </View>
 
         <View style={styles.infoCard}>
@@ -159,6 +213,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   amountBannerValue: {
     fontSize: 28,
@@ -174,35 +229,112 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
   cardTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 14,
+  },
+  tapHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tapHint: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 4,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  detailRowCopied: {
+    backgroundColor: COLORS.copiedBg,
+    borderColor: '#6EE7B7',
+  },
+  detailIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailIconCircleCopied: {
+    backgroundColor: '#D1FAE5',
   },
   detailLeft: {
     flex: 1,
   },
   detailLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textSecondary,
     marginBottom: 2,
+    fontWeight: '500',
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,
   },
-  copyBtn: {
-    padding: 6,
+  detailValueCopied: {
+    color: COLORS.success,
+  },
+  copyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  copyBadgeCopied: {
+    borderColor: '#6EE7B7',
+    backgroundColor: '#D1FAE5',
+  },
+  copyBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  copyBadgeTextCopied: {
+    color: COLORS.success,
+  },
+  referenceNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  referenceNoteText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  referenceHighlight: {
+    fontWeight: '700',
+    color: COLORS.bank,
   },
   infoCard: {
     flexDirection: 'row',
@@ -234,7 +366,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 8,
+    marginTop: 4,
+    marginBottom: 8,
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1.5,
