@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -79,6 +80,8 @@ export default function RemittanceScreen() {
   const [paymentMethod, setPaymentMethod] = useState(prefilled ? (route.params?.paymentMethod ?? 'wallet') : 'wallet');
   const [payoutMethod, setPayoutMethod] = useState(prefilled ? (route.params?.payoutMethod ?? 'bank_account') : 'bank_account');
   const [selectedRecipientName, setSelectedRecipientName] = useState<string | null>(incomingRecipient?.name || null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const clearPrefill = () => {
     setShowPrefillBanner(false);
@@ -181,14 +184,7 @@ export default function RemittanceScreen() {
       setSelectedBeneficiary(null);
     },
     onError: (error: any) => {
-      Alert.alert(
-        'Something went wrong',
-        error.message || 'Please try again or contact support.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Try Again', onPress: handleSend },
-        ]
-      );
+      setSendError(error?.message || 'Something went wrong. Please try again.');
     },
   });
 
@@ -201,48 +197,43 @@ export default function RemittanceScreen() {
   const convertedAmount = amount ? (parseFloat(amount) * getExchangeRate()).toFixed(2) : '0.00';
 
   const handleSend = () => {
+    setSendError(null);
     if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert(t('common.error'), t('remittance.enterValidAmount') || 'Please enter a valid amount');
+      setSendError(t('remittance.enterValidAmount') || 'Please enter a valid amount');
       return;
     }
-
     if (!selectedBeneficiary) {
-      Alert.alert(t('common.error'), t('remittance.selectBeneficiary') || 'Please select a beneficiary');
+      setSendError(t('remittance.selectBeneficiary') || 'Please select a beneficiary');
       return;
     }
-
     const availableBalance = balanceData?.balance ?? 10000;
     if (parseFloat(amount) > availableBalance) {
-      Alert.alert(t('common.error'), t('remittance.insufficientBalance') || 'Insufficient balance');
+      setSendError(t('remittance.insufficientBalance') || 'Insufficient balance');
       return;
     }
+    setShowConfirmModal(true);
+  };
 
-    Alert.alert(
-      t('remittance.review'),
-      `${t('remittance.sendMoney')}: ${fromCurrency} ${amount} (${toCurrency} ${convertedAmount})`,
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          onPress: async () => {
-            const confirmed = await requireBiometricConfirmation(
-              t('security.confirmSensitive')
-            );
-            if (!confirmed) return;
-            sendMutation.mutate({
-              amount: parseFloat(amount),
-              fromCurrency,
-              toCurrency,
-              beneficiaryId: selectedBeneficiary,
-              description,
-              paymentMethod,
-              payoutMethod,
-              ...(selectedQuote?.quoteId ? { quoteId: selectedQuote.quoteId } : {}),
-            });
-          },
-        },
-      ]
-    );
+  const executeSend = async () => {
+    setShowConfirmModal(false);
+    setSendError(null);
+    try {
+      const confirmed = await requireBiometricConfirmation(
+        t('security.confirmSensitive')
+      );
+      if (!confirmed) return;
+    } catch {
+    }
+    sendMutation.mutate({
+      amount: parseFloat(amount),
+      fromCurrency,
+      toCurrency,
+      beneficiaryId: selectedBeneficiary!,
+      description,
+      paymentMethod,
+      payoutMethod,
+      ...(selectedQuote?.quoteId ? { quoteId: selectedQuote.quoteId } : {}),
+    });
   };
 
   const formatCurrency = (value: number, currency = 'USD') => {
@@ -566,6 +557,16 @@ export default function RemittanceScreen() {
         </View>
       </View>
 
+      {sendError && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle" size={16} color="#DC2626" />
+          <Text style={styles.errorBannerText}>{sendError}</Text>
+          <TouchableOpacity onPress={() => setSendError(null)}>
+            <Ionicons name="close" size={16} color="#DC2626" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <AnimatedPressable
         style={[styles.sendButton, sendMutation.isPending && styles.sendButtonDisabled]}
         onPress={handleSend}
@@ -584,6 +585,67 @@ export default function RemittanceScreen() {
       </AnimatedPressable>
 
       <View style={styles.bottomPadding} />
+
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="send" size={28} color={COLORS.primary} />
+              <Text style={styles.modalTitle}>Confirm Transfer</Text>
+            </View>
+
+            <View style={styles.modalRow}>
+              <Text style={styles.modalLabel}>You Send</Text>
+              <Text style={styles.modalValue}>{fromCurrency} {amount}</Text>
+            </View>
+            <View style={styles.modalDivider} />
+            <View style={styles.modalRow}>
+              <Text style={styles.modalLabel}>Recipient Gets</Text>
+              <Text style={[styles.modalValue, { color: COLORS.primary }]}>{toCurrency} {convertedAmount}</Text>
+            </View>
+            <View style={styles.modalDivider} />
+            <View style={styles.modalRow}>
+              <Text style={styles.modalLabel}>Recipient</Text>
+              <Text style={styles.modalValue}>
+                {selectedRecipientName ||
+                  beneficiariesData?.beneficiaries?.find((b: any) => b.id === selectedBeneficiary)?.name ||
+                  '—'}
+              </Text>
+            </View>
+            <View style={styles.modalDivider} />
+            <View style={styles.modalRow}>
+              <Text style={styles.modalLabel}>Method</Text>
+              <Text style={styles.modalValue}>{payoutMethod?.replace('_', ' ')}</Text>
+            </View>
+
+            <View style={styles.modalNote}>
+              <Ionicons name="shield-checkmark" size={14} color={COLORS.primary} />
+              <Text style={styles.modalNoteText}>Funds processed by licensed partner institutions</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowConfirmModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={executeSend}
+              >
+                <Ionicons name="send" size={16} color={COLORS.white} />
+                <Text style={styles.modalConfirmText}>Confirm & Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -875,5 +937,124 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#374151',
     fontWeight: '500',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 420,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  modalLabel: {
+    fontSize: 14,
+    color: COLORS.gray,
+    fontWeight: '500',
+  },
+  modalValue: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '600',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  modalNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 16,
+  },
+  modalNoteText: {
+    fontSize: 12,
+    color: '#166534',
+    flex: 1,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.gray,
+  },
+  modalConfirmBtn: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.white,
   },
 });
