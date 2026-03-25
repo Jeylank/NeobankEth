@@ -170,8 +170,8 @@ export default function ProfileScreen() {
     {
       section: 'Payments',
       items: [
-        { icon: 'card-outline', label: 'Add via Chapa', action: () => navigation.navigate('ChapaPayment') },
-        { icon: 'phone-portrait-outline', label: 'Add via Telebirr', action: () => navigation.navigate('TelebirrPayment') },
+        { icon: 'add-circle-outline', label: 'Add Funds', action: () => navigation.navigate('FundingMethod') },
+        { icon: 'phone-portrait-outline', label: 'Add via Telebirr', action: () => navigation.navigate('FundingMethod') },
       ],
     },
     {

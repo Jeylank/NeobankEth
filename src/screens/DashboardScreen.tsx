@@ -146,7 +146,7 @@ export default function DashboardScreen() {
 
   const quickActions = [
     { icon: 'send',       labelKey: 'dashboard.send',    screen: 'Remittance',    color: PRIMARY },
-    { icon: 'add-circle', labelKey: 'dashboard.addFunds', screen: 'ChapaPayment',  color: '#3B82F6' },
+    { icon: 'add-circle', labelKey: 'dashboard.addFunds', screen: 'FundingMethod', color: '#3B82F6' },
     { icon: 'wallet',     labelKey: 'dashboard.savings',  screen: 'Savings',       color: '#8B5CF6' },
     { icon: 'list',       labelKey: 'dashboard.history',  screen: 'Transactions',  color: '#F59E0B' },
   ];
