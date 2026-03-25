@@ -26,13 +26,11 @@ const COLORS = {
 };
 
 // ─── API base URL helper ───────────────────────────────────────────────────────
+// The Express server now serves both the API (/api/*) and the static Expo web
+// app from a single port, so we use origin-relative paths everywhere.
 
 function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:3000`;
-  }
-  return 'http://localhost:3000';
+  return '';
 }
 
 // ─── Inner form (inside <Elements>) ───────────────────────────────────────────

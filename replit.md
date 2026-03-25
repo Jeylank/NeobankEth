@@ -36,7 +36,10 @@ The application leverages Expo SDK 50, React Native 0.73, React Navigation 6, an
 -   Improved remittance and transfer tracking screens with better visual feedback and user guidance.
 
 **Admin Operations API (Express Server):**
--   A standalone Node.js/Express/TypeScript server providing API endpoints for admin functions.
+-   A unified Node.js/Express/TypeScript server on **port 5000** serving both the API and the static Expo web app.
+-   Workflow: `Admin API` (`npm run server:admin` with `--transpile-only` for fast startup). Single workflow, no separate static server needed.
+-   Static files served from `dist/` via `express.static`; SPA catch-all serves `index.html` for non-API paths.
+-   Maintenance mode gate applies only to `/api/*` paths — static file serving is never blocked.
 -   **Authorization:** Requires valid Firebase ID tokens with admin claims or roles.
 -   **Endpoints:** Covers payouts, fraud alerts, support tickets, disputes, liquidity, and reconciliation management.
 -   **Audit Logging:** All critical admin actions are logged to `admin_action_logs`.

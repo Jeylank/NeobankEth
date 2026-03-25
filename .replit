@@ -17,14 +17,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Expo Web App"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Admin API"
 
 [[workflows.workflow]]
-name = "Expo Web App"
+name = "Admin API"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -32,20 +28,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx serve dist -l 5000"
-waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Admin API"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "npm run server:admin"
-waitForPort = 3000
-
-[workflows.workflow.metadata]
-outputType = "console"
+waitForPort = 5000
 
 [[ports]]
 localPort = 3000
@@ -59,6 +43,10 @@ externalPort = 80
 localPort = 5904
 externalPort = 3000
 
+[[ports]]
+localPort = 7777
+externalPort = 3001
+
 [deployment]
 deploymentTarget = "autoscale"
 run = ["npx", "serve", "dist", "-l", "5000"]
@@ -67,4 +55,4 @@ build = ["npx", "expo", "export", "--platform", "web"]
 [userenv]
 
 [userenv.shared]
-ADMIN_API_PORT = "3000"
+ADMIN_API_PORT = "5000"

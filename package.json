@@ -12,7 +12,7 @@
     "test:remittance": "ts-node --project scripts/tsconfig.json scripts/runRemittanceTests.ts",
     "worker:settlement": "ts-node --project scripts/tsconfig.json scripts/runSettlementWorker.ts",
     "worker:recurring-support": "ts-node --project scripts/tsconfig.json scripts/runRecurringSupportWorker.ts",
-    "server:admin": "ts-node --project server/tsconfig.json server/index.ts",
+    "server:admin": "ts-node --transpile-only --project server/tsconfig.json server/index.ts",
     "test:risk": "jest server/tests/riskControls.test.ts --no-coverage",
     "test": "jest --no-coverage"
   },

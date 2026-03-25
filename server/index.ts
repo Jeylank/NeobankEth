@@ -15,6 +15,7 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
 import { runMigrations } from 'stripe-replit-sync';
 
 import payoutsRouter        from './routes/payouts';
@@ -31,7 +32,7 @@ import { getStripeSync }    from './stripeClient';
 import { stripePaymentService } from './services/stripePaymentService';
 
 const app  = express();
-const PORT = parseInt(process.env.ADMIN_API_PORT ?? '4000', 10);
+const PORT = parseInt(process.env.ADMIN_API_PORT ?? '5000', 10);
 
 // ─── Stripe webhook — MUST be registered before express.json() ───────────────
 // Stripe sends raw JSON bodies that must NOT be pre-parsed; express.raw()
@@ -83,7 +84,11 @@ const MAINTENANCE_BYPASS = [
   '/api/payments/publishable-key',
 ];
 app.use(async (req: Request, res: Response, next: NextFunction) => {
-  if (MAINTENANCE_BYPASS.some((p) => req.path.startsWith(p))) return next();
+  // Non-API paths (static files / SPA) are never gated by maintenance mode.
+  // Specific API paths (webhook, publishable-key) are also explicitly bypassed.
+  if (!req.path.startsWith('/api/') || MAINTENANCE_BYPASS.some((p) => req.path.startsWith(p))) {
+    return next();
+  }
   try {
     const inMaintenance = await systemConfigService.isMaintenanceMode();
     if (inMaintenance) {
@@ -121,10 +126,23 @@ app.use(API_PREFIX, riskControlsRouter);
 app.use(API_PREFIX, systemConfigRouter);
 app.use('/api',     paymentsRouter);
 
-// ─── 404 Handler ──────────────────────────────────────────────────────────────
+// ─── Static Web App (Expo dist) ───────────────────────────────────────────────
+// Serve the pre-built Expo web bundle and fall back to index.html so the
+// client-side router handles all non-API paths. API routes are mounted above
+// this middleware so they always take precedence.
 
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+const DIST_DIR = path.resolve(__dirname, '..', 'dist');
+app.use(express.static(DIST_DIR));
+
+app.use((req: Request, res: Response) => {
+  // Only return JSON 404s for /api/* paths; everything else serves the SPA.
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ error: 'Endpoint not found' });
+  } else {
+    res.sendFile(path.join(DIST_DIR, 'index.html'), (err) => {
+      if (err) res.status(404).json({ error: 'Not found' });
+    });
+  }
 });
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
