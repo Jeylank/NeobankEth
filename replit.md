@@ -53,6 +53,14 @@ The application leverages Expo SDK 50, React Native 0.73, React Navigation 6, an
 -   **Typed Errors:** Provides structured error responses for specific risk control failures.
 -   **Admin Endpoints:** Allows administrators to manage system controls, risk limits, and user risk flags (freeze/unfreeze/review).
 
+**Stripe Payment Integration:**
+-   **`server/stripeClient.ts`** — authenticates via Replit Stripe connector (falls back to `STRIPE_SECRET_KEY` env var). Exports `getUncachableStripeClient()` and `getStripeSync()`. On startup, runs `stripe-replit-sync` migrations against PostgreSQL (`DATABASE_URL`) and sets up a managed webhook.
+-   **`server/services/stripePaymentService.ts`** — `createPaymentIntent(userId, amount, currency)` creates a Stripe PaymentIntent and writes a `pending` record to Firestore `payment_transactions/{paymentIntentId}`. `handleWebhook(payload, sig)` verifies the Stripe signature, dispatches `payment_intent.succeeded` / `payment_intent.payment_failed`, credits the wallet via a Firestore atomic transaction (same schema as client `walletService`), writes a ledger entry, and marks the transaction `completed`. Full idempotency via pre-check on Firestore status.
+-   **`server/middleware/verifyUser.ts`** — Firebase ID token verification for regular (non-admin) users. Attaches `req.userId` and `req.userEmail`.
+-   **`server/routes/payments.ts`** — `POST /api/payments/create-intent` (Firebase auth + system/wallet kill-switch guards) + `POST /api/payments/webhook` (Stripe-Signature guard + raw Buffer enforcement).
+-   **Webhook registration** in `server/index.ts` uses `express.raw()` **before** `express.json()` to preserve the raw Buffer needed for Stripe signature verification.
+-   **Firestore `payment_transactions`** — fields: `userId`, `amount`, `currency`, `status` (`pending`|`completed`|`failed`), `stripePaymentIntentId`, `createdAt`, `completedAt?`.
+
 ## External Dependencies
 -   **Firebase:** Authentication, Firestore (database), Firebase Storage (KYC documents).
 -   **Expo SDK:** Core framework.

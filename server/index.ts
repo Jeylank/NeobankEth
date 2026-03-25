@@ -15,6 +15,7 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import { runMigrations } from 'stripe-replit-sync';
 
 import payoutsRouter        from './routes/payouts';
 import fraudAlertsRouter    from './routes/fraudAlerts';
@@ -24,10 +25,38 @@ import liquidityRouter      from './routes/liquidity';
 import reconciliationRouter from './routes/reconciliation';
 import riskControlsRouter   from './routes/adminRiskControls';
 import systemConfigRouter   from './routes/systemConfigRoutes';
+import paymentsRouter       from './routes/payments';
 import { systemConfigService } from './services/systemConfigService';
+import { getStripeSync }    from './stripeClient';
+import { stripePaymentService } from './services/stripePaymentService';
 
 const app  = express();
 const PORT = parseInt(process.env.ADMIN_API_PORT ?? '4000', 10);
+
+// ─── Stripe webhook — MUST be registered before express.json() ───────────────
+// Stripe sends raw JSON bodies that must NOT be pre-parsed; express.raw()
+// captures them as Buffer so we can verify the Stripe-Signature.
+
+app.post(
+  '/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req: Request, res: Response) => {
+    const signature = req.headers['stripe-signature'];
+    if (!signature) {
+      res.status(400).json({ error: 'MISSING_SIGNATURE' });
+      return;
+    }
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+    try {
+      await stripePaymentService.handleWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err: any) {
+      console.error('[StripeWebhook]', err.message);
+      const isSignatureError = err.message?.includes('signature');
+      res.status(isSignatureError ? 400 : 500).json({ error: err.message });
+    }
+  },
+);
 
 // ─── Global Middleware ────────────────────────────────────────────────────────
 
@@ -85,6 +114,7 @@ app.use(API_PREFIX, liquidityRouter);
 app.use(API_PREFIX, reconciliationRouter);
 app.use(API_PREFIX, riskControlsRouter);
 app.use(API_PREFIX, systemConfigRouter);
+app.use('/api',     paymentsRouter);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 
@@ -99,7 +129,40 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ─── Stripe Initialisation ────────────────────────────────────────────────────
+// Runs the stripe-replit-sync migration (idempotent) and starts the backfill.
+// Failures are non-fatal — the payment routes work independently of the sync.
+
+async function initStripe(): Promise<void> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.warn('[Stripe] DATABASE_URL not set — skipping stripe-replit-sync setup.');
+    return;
+  }
+  try {
+    await runMigrations({ databaseUrl });
+    console.log('[Stripe] Schema ready.');
+
+    const stripeSync = await getStripeSync();
+
+    const webhookBaseUrl = `https://${(process.env.REPLIT_DOMAINS ?? '').split(',')[0]}`;
+    await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/payments/webhook`);
+    console.log('[Stripe] Managed webhook configured.');
+
+    // Run backfill async so server starts immediately.
+    stripeSync.syncBackfill()
+      .then(() => console.log('[Stripe] Data backfill complete.'))
+      .catch((err: Error) => console.error('[Stripe] Backfill error:', err.message));
+  } catch (err: any) {
+    console.error('[Stripe] Initialisation error (non-fatal):', err.message);
+  }
+}
+
 // ─── Start ────────────────────────────────────────────────────────────────────
+
+initStripe().then(() => {
+  /* no-op — init is fire-and-forget, server already listening */
+}).catch(() => { /* already logged */ });
 
 app.listen(PORT, () => {
   console.log(`✓ Habeshare Admin API running on port ${PORT}`);
@@ -136,6 +199,9 @@ app.listen(PORT, () => {
   console.log(`    GET  ${API_PREFIX}/system-config`);
   console.log(`    POST ${API_PREFIX}/system-config`);
   console.log(`    POST ${API_PREFIX}/system-config/refresh`);
+  console.log('  Payments (Stripe):');
+  console.log(`    POST /api/payments/create-intent`);
+  console.log(`    POST /api/payments/webhook`);
 });
 
 export default app;
