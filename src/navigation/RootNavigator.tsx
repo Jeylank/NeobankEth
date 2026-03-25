@@ -38,6 +38,8 @@ import FxMarketplaceScreen from '../screens/FxMarketplaceScreen';
 import TransferTrackingScreen from '../screens/TransferTrackingScreen';
 import TransferSuccessScreen from '../screens/TransferSuccessScreen';
 import RecipientsScreen from '../screens/RecipientsScreen';
+import PersonalInformationScreen from '../screens/PersonalInformationScreen';
+import AboutScreen from '../screens/AboutScreen';
 import AdminConsoleScreen from '../screens/admin/AdminConsoleScreen';
 import AdminOverviewScreen from '../screens/admin/AdminOverviewScreen';
 import AdminPayoutMonitoringScreen from '../screens/admin/AdminPayoutMonitoringScreen';
@@ -175,6 +177,8 @@ export default function RootNavigator() {
           <Stack.Screen name="TransferTracking" component={TransferTrackingScreen} options={{ headerShown: false }} />
           <Stack.Screen name="TransferSuccess" component={TransferSuccessScreen} options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="Recipients" component={RecipientsScreen} options={{ title: 'Recipients' }} />
+          <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} options={{ title: 'Personal Information' }} />
+          <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Habeshare' }} />
           <Stack.Screen name="AdminConsole" component={AdminConsoleScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminOverview" component={AdminOverviewScreen} options={{ title: 'Overview' }} />
           <Stack.Screen name="AdminPayoutMonitoring" component={AdminPayoutMonitoringScreen} options={{ title: 'Payout Monitoring' }} />

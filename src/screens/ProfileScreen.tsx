@@ -153,7 +153,7 @@ export default function ProfileScreen() {
     {
       section: 'Account',
       items: [
-        { icon: 'person-outline', label: 'Personal Information', action: () => {} },
+        { icon: 'person-outline', label: 'Personal Information', action: () => navigation.navigate('PersonalInformation' as never) },
         { icon: 'card-outline', label: 'KYC Verification', action: () => navigation.navigate('KYC') },
         { icon: 'notifications-outline', label: 'Notifications', action: () => navigation.navigate('Notifications') },
       ],
@@ -164,7 +164,7 @@ export default function ProfileScreen() {
         { icon: 'business-outline', label: 'Bank Accounts', action: () => navigation.navigate('BankAccounts') },
         { icon: 'flash-outline', label: 'Pay Bills', action: () => navigation.navigate('BillPayments') },
         { icon: 'paper-plane-outline', label: 'Track Transfers', action: () => navigation.navigate('RemittanceTracking') },
-        { icon: 'people-outline', label: 'Beneficiaries', action: () => {} },
+        { icon: 'people-outline', label: 'Beneficiaries', action: () => navigation.navigate('Recipients' as never) },
       ],
     },
     {
@@ -204,7 +204,7 @@ export default function ProfileScreen() {
       section: 'Support',
       items: [
         { icon: 'help-circle-outline', label: 'Help & Support', action: () => navigation.navigate('Support') },
-        { icon: 'information-circle-outline', label: 'About', action: () => {} },
+        { icon: 'information-circle-outline', label: 'About', action: () => navigation.navigate('About' as never) },
       ],
     },
   ];
