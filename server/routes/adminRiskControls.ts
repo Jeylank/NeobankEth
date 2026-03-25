@@ -231,6 +231,103 @@ router.post('/risk-flags/:userId/review', verifyAdmin, async (req: Request, res:
   }
 });
 
+/**
+ * POST /api/admin/risk-flags/:userId/active
+ * Restore a user to active (clear all risk flags).
+ */
+router.post('/risk-flags/:userId/active', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId }              = req.params;
+    const { adminId, adminEmail } = admin(req);
+
+    await safetyGuardsService.unfreezeUser(userId, adminId, adminEmail);
+
+    await writeAuditLog({
+      adminId,
+      adminEmail,
+      action:     'restore_active',
+      entityId:   userId,
+      entityType: 'user',
+      payload:    { userId },
+      ip:         req.ip ?? '',
+    });
+
+    res.json({ success: true, userId, action: 'active' });
+  } catch (err: any) {
+    console.error('[/risk-flags/:userId/active]', err.message);
+    res.status(500).json({ error: 'Failed to restore user to active', detail: err.message });
+  }
+});
+
+// ── Risk Blocked Metrics ────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/risk-blocked-metrics
+ * Returns weekly blocked-transaction metrics broken down by feature and reason.
+ */
+router.get('/risk-blocked-metrics', verifyAdmin, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const now      = new Date();
+    const today    = new Date(now); today.setHours(0, 0, 0, 0);
+    const weekAgo  = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+    const todayIso = today.toISOString();
+    const weekIso  = weekAgo.toISOString();
+
+    const col = adminDb.collection('admin_action_logs');
+
+    const [
+      limitToday, limitWeek,
+      velocityToday, velocityWeek,
+      blockedToday, blockedWeek,
+      killToday, killWeek,
+      frozenToday, frozenWeek,
+      reviewToday, reviewWeek,
+    ] = await Promise.all([
+      col.where('action', '==', 'limit_exceeded').where('timestamp', '>=', todayIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'limit_exceeded').where('timestamp', '>=', weekIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'velocity_blocked').where('timestamp', '>=', todayIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'velocity_blocked').where('timestamp', '>=', weekIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'payout_blocked_by_safety_guard').where('timestamp', '>=', todayIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'payout_blocked_by_safety_guard').where('timestamp', '>=', weekIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'kill_switch_blocked').where('timestamp', '>=', todayIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'kill_switch_blocked').where('timestamp', '>=', weekIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'frozen_user_blocked').where('timestamp', '>=', todayIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'frozen_user_blocked').where('timestamp', '>=', weekIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'review_required_blocked').where('timestamp', '>=', todayIso).get().then((s) => s.size).catch(() => 0),
+      col.where('action', '==', 'review_required_blocked').where('timestamp', '>=', weekIso).get().then((s) => s.size).catch(() => 0),
+    ]);
+
+    const byReasonToday: Record<string, number> = {
+      limit_exceeded:    limitToday,
+      velocity_blocked:  velocityToday,
+      safety_guard:      blockedToday,
+      kill_switch:       killToday,
+      account_frozen:    frozenToday,
+      review_required:   reviewToday,
+    };
+    const byReasonWeek: Record<string, number> = {
+      limit_exceeded:    limitWeek,
+      velocity_blocked:  velocityWeek,
+      safety_guard:      blockedWeek,
+      kill_switch:       killWeek,
+      account_frozen:    frozenWeek,
+      review_required:   reviewWeek,
+    };
+
+    const totalToday = Object.values(byReasonToday).reduce((a, b) => a + b, 0);
+    const totalWeek  = Object.values(byReasonWeek).reduce((a, b) => a + b, 0);
+
+    res.json({
+      today: { total: totalToday, byReason: byReasonToday },
+      week:  { total: totalWeek,  byReason: byReasonWeek  },
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[/risk-blocked-metrics GET]', err.message);
+    res.status(500).json({ error: 'Failed to fetch blocked metrics', detail: err.message });
+  }
+});
+
 // ── Risk Summary ───────────────────────────────────────────────────────────────
 
 /**

@@ -119,6 +119,13 @@ const MENU_ITEMS = [
     color: '#0891B2',
     bg: '#ECFEFF',
   },
+  {
+    key: 'riskControls',
+    screen: 'AdminRiskControls',
+    icon: 'shield-half-outline' as const,
+    color: '#006633',
+    bg: '#ECFDF5',
+  },
 ];
 
 function AdminConsoleContent() {

@@ -383,6 +383,44 @@ export const adminService = {
     return scheduledSupportExecutionService.getSchedulerRunDetails(runId);
   },
 
+  // ─── Risk Controls Dashboard ─────────────────────────────────────────────
+
+  async getRiskSummary(): Promise<any> {
+    const response = await adminApi.get('/api/admin/risk-summary');
+    return response.data;
+  },
+
+  async getRiskFlags(limit = 100): Promise<any[]> {
+    const response = await adminApi.get('/api/admin/risk-flags', { params: { limit } });
+    return response.data.flags ?? [];
+  },
+
+  async getRiskBlockedMetrics(): Promise<any> {
+    const response = await adminApi.get('/api/admin/risk-blocked-metrics');
+    return response.data;
+  },
+
+  async toggleKillSwitch(key: string, enabled: boolean, reason?: string): Promise<any> {
+    const response = await adminApi.post(`/api/admin/system-controls/${key}`, { enabled, reason });
+    return response.data;
+  },
+
+  async freezeRiskUser(userId: string, reason?: string): Promise<void> {
+    await adminApi.post(`/api/admin/risk-flags/${userId}/freeze`, { reason });
+  },
+
+  async unfreezeRiskUser(userId: string): Promise<void> {
+    await adminApi.post(`/api/admin/risk-flags/${userId}/unfreeze`);
+  },
+
+  async markRiskUserReview(userId: string, reason?: string): Promise<void> {
+    await adminApi.post(`/api/admin/risk-flags/${userId}/review`, { reason });
+  },
+
+  async restoreRiskUserActive(userId: string): Promise<void> {
+    await adminApi.post(`/api/admin/risk-flags/${userId}/active`);
+  },
+
   /** getSystemHealth — DB status, uptime, env validation for /api/health */
   async getSystemHealth() {
     const { systemHealthService } = await import('./systemHealthService');
