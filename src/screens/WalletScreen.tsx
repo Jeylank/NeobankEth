@@ -696,7 +696,7 @@ export default function WalletScreen() {
             <Text style={styles.quickActionText}>{t('wallet.addMoney')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('Remittance')}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('Main', { screen: 'Remittance' } as any)}>
             <View style={[styles.quickActionIcon, { backgroundColor: COLORS.blue + '15' }]}>
               <Ionicons name="send-outline" size={24} color={COLORS.blue} />
             </View>
