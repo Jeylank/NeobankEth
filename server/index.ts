@@ -29,6 +29,7 @@ import systemConfigRouter   from './routes/systemConfigRoutes';
 import paymentsRouter       from './routes/payments';
 import simulationRouter    from './routes/simulation';
 import adminUsersRouter    from './routes/adminUsers';
+import notificationsRouter from './routes/notifications';
 import { systemConfigService } from './services/systemConfigService';
 import { getStripeSync }    from './stripeClient';
 import { stripePaymentService } from './services/stripePaymentService';
@@ -132,8 +133,9 @@ app.use(API_PREFIX, reconciliationRouter);
 app.use(API_PREFIX, riskControlsRouter);
 app.use(API_PREFIX, systemConfigRouter);
 app.use(API_PREFIX, adminUsersRouter);
-app.use('/api',     paymentsRouter);
-app.use('/api/v1',  simulationRouter);
+app.use('/api',              paymentsRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/v1',           simulationRouter);
 
 // ─── Static Web App (Expo dist) ───────────────────────────────────────────────
 // Serve the pre-built Expo web bundle and fall back to index.html so the

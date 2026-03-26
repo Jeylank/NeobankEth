@@ -2,17 +2,15 @@ import {
   db, 
   collection, 
   doc, 
-  addDoc, 
   updateDoc, 
   deleteDoc, 
   query, 
   where, 
-  orderBy, 
   limit, 
-  onSnapshot, 
-  serverTimestamp,
+  onSnapshot,
   getDocs
 } from './firebase';
+import { getAuth } from 'firebase/auth';
 
 export interface Notification {
   id?: string;
@@ -72,12 +70,30 @@ export const subscribeToNotifications = (
 };
 
 export const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
-  const notificationsRef = collection(db, NOTIFICATIONS_COLLECTION);
-  return addDoc(notificationsRef, {
-    ...notification,
-    read: false,
-    createdAt: serverTimestamp()
+  // Write via server API using Admin SDK — the Firestore client rule blocks direct client writes.
+  const user = getAuth().currentUser;
+  if (!user) throw new Error('User not authenticated');
+
+  const idToken = await user.getIdToken();
+  const res = await fetch('/api/notifications', {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({
+      type:    notification.type,
+      title:   notification.title,
+      message: notification.message,
+      data:    notification.data ?? {},
+    }),
   });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? `Notification API error ${res.status}`);
+  }
+  return res.json();
 };
 
 export const markNotificationAsRead = async (notificationId: string) => {
@@ -111,15 +127,22 @@ export const getUnreadCount = (
   callback: (count: number) => void
 ) => {
   const notificationsRef = collection(db, NOTIFICATIONS_COLLECTION);
+  // Single where clause — avoid composite index requirement.
+  // Filter read=false client-side.
   const q = query(
     notificationsRef,
     where('userId', '==', userId),
-    where('read', '==', false)
+    limit(100)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    callback(snapshot.size);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const unread = snapshot.docs.filter((d) => d.data().read === false).length;
+      callback(unread);
+    },
+    (_err) => callback(0),
+  );
 };
 
 export const sendTransactionNotification = async (
