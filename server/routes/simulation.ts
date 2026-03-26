@@ -19,7 +19,10 @@ import {
   processRemittance, extractIdempotencyKey, checkIdempotency,
   createQuote, getWalletBalances, getLiquidityETB,
   getOrAgeTx, stripeTopUp, fullReset, resetLiquidityPool,
+  resumeTransaction, type ResumeAction,
 } from '../services/simulationEngine';
+import { getProviderLiquidityAll } from '../services/treasuryRouter';
+import { getQuoteState } from '../services/quoteStateMachine';
 import { adminDb } from '../firebaseAdmin';
 
 const router = Router();
@@ -323,6 +326,107 @@ router.post('/simulation/reset', requireApiKey, async (_req: Request, res: Respo
   } catch (err: any) {
     console.error('[SimAPI] /simulation/reset error:', err.message);
     res.status(500).json({ error: 'RESET_FAILED', message: err.message });
+  }
+});
+
+// ─── POST /api/v1/quote/refresh ──────────────────────────────────────────────
+//
+// Re-fetch the live FX rate for an existing quote. Returns the current state of
+// the quote along with a rate comparison. The client uses this to decide whether
+// to show the "Rate Changed — Confirm" modal.
+
+router.post('/quote/refresh', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+  const { quoteId, sourceCcy = 'EUR' } = req.body ?? {};
+  if (!quoteId || typeof quoteId !== 'string') {
+    res.status(400).json({ error: 'MISSING_FIELD', message: "'quoteId' is required." });
+    return;
+  }
+
+  try {
+    const quoteDoc = await adminDb.collection('sim_quotes').doc(quoteId).get();
+    if (!quoteDoc.exists) {
+      res.status(404).json({ error: 'QUOTE_NOT_FOUND', message: `Quote '${quoteId}' not found or already consumed.` });
+      return;
+    }
+
+    const qd         = quoteDoc.data()!;
+    const expiresMs  = (qd.expiresAt as import('firebase-admin').firestore.Timestamp).toMillis();
+    const lockedRate = qd.rate as number;
+    const state      = getQuoteState(expiresMs);
+    const freshRate  = liveRate(sourceCcy as string);
+    const delta      = Math.abs(freshRate - lockedRate) / lockedRate;
+
+    res.json({
+      quoteId,
+      state,
+      lockedRate,
+      freshRate,
+      delta:               parseFloat(delta.toFixed(6)),
+      deltaPercent:        `${(delta * 100).toFixed(2)}%`,
+      requiresConfirmation: delta > 0.005,
+      canAutoAccept:       delta <= 0.005,
+      expiresAt:           new Date(expiresMs).toISOString(),
+      remainingMs:         Math.max(0, expiresMs - Date.now()),
+      timestamp:           new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[SimAPI] /quote/refresh error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ─── POST /api/v1/remittance/resume ──────────────────────────────────────────
+//
+// Resume a paused transaction.
+//
+// For PENDING_REQUOTE:
+//   { transactionId, action: "confirm_rate" }  → proceed with new rate
+//   { transactionId, action: "cancel" }         → cancel the transfer
+//
+// For PENDING_LIQUIDITY:
+//   { transactionId }                           → retry (action defaults to "retry")
+//   { transactionId, action: "cancel" }         → cancel the transfer
+
+router.post('/remittance/resume', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+  const { transactionId, action = 'retry' } = req.body ?? {};
+
+  if (!transactionId || typeof transactionId !== 'string') {
+    res.status(400).json({ error: 'MISSING_FIELD', message: "'transactionId' is required." });
+    return;
+  }
+
+  const validActions: ResumeAction[] = ['retry', 'confirm_rate', 'cancel'];
+  if (!validActions.includes(action as ResumeAction)) {
+    res.status(400).json({
+      error:          'INVALID_ACTION',
+      message:        `'action' must be one of: ${validActions.join(', ')}.`,
+      validActions,
+    });
+    return;
+  }
+
+  try {
+    const result = await resumeTransaction(transactionId, action as ResumeAction);
+    res.status(result.status).json(result.payload);
+  } catch (err: any) {
+    console.error('[SimAPI] /remittance/resume error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ─── GET /api/v1/treasury/providers ──────────────────────────────────────────
+// Per-provider liquidity snapshot (admin-facing).
+
+router.get('/treasury/providers', requireApiKey, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const liquidityMap = await getProviderLiquidityAll();
+    const snapshot = Object.entries(liquidityMap).map(([key, availableETB]) => ({
+      key, availableETB,
+    }));
+    res.json({ providers: snapshot, timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    console.error('[SimAPI] /treasury/providers error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
   }
 });
 

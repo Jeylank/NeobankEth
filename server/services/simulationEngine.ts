@@ -41,6 +41,13 @@ import { adminDb }      from '../firebaseAdmin';
 // NOTE: Stripe is NOT imported at module level — it is lazy-loaded inside
 // stripeTopUp() only. This prevents StripeConnectionError / StripeAuthError
 // from leaking into the remittance flow when Stripe is misconfigured.
+import {
+  rankProvidersForAmount, deductProviderLiquidity, restoreProviderLiquidity,
+  resetAllProviderLiquidity, type RankedProvider,
+} from './treasuryRouter';
+import {
+  getQuoteState, compareRates, EXPIRING_THRESHOLD_MS, QUOTE_AUDIT,
+} from './quoteStateMachine';
 
 // ─── Firestore collection names ───────────────────────────────────────────────
 
@@ -184,6 +191,32 @@ export const SimError = {
     error:    'COMPLIANCE_METADATA_MISSING',
     message:  'Required compliance metadata is missing for this transaction type.',
     required,
+  }),
+  pendingLiquidity: (txId: string, resumeAfter = 30) => ({
+    error:   'PENDING_LIQUIDITY',
+    status:  'PENDING_LIQUIDITY',
+    message: 'All payout providers are temporarily at capacity. Your funds are safe — transfer queued for retry.',
+    hint:    'POST /api/v1/remittance/resume with { transactionId } once liquidity is restored.',
+    transactionId: txId,
+    resumeAfter,
+  }),
+  pendingRequote: (
+    txId:         string,
+    originalRate: number,
+    freshRate:    number,
+    delta:        number,
+    deltaPercent: string,
+  ) => ({
+    error:                'PENDING_REQUOTE',
+    status:               'PENDING_REQUOTE',
+    message:              'The FX rate changed while your transfer was being submitted. Please confirm the updated rate.',
+    hint:                 'POST /api/v1/remittance/resume with { transactionId, action: "confirm_rate" } to proceed or action: "cancel" to abort.',
+    transactionId:        txId,
+    requiresConfirmation: true,
+    originalRate,
+    freshRate,
+    delta,
+    deltaPercent,
   }),
 };
 
@@ -454,8 +487,16 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     }
   }
 
-  // ── STEP 3: FX rate — pre-read quote outside transaction ─────────────────────
-  // Quote is deleted inside the atomic transaction to prevent double-use.
+  // ── STEP 3: FX rate — quote state machine ────────────────────────────────────
+  //
+  // States (from quoteStateMachine.ts):
+  //   QUOTE_ACTIVE    → use locked rate, delete inside atomic tx
+  //   QUOTE_EXPIRING  → compare live vs locked rate (delta check):
+  //                     delta ≤ 0.5 %  → auto-accept, log quote_auto_refreshed
+  //                     delta > 0.5 %  → return PENDING_REQUOTE (NO debit — user must confirm)
+  //   QUOTE_EXPIRED   → auto-refresh with live rate + 0.15% slippage
+  //   no quote        → live rate, no slippage
+
   let rateUsed: number;
   let quoteFreshness: 'locked' | 'auto-refreshed' | 'live' = 'live';
   let quoteDocRef: admin.firestore.DocumentReference | null = null;
@@ -463,39 +504,81 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   if (quoteId) {
     const quoteDoc = await adminDb.collection(COL.quotes).doc(quoteId).get();
     if (quoteDoc.exists) {
-      const qd          = quoteDoc.data()!;
-      const expiresMs   = (qd.expiresAt as admin.firestore.Timestamp).toMillis();
-      const timeRemaining = expiresMs - Date.now();
+      const qd         = quoteDoc.data()!;
+      const expiresMs  = (qd.expiresAt as admin.firestore.Timestamp).toMillis();
+      const lockedRate = qd.rate as number;
+      const state      = getQuoteState(expiresMs);
 
-      // ISSUE 4 FIX: proactively refresh if < QUOTE_PROACTIVE_REFRESH (30 s) remaining
-      // — prevents expiry mid-flight during provider handshake.
-      // Old logic accepted quotes up to 30 s AFTER expiry; this is the correct inverse.
-      if (timeRemaining >= QUOTE_PROACTIVE_REFRESH) {
-        // Plenty of time left — use the locked rate directly.
-        rateUsed       = qd.rate as number;
+      if (state === 'QUOTE_ACTIVE') {
+        // Plenty of time left — use locked rate as-is
+        rateUsed       = lockedRate;
         quoteFreshness = 'locked';
-        quoteDocRef    = quoteDoc.ref; // deleted inside atomic tx to prevent double-use
-      } else {
-        // < 30 s remaining OR already expired: auto-refresh with live rate.
-        // Apply 0.15 % slippage so the refreshed rate is conservative.
-        const freshRate = liveRate(sourceCcy);
-        const lockedRate = qd.rate as number;
-        // Rate-tolerance gate (< 0.05 % delta): use locked rate if close enough
-        const delta = Math.abs(freshRate - lockedRate) / lockedRate;
-        if (timeRemaining > 0 && delta < 0.0005) {
-          rateUsed       = lockedRate;
-          quoteFreshness = 'locked';
-          quoteDocRef    = quoteDoc.ref;
-          console.info(`[SimEngine] Quote ${quoteId} near-expiry (${timeRemaining}ms left) but rate within 0.05% — keeping locked rate`);
-        } else {
-          rateUsed       = parseFloat((freshRate * 0.9985).toFixed(6));
-          quoteFreshness = 'auto-refreshed';
-          void quoteDoc.ref.delete();
-          console.info(`[SimEngine] Quote ${quoteId} proactively refreshed (${timeRemaining}ms left) → ${rateUsed}`);
+        quoteDocRef    = quoteDoc.ref;
+
+      } else if (state === 'QUOTE_EXPIRING') {
+        // In the proactive-refresh zone — compare rates
+        const freshRate  = liveRate(sourceCcy);
+        const comparison = compareRates(lockedRate, freshRate);
+
+        if (comparison.requiresConfirmation) {
+          // Delta > 0.5 % — create a PENDING_REQUOTE tx WITHOUT debiting the user
+          const pendingTxId = `tx_${randomUUID()}`;
+          await adminDb.collection(COL.transactions).doc(pendingTxId).set({
+            txId:          pendingTxId,
+            userId,
+            recipientId,
+            amount,
+            currency:      sourceCcy,
+            type,
+            metadata,
+            status:        'PENDING_REQUOTE',
+            quoteId,
+            originalRate:  lockedRate,
+            freshRate,
+            delta:         comparison.delta,
+            deltaPercent:  comparison.deltaPercent,
+            createdAt:     admin.firestore.Timestamp.now(),
+            updatedAt:     admin.firestore.Timestamp.now(),
+          });
+
+          void audit(QUOTE_AUDIT.reconfirmation_required, 'quote', quoteId, {
+            txId:      pendingTxId, userId,
+            originalRate: lockedRate, freshRate,
+            delta:     comparison.delta, deltaPercent: comparison.deltaPercent,
+          });
+
+          console.info(
+            `[SimEngine] PENDING_REQUOTE: delta=${comparison.deltaPercent} > 0.5% — user confirmation required. pendingTxId=${pendingTxId}`
+          );
+
+          return {
+            ok: true, status: 202,
+            payload: SimError.pendingRequote(
+              pendingTxId, lockedRate, freshRate,
+              comparison.delta, comparison.deltaPercent,
+            ),
+          };
         }
+
+        // Delta ≤ 0.5 % — auto-accept the fresh rate without user interruption
+        rateUsed       = freshRate;
+        quoteFreshness = 'auto-refreshed';
+        void quoteDoc.ref.delete();
+        void audit(QUOTE_AUDIT.auto_refreshed, 'quote', quoteId, {
+          userId, originalRate: lockedRate, freshRate, delta: comparison.delta,
+        });
+        console.info(`[SimEngine] Quote auto-refreshed (delta=${comparison.deltaPercent} ≤ 0.5%): ${lockedRate} → ${freshRate}`);
+
+      } else {
+        // QUOTE_EXPIRED — auto-refresh with 0.15% slippage (conservative rate)
+        const freshRate = liveRate(sourceCcy);
+        rateUsed        = parseFloat((freshRate * 0.9985).toFixed(6));
+        quoteFreshness  = 'auto-refreshed';
+        void quoteDoc.ref.delete();
+        console.info(`[SimEngine] Quote expired — using live rate with slippage: ${rateUsed}`);
       }
     } else {
-      // Unknown quote — use live rate with slippage
+      // Unknown quoteId — treat as expired (live rate + slippage)
       rateUsed       = parseFloat((liveRate(sourceCcy) * 0.9985).toFixed(6));
       quoteFreshness = 'auto-refreshed';
       console.info(`[SimEngine] Unknown quote ${quoteId} — using live rate with slippage`);
@@ -636,111 +719,170 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     };
   }
 
-  // ── STEP 5: Sequential provider routing with per-attempt audit logging ─────────
+  // ── STEP 5: Treasury-ranked provider routing ─────────────────────────────────
   //
-  // ISSUE 1 FIX: Iterate ALL providers in order (stripe → chapa → telebirr).
-  // Only declare failure if every provider is exhausted — no early bail-out.
-  // Each attempt is logged to sim_audit (ISSUE 5 FIX).
+  // Providers are ranked by: 1) per-provider ETB liquidity, 2) circuit health,
+  // 3) lowest cost, 4) fastest delivery.  The treasury router checks per-provider
+  // liquidity pools (sim_provider_liquidity/{key}) independently of the global
+  // settlement pool (sim_liquidity/pool) checked in STEP 4.
   //
-  // ISSUE 2 FIX (liquidity lifecycle):
-  //   RESERVED  = already deducted inside the Firestore atomic tx above
-  //   FINALIZED = when a provider accepts (no extra action needed)
-  //   RELEASED  = when all providers fail → rollback tx adds destinationAmount back
-  //
-  // This models reserve → finalize/release without a separate "reservation" document.
-  // The pool shows the deducted amount immediately (preventing overselling), and the
-  // rollback atomically restores it only on total failure.
+  // Liquidity lifecycle:
+  //   RESERVED  = global pool deducted in the Firestore atomic tx (STEP 4)
+  //   FINALIZED = per-provider pool also deducted (this step); provider accepted
+  //   RELEASED  = all providers exhausted → STEP 6 rollback restores global + per-provider
 
   interface ProviderAttempt { provider: string; success: boolean; reason?: string }
   const providerAttempts: ProviderAttempt[] = [];
   let selectedProvider: string | null = null;
 
-  for (const [key, p] of Object.entries(providers)) {
-    const now = Date.now();
+  // Collect open circuits for the treasury router
+  const now5 = Date.now();
+  const openCircuits = new Set<string>(
+    Object.entries(providers)
+      .filter(([, p]) => {
+        if (p.open && now5 - p.lastFailAt >= p.resetMs) { p.open = false; p.failures = 0; }
+        return p.open;
+      })
+      .map(([k]) => k)
+  );
 
-    // Auto-reset expired circuit breaker before checking
-    if (p.open && now - p.lastFailAt >= p.resetMs) {
-      p.open = false; p.failures = 0;
-      console.info(`[SimEngine] Circuit auto-reset: ${p.name}`);
-    }
+  // Get ranked list from treasury router (best provider first)
+  const ranked: RankedProvider[] = await rankProvidersForAmount(
+    destinationAmount, openCircuits, Object.keys(providers)
+  );
 
-    if (p.open) {
-      // Circuit is OPEN — skip this provider, log it, continue to next
-      providerAttempts.push({ provider: p.name, success: false, reason: 'circuit_open' });
-      void audit('PROVIDER_ATTEMPT_SKIPPED', 'provider', key, {
-        txId, provider: p.name, reason: 'circuit_open',
+  for (const rp of ranked) {
+    const p = providers[rp.key];
+
+    if (rp.circuitOpen) {
+      providerAttempts.push({ provider: rp.displayName, success: false, reason: 'circuit_open' });
+      void audit('PROVIDER_ATTEMPT_SKIPPED', 'provider', rp.key, {
+        txId, provider: rp.displayName, reason: 'circuit_open', rank: rp.rank,
       });
-      console.info(`[SimEngine] Skipping ${p.name} (circuit OPEN)`);
+      console.info(`[SimEngine] Skipping ${rp.displayName} (circuit OPEN)`);
       continue;
     }
 
-    // Simulate provider execution.
-    // A closed circuit always succeeds in the simulation.
-    // In production this would be: await providerClients[key].execute(txRecord)
-    try {
-      providerOk(key);
-      selectedProvider = key;
-      providerAttempts.push({ provider: p.name, success: true });
-      void audit('PROVIDER_ATTEMPT_SUCCESS', 'provider', key, {
-        txId, provider: p.name, attempt: providerAttempts.length,
+    if (!rp.hasLiquidity) {
+      providerAttempts.push({ provider: rp.displayName, success: false, reason: 'insufficient_provider_liquidity' });
+      void audit('liquidity_fallback_attempted', 'provider', rp.key, {
+        txId, provider: rp.displayName,
+        requiredETB: destinationAmount, availableETB: rp.availableETB, rank: rp.rank,
       });
       console.info(
-        providerAttempts.length > 1
-          ? `[SimEngine] Failover success: ${p.name} accepted after ${providerAttempts.length - 1} skip(s)`
-          : `[SimEngine] Provider selected: ${p.name}`
+        `[SimEngine] ${rp.displayName} skipped — insufficient per-provider liquidity ` +
+        `(need ${destinationAmount.toLocaleString()} ETB, have ${rp.availableETB.toLocaleString()} ETB)`
       );
-      break; // provider accepted — stop iterating
+      continue;
+    }
+
+    // Provider is viable — deduct from per-provider pool and execute
+    try {
+      await deductProviderLiquidity(rp.key, destinationAmount);
+      providerOk(rp.key);
+      selectedProvider = rp.key;
+      providerAttempts.push({ provider: rp.displayName, success: true });
+
+      const wasFallback = providerAttempts.some(a => !a.success);
+      if (wasFallback) {
+        void audit('liquidity_fallback_succeeded', 'provider', rp.key, {
+          txId, provider: rp.displayName, rank: rp.rank, cost: rp.cost,
+          deliveryHours: rp.deliveryHours,
+          skippedProviders: providerAttempts.filter(a => !a.success).map(a => a.provider),
+        });
+        console.info(`[SimEngine] Fallback success: ${rp.displayName} (rank #${rp.rank}) after ${providerAttempts.length - 1} skip(s)`);
+      } else {
+        void audit('PROVIDER_ATTEMPT_SUCCESS', 'provider', rp.key, {
+          txId, provider: rp.displayName, rank: rp.rank,
+        });
+        console.info(`[SimEngine] Provider selected: ${rp.displayName} (rank #${rp.rank})`);
+      }
+      break;
     } catch (execErr: any) {
-      providerFail(key);
-      providerAttempts.push({ provider: p.name, success: false, reason: execErr.message });
-      void audit('PROVIDER_ATTEMPT_FAILED', 'provider', key, {
-        txId, provider: p.name, error: execErr.message,
+      // deductProviderLiquidity can throw ProviderLiquidityInsufficient (race condition)
+      // or an execution error — treat both as provider failure
+      const reason = execErr?.name === 'ProviderLiquidityInsufficient'
+        ? 'insufficient_provider_liquidity'
+        : execErr.message;
+      providerFail(rp.key);
+      providerAttempts.push({ provider: rp.displayName, success: false, reason });
+      void audit('PROVIDER_ATTEMPT_FAILED', 'provider', rp.key, {
+        txId, provider: rp.displayName, error: reason,
       });
-      console.warn(`[SimEngine] ${p.name} execution failed: ${execErr.message} — trying next provider`);
-      // fall through to next iteration
+      console.warn(`[SimEngine] ${rp.displayName} failed: ${reason} — trying next provider`);
     }
   }
 
-  // ── STEP 6: All providers exhausted → release reservation, mark tx FAILED ─────
+  // ── STEP 6: All providers exhausted → classify, release reservation ──────────
   if (!selectedProvider) {
-    // ISSUE 2 FIX: Release the reserved liquidity atomically.
-    // Re-read both docs inside the rollback transaction to avoid using stale values.
+    // Classify failure: if ANY provider was skipped due to per-provider liquidity
+    // (not circuit_open), the correct response is PENDING_LIQUIDITY.
+    // If ALL skips were due to circuit_open, it's a classic PROVIDER_UNAVAILABLE.
+    const hasLiquidityFailure = providerAttempts.some(
+      a => !a.success && a.reason === 'insufficient_provider_liquidity'
+    );
+    const hasCircuitFailure   = providerAttempts.some(
+      a => !a.success && a.reason === 'circuit_open'
+    );
+
+    // Determine transaction status for the rollback
+    const rollbackStatus = hasLiquidityFailure ? 'PENDING_LIQUIDITY' : 'FAILED';
+    const rollbackReason = hasLiquidityFailure ? 'PENDING_LIQUIDITY'  : 'PROVIDER_UNAVAILABLE';
+
     try {
       await adminDb.runTransaction(async (t) => {
         const [wDoc, lDoc] = await Promise.all([t.get(walletRef), t.get(liqRef)]);
         const balances  = wDoc.exists ? (wDoc.data()!.balances as Record<string, number>) : {};
         const liquidity = lDoc.exists ? (lDoc.data()!.availableETB as number) : 0;
-        const rNow = admin.firestore.Timestamp.now();
+        const rNow      = admin.firestore.Timestamp.now();
 
-        // Mark transaction FAILED
-        t.update(txRef, { status: 'FAILED', failReason: 'PROVIDER_UNAVAILABLE', updatedAt: rNow });
+        // Mark transaction with appropriate status
+        t.update(txRef, {
+          status:     rollbackStatus,
+          failReason: rollbackReason,
+          // Preserve all transfer details so the tx can be resumed (PENDING_LIQUIDITY case)
+          resumeData: { userId, recipientId, amount, currency: sourceCcy, type, metadata, rateUsed, destinationAmount },
+          providerAttempts,
+          updatedAt: rNow,
+        });
 
-        // Release wallet reservation (restore user balance)
+        // Restore user wallet
         t.set(walletRef, {
           userId,
           balances: { ...balances, [sourceCcy]: (balances[sourceCcy] ?? 0) + amount },
           updatedAt: rNow,
         });
 
-        // Release liquidity reservation (restore pool)
+        // Restore global liquidity pool
         t.set(liqRef, { availableETB: liquidity + destinationAmount, updatedAt: rNow });
       });
 
       // Remove idempotency placeholder so the next attempt is treated as fresh
       if (idemRef) await idemRef.delete();
     } catch (rollbackErr) {
-      // CRITICAL: if rollback fails, liquidity and wallet are permanently desynchronised.
-      // In production this would page on-call; here we log for manual reconciliation.
       console.error(
         '[SimEngine] CRITICAL: Rollback failed — manual reconciliation required for txId:', txId,
         (rollbackErr as Error).message
       );
     }
 
+    if (hasLiquidityFailure) {
+      void audit('liquidity_pending', 'transaction', txId, {
+        userId, requiredETB: destinationAmount, providerAttempts,
+        message: 'No provider has sufficient per-provider liquidity; transfer queued.',
+      });
+      console.info(`[SimEngine] PENDING_LIQUIDITY: txId=${txId} queued for retry`);
+      return {
+        ok:      true,
+        status:  202,
+        payload: SimError.pendingLiquidity(txId, 30),
+      };
+    }
+
+    // Classic PROVIDER_UNAVAILABLE (all circuits open)
     void audit('TRANSACTION_FAILED', 'transaction', txId, {
       userId, reason: 'PROVIDER_UNAVAILABLE', type, providerAttempts,
     });
-
     return { ok: false, status: 503, payload: SimError.providerOutage() };
   }
 
@@ -825,7 +967,128 @@ export async function fullReset(): Promise<void> {
     })
   );
   resetAllProviders();
-  // Re-initialise liquidity pool
-  await resetLiquidityPool();
-  console.info('[SimEngine] Full simulation environment reset complete.');
+  // Re-initialise global liquidity pool AND per-provider pools
+  await Promise.all([resetLiquidityPool(), resetAllProviderLiquidity()]);
+  console.info('[SimEngine] Full simulation environment reset complete (including per-provider pools).');
+}
+
+// ─── Resume a paused transaction (PENDING_LIQUIDITY or PENDING_REQUOTE) ────────
+
+export type ResumeAction = 'retry' | 'confirm_rate' | 'cancel';
+
+export interface ResumeResult {
+  ok:      boolean;
+  status:  number;
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Resume a transaction that is in PENDING_LIQUIDITY or PENDING_REQUOTE state.
+ *
+ * For PENDING_LIQUIDITY  — re-runs processRemittance with the preserved transfer
+ *   details. No quoteId is passed so a live rate is used.
+ * For PENDING_REQUOTE + action='confirm_rate' — re-runs with the fresh rate that
+ *   was already calculated when the PENDING_REQUOTE record was created.
+ * For PENDING_REQUOTE + action='cancel' — marks the tx CANCELLED.
+ */
+export async function resumeTransaction(
+  transactionId: string,
+  action:        ResumeAction = 'retry',
+): Promise<ResumeResult> {
+  const txRef = adminDb.collection(COL.transactions).doc(transactionId);
+  const txDoc = await txRef.get();
+
+  if (!txDoc.exists) {
+    return {
+      ok: false, status: 404,
+      payload: { error: 'TRANSACTION_NOT_FOUND', message: `Transaction '${transactionId}' not found.` },
+    };
+  }
+
+  const tx = txDoc.data()!;
+  const { status } = tx;
+
+  if (status !== 'PENDING_LIQUIDITY' && status !== 'PENDING_REQUOTE') {
+    return {
+      ok: false, status: 409,
+      payload: {
+        error:   'INVALID_RESUME_STATUS',
+        message: `Transaction is in status '${status}' — only PENDING_LIQUIDITY and PENDING_REQUOTE can be resumed.`,
+        current: status,
+      },
+    };
+  }
+
+  // ── Handle cancellation ──────────────────────────────────────────────────────
+  if (action === 'cancel') {
+    await txRef.update({ status: 'CANCELLED', cancelledAt: admin.firestore.Timestamp.now(), updatedAt: admin.firestore.Timestamp.now() });
+    void audit('TRANSACTION_CANCELLED', 'transaction', transactionId, {
+      previousStatus: status, cancelledByUser: true,
+    });
+    return {
+      ok: true, status: 200,
+      payload: { status: 'CANCELLED', transactionId, message: 'Transfer cancelled successfully.' },
+    };
+  }
+
+  // ── PENDING_REQUOTE + confirm_rate ───────────────────────────────────────────
+  if (status === 'PENDING_REQUOTE') {
+    if (action !== 'confirm_rate') {
+      return {
+        ok: false, status: 400,
+        payload: {
+          error:   'INVALID_ACTION',
+          message: "PENDING_REQUOTE transactions require action='confirm_rate' or action='cancel'.",
+        },
+      };
+    }
+
+    // The fresh rate was stored when the PENDING_REQUOTE record was created.
+    // Re-run with that rate (no quoteId so engine uses live rate path — but we
+    // override by deleting the quoteId field so processRemittance skips the quote step).
+    const { userId, recipientId, amount, currency, type, metadata, freshRate } = tx;
+
+    void audit(QUOTE_AUDIT.resumed, 'transaction', transactionId, {
+      userId, confirmedRate: freshRate, previousStatus: status,
+    });
+
+    // Mark the pending record PROCESSING so double-submits are rejected
+    await txRef.update({ status: 'PROCESSING', updatedAt: admin.firestore.Timestamp.now() });
+
+    const result = await processRemittance({
+      userId, recipientId, amount, sourceCcy: currency, type,
+      metadata: { ...(metadata ?? {}), resumedFromTxId: transactionId, forcedRate: freshRate },
+      quoteId: undefined,   // skip quote lookup — fresh rate already confirmed
+    });
+
+    return { ok: result.ok, status: result.status, payload: result.payload as Record<string, unknown> };
+  }
+
+  // ── PENDING_LIQUIDITY + retry ────────────────────────────────────────────────
+  const { resumeData } = tx;
+  if (!resumeData) {
+    return {
+      ok: false, status: 500,
+      payload: { error: 'MISSING_RESUME_DATA', message: 'Transaction is missing resumeData — cannot retry.' },
+    };
+  }
+
+  void audit(QUOTE_AUDIT.resumed, 'transaction', transactionId, {
+    userId: resumeData.userId, previousStatus: status,
+  });
+
+  // Mark in-progress to prevent concurrent resume attempts
+  await txRef.update({ status: 'PROCESSING', updatedAt: admin.firestore.Timestamp.now() });
+
+  const result = await processRemittance({
+    userId:     resumeData.userId,
+    recipientId: resumeData.recipientId,
+    amount:     resumeData.amount,
+    sourceCcy:  resumeData.currency,
+    type:       resumeData.type,
+    metadata:   { ...(resumeData.metadata ?? {}), resumedFromTxId: transactionId },
+    quoteId:    undefined,  // use live rate on retry
+  });
+
+  return { ok: result.ok, status: result.status, payload: result.payload as Record<string, unknown> };
 }
