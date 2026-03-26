@@ -16,7 +16,7 @@ import {
   QUOTE_TTL_MS, QUOTE_BUFFER_MS,
   DEFAULT_LIQUIDITY, REPLENISH_THRESHOLD, REPLENISH_TARGET,
   providers, selectProvider, tripProvider, resetAllProviders,
-  processRemittance, extractIdempotencyKey,
+  processRemittance, extractIdempotencyKey, checkIdempotency,
   createQuote, getWalletBalances, getLiquidityETB,
   getOrAgeTx, stripeTopUp, fullReset, resetLiquidityPool,
 } from '../services/simulationEngine';
@@ -90,6 +90,7 @@ router.post('/fx/quote', requireApiKey, async (req: Request, res: Response): Pro
       to:                  quote.to,
       rate:                quote.rate,
       expiresAt:           new Date(quote.expiresAt).toISOString(),
+      ttlMs:               QUOTE_TTL_MS,
       expiresInSeconds:    QUOTE_TTL_MS / 1000,
       bufferSeconds:       QUOTE_BUFFER_MS / 1000,
       autoRefreshOnExpiry: true,
@@ -130,8 +131,17 @@ router.post('/wallet/topup', requireApiKey, async (req: Request, res: Response):
     const result = await stripeTopUp(userId, amount as number, currency as string);
     res.status(200).json({ ...result, message: 'PaymentIntent created. Use clientSecret to confirm via Stripe.js.' });
   } catch (err: any) {
-    console.error('[SimAPI] /wallet/topup error:', err.message);
-    res.status(500).json({ error: 'PAYMENT_PROVIDER_ERROR', message: err.message ?? 'Internal server error' });
+    // FIX A: Stripe errors get an explicit STRIPE_NETWORK_ERROR code so they are
+    // NEVER confused with LIQUIDITY_SHORTAGE or any remittance domain error.
+    const isStripeError = err?.type?.startsWith('Stripe') || err?.name?.startsWith('Stripe');
+    const errorCode     = isStripeError ? 'STRIPE_NETWORK_ERROR' : 'PAYMENT_PROVIDER_ERROR';
+    console.error(`[SimAPI] /wallet/topup ${errorCode}:`, err.message);
+    res.status(502).json({
+      error:   errorCode,
+      message: isStripeError
+        ? 'The payment gateway encountered a network error. No funds were debited. Please retry.'
+        : (err.message ?? 'Payment provider error.'),
+    });
   }
 });
 
@@ -158,9 +168,14 @@ router.get('/wallet/:userId', requireApiKey, async (req: Request, res: Response)
 // ─── POST /api/v1/remittance/initiate ─────────────────────────────────────────
 
 router.post('/remittance/initiate', requireApiKey, async (req: Request, res: Response): Promise<void> => {
-  const { userId, recipientId, amount, currency = 'EUR', quoteId, metadata } = req.body ?? {};
+  // FIX B: Idempotency check runs FIRST, before any field validation.
+  // A duplicate request with a missing/invalid field must still return the
+  // cached response (HTTP 200), not a 400 validation error.
   const idempotencyKey = extractIdempotencyKey(req.headers as any, req.body ?? {});
+  const cached = await checkIdempotency(idempotencyKey);
+  if (cached) { res.status(cached.status).json(cached.payload); return; }
 
+  const { userId, recipientId, amount, currency = 'EUR', quoteId, metadata } = req.body ?? {};
   if (!userId || typeof userId !== 'string') { res.status(400).json({ error: 'INVALID_USER_ID', message: 'userId is required.' }); return; }
   if (!recipientId || typeof recipientId !== 'string') { res.status(400).json({ error: 'INVALID_RECIPIENT', message: 'recipientId is required.' }); return; }
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number.' }); return; }
@@ -177,9 +192,12 @@ router.post('/remittance/initiate', requireApiKey, async (req: Request, res: Res
 // ─── POST /api/v1/campaign/contribute ────────────────────────────────────────
 
 router.post('/campaign/contribute', requireApiKey, async (req: Request, res: Response): Promise<void> => {
-  const { userId, campaignId, amount, currency = 'EUR', purpose, quoteId } = req.body ?? {};
+  // FIX B: Idempotency check before field validation
   const idempotencyKey = extractIdempotencyKey(req.headers as any, req.body ?? {});
+  const cached = await checkIdempotency(idempotencyKey);
+  if (cached) { res.status(cached.status).json(cached.payload); return; }
 
+  const { userId, campaignId, amount, currency = 'EUR', purpose, quoteId } = req.body ?? {};
   if (!userId || typeof userId !== 'string') { res.status(400).json({ error: 'INVALID_USER_ID', message: 'userId is required.' }); return; }
   if (!campaignId || typeof campaignId !== 'string') { res.status(400).json({ error: 'INVALID_CAMPAIGN_ID', message: 'campaignId is required.' }); return; }
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number.' }); return; }
@@ -196,11 +214,14 @@ router.post('/campaign/contribute', requireApiKey, async (req: Request, res: Res
 // ─── POST /api/v1/recurring/process ──────────────────────────────────────────
 
 router.post('/recurring/process', requireApiKey, async (req: Request, res: Response): Promise<void> => {
-  const { userId, scheduleId, recipientId, amount, currency = 'EUR', quoteId } = req.body ?? {};
+  // FIX B: Idempotency check before field validation
   const idempotencyKey =
     extractIdempotencyKey(req.headers as any, req.body ?? {}) ??
-    (scheduleId ? `sched:${scheduleId}` : null);
+    (req.body?.scheduleId ? `sched:${req.body.scheduleId}` : null);
+  const cached = await checkIdempotency(idempotencyKey);
+  if (cached) { res.status(cached.status).json(cached.payload); return; }
 
+  const { userId, scheduleId, recipientId, amount, currency = 'EUR', quoteId } = req.body ?? {};
   if (!userId || typeof userId !== 'string') { res.status(400).json({ error: 'INVALID_USER_ID', message: 'userId is required.' }); return; }
   if (!scheduleId || typeof scheduleId !== 'string') { res.status(400).json({ error: 'INVALID_SCHEDULE_ID', message: 'scheduleId is required.' }); return; }
   if (!recipientId || typeof recipientId !== 'string') { res.status(400).json({ error: 'INVALID_RECIPIENT', message: 'recipientId is required.' }); return; }

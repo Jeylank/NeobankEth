@@ -18,6 +18,7 @@ import { Router, Request, Response } from 'express';
 import {
   processRemittance,
   extractIdempotencyKey,
+  checkIdempotency,
   FX_BASE_RATES,
   SimError,
 } from '../services/simulationEngine';
@@ -60,9 +61,15 @@ function requireApiKey(req: Request, res: Response, next: () => void): void {
  *   503 PROVIDER_UNAVAILABLE
  */
 router.post('/:campaignId/contribute', requireApiKey, async (req: Request, res: Response): Promise<void> => {
-  const campaignId     = req.params.campaignId;
-  const { userId, amount, currency = 'EUR', purpose, quoteId } = req.body ?? {};
+  const campaignId = req.params.campaignId;
+
+  // FIX B: Idempotency check runs BEFORE field validation so a duplicate request
+  // with a missing field returns the cached 200 response, not a 400 error.
   const idempotencyKey = extractIdempotencyKey(req.headers as any, req.body ?? {});
+  const cached = await checkIdempotency(idempotencyKey);
+  if (cached) { res.status(cached.status).json(cached.payload); return; }
+
+  const { userId, amount, currency = 'EUR', purpose, quoteId } = req.body ?? {};
 
   // ── Input validation ──────────────────────────────────────────────────────────
   if (!userId || typeof userId !== 'string') {

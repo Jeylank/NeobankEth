@@ -38,7 +38,9 @@
 import { randomUUID }   from 'crypto';
 import * as admin       from 'firebase-admin';
 import { adminDb }      from '../firebaseAdmin';
-import { getUncachableStripeClient } from '../stripeClient';
+// NOTE: Stripe is NOT imported at module level — it is lazy-loaded inside
+// stripeTopUp() only. This prevents StripeConnectionError / StripeAuthError
+// from leaking into the remittance flow when Stripe is misconfigured.
 
 // ─── Firestore collection names ───────────────────────────────────────────────
 
@@ -66,9 +68,9 @@ export const liveRate = (from: string, to = 'ETB') =>
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const QUOTE_TTL_MS            = 90_000;  // 90 s locked quote window
-export const QUOTE_BUFFER_MS         = 30_000;  // +30 s grace buffer (deprecated — see below)
-export const QUOTE_PROACTIVE_REFRESH = 30_000;  // proactively refresh if < 30 s remaining
+export const QUOTE_TTL_MS            = 300_000; // 5-minute locked quote window (was 90 s)
+export const QUOTE_BUFFER_MS         = 30_000;  // legacy constant — kept for compat
+export const QUOTE_PROACTIVE_REFRESH = 15_000;  // proactively refresh only if < 15 s remaining
 export const DEFAULT_BALANCES    = { EUR: 1_000_000, USD: 1_000_000, GBP: 1_000_000 };
 export const DEFAULT_LIQUIDITY   = 50_000_000;  // 50 M ETB
 export const REPLENISH_THRESHOLD = 5_000_000;   // replenish when below this
@@ -91,6 +93,24 @@ async function audit(
     });
   } catch (err) {
     console.error('[SimEngine] Audit write failed (non-critical):', (err as Error).message);
+  }
+}
+
+// ─── Typed Domain Error ───────────────────────────────────────────────────────
+// Use SimDomainError instead of bare Error objects inside runTransaction so that
+// the catch block can distinguish our business-logic failures (INSUFFICIENT_FUNDS,
+// LIQUIDITY_SHORTAGE) from infrastructure failures (Firestore, Stripe, network).
+// This prevents any Stripe or Firestore exception from masking a liquidity error.
+
+export class SimDomainError extends Error {
+  readonly code:    string;
+  readonly details: Record<string, unknown>;
+
+  constructor(code: string, message: string, details: Record<string, unknown> = {}) {
+    super(message);
+    this.name    = 'SimDomainError';
+    this.code    = code;
+    this.details = details;
   }
 }
 
@@ -191,7 +211,7 @@ export function extractIdempotencyKey(
 
 export interface LockedQuote {
   quoteId: string; from: string; to: string;
-  rate: number; expiresAt: number; lockedAt: string;
+  rate: number; expiresAt: number; ttlMs: number; lockedAt: string;
 }
 
 export async function createQuote(from: string, to: string): Promise<LockedQuote> {
@@ -206,7 +226,7 @@ export async function createQuote(from: string, to: string): Promise<LockedQuote
     lockedAt:  admin.firestore.Timestamp.fromMillis(now),
   });
 
-  return { quoteId, from, to, rate, expiresAt, lockedAt: new Date(now).toISOString() };
+  return { quoteId, from, to, rate, expiresAt, ttlMs: QUOTE_TTL_MS, lockedAt: new Date(now).toISOString() };
 }
 
 // ─── Wallet helpers ───────────────────────────────────────────────────────────
@@ -284,6 +304,9 @@ export async function stripeTopUp(userId: string, amount: number, currency: stri
   transactionId: string; clientSecret: string | null;
   amount: number; currency: string; status: string; newBalance: number;
 }> {
+  // FIX A: Stripe is lazy-loaded here ONLY — isolated from all remittance code paths.
+  // A StripeConnectionError or StripeAuthError can never propagate to processRemittance.
+  const { getUncachableStripeClient } = await import('../stripeClient');
   const stripe  = await getUncachableStripeClient();
   const pi      = await stripe.paymentIntents.create({
     amount:   Math.round(amount * 100),
@@ -321,6 +344,60 @@ export interface RemittanceParams {
 }
 
 export interface RemittanceResult { ok: boolean; status: number; payload: Record<string, unknown> }
+
+// ─── Route-level idempotency pre-check ───────────────────────────────────────
+// FIX B: Exported so route handlers can call this BEFORE field validation.
+// This ensures duplicate requests bypass validation (a duplicate with a missing
+// field must still return the cached response, not a 400 validation error).
+// Returns RemittanceResult (HTTP 200 + original payload) if duplicate found,
+// or null if the key is new (caller should proceed with normal handling).
+
+export async function checkIdempotency(idempotencyKey: string | null | undefined): Promise<RemittanceResult | null> {
+  if (!idempotencyKey) return null;
+  const safeKey = safeDocId(idempotencyKey);
+  try {
+    const idemDoc = await adminDb.collection(COL.idempotency).doc(safeKey).get();
+    if (!idemDoc.exists) return null;
+
+    const d = idemDoc.data()!;
+    let liveStatus = d.status as string;
+    let liveResult = d.result as string;
+
+    // If still PENDING, do a live read of the transaction doc
+    if (liveStatus === 'PENDING') {
+      try {
+        const txDoc = await adminDb.collection(COL.transactions).doc(d.transactionId).get();
+        if (txDoc.exists) {
+          const txStatus = txDoc.data()!.status as string;
+          if (txStatus && txStatus !== 'PENDING') {
+            liveStatus = txStatus;
+            liveResult = txStatus === 'PROCESSING'
+              ? 'Transaction accepted and processing.'
+              : txStatus === 'COMPLETED'
+                ? 'Transaction completed successfully.'
+                : `Transaction ${txStatus.toLowerCase()}.`;
+          }
+        }
+      } catch { /* non-critical */ }
+    }
+
+    console.info(`[SimEngine] Route-level idempotency hit key=${idempotencyKey} status=${liveStatus}`);
+    return {
+      ok: true, status: 200,
+      payload: {
+        duplicate:     true,
+        transactionId: d.transactionId,
+        status:        liveStatus,
+        result:        liveResult,
+        ...(d.payload ?? {}),
+      },
+    };
+  } catch (err) {
+    // Non-critical — if the idempotency check itself fails, fall through to normal processing
+    console.warn('[SimEngine] checkIdempotency lookup failed (non-critical):', (err as Error).message);
+    return null;
+  }
+}
 
 export async function processRemittance(p: RemittanceParams): Promise<RemittanceResult> {
   const {
@@ -447,8 +524,6 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   const now       = admin.firestore.Timestamp.now();
 
   let walletBalanceAfter: Record<string, number> = {};
-  let insufficientFundsBalance = 0;
-  let transactionError: string | null = null;
 
   try {
     await adminDb.runTransaction(async (t) => {
@@ -461,10 +536,12 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
       const userBalance = balances[sourceCcy] ?? 0;
 
       // Balance check (STEP 3 per spec — first guard)
+      // FIX A: Throw SimDomainError so the catch block can type-check it and never
+      // confuse it with a Stripe/Firestore infrastructure error.
       if (amount > userBalance) {
-        insufficientFundsBalance = userBalance;
-        transactionError = 'INSUFFICIENT_FUNDS';
-        throw new Error('INSUFFICIENT_FUNDS');
+        throw new SimDomainError('INSUFFICIENT_FUNDS', 'User balance is below the requested amount.', {
+          userBalance, requestedAmount: amount, currency: sourceCcy,
+        });
       }
 
       // Liquidity check with auto-replenishment
@@ -475,8 +552,11 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
         console.info(`[SimEngine] Auto-replenish +${added.toLocaleString()} ETB inside tx`);
       }
       if (destinationAmount > currentLiquidity) {
-        transactionError = 'LIQUIDITY_SHORTAGE';
-        throw new Error('LIQUIDITY_SHORTAGE');
+        // FIX A: LIQUIDITY_SHORTAGE is a SimDomainError — can NEVER be misreported
+        // as STRIPE_NETWORK_ERROR because it is caught by instanceof SimDomainError first.
+        throw new SimDomainError('LIQUIDITY_SHORTAGE', 'Settlement pool insufficient after emergency replenishment.', {
+          required: destinationAmount, available: currentLiquidity, currency: 'ETB',
+        });
       }
 
       // Compute new balances
@@ -520,15 +600,40 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
         });
       }
     });
-  } catch (err: any) {
-    if (transactionError === 'INSUFFICIENT_FUNDS') {
-      return { ok: false, status: 422, payload: SimError.insufficientFunds(insufficientFundsBalance, amount, sourceCcy) };
+  } catch (err: unknown) {
+    // FIX A: instanceof check prevents any Stripe / Firestore / network error from
+    // being misclassified as INSUFFICIENT_FUNDS or LIQUIDITY_SHORTAGE.
+    if (err instanceof SimDomainError) {
+      if (err.code === 'INSUFFICIENT_FUNDS') {
+        const { userBalance, requestedAmount, currency } = err.details;
+        return {
+          ok: false, status: 422,
+          payload: SimError.insufficientFunds(userBalance as number, requestedAmount as number, currency as string),
+        };
+      }
+      if (err.code === 'LIQUIDITY_SHORTAGE') {
+        const { required, available } = err.details;
+        return {
+          ok: false, status: 422,
+          payload: SimError.liquidityShortage(required as number, available as number),
+        };
+      }
+      // Any other typed domain error
+      return { ok: false, status: 422, payload: { error: err.code, message: err.message } };
     }
-    if (transactionError === 'LIQUIDITY_SHORTAGE') {
-      return { ok: false, status: 422, payload: SimError.liquidityShortage(destinationAmount, 0) };
-    }
-    console.error('[SimEngine] Transaction error:', err.message);
-    return { ok: false, status: 500, payload: { error: 'TRANSACTION_ERROR', message: 'Failed to create transaction record. Please retry.' } };
+
+    // Infrastructure error (Firestore contention, network, etc.) — log it, return generic
+    // NEVER expose Stripe error details or Firestore error codes to the caller.
+    const infraErr = err as Error;
+    console.error('[SimEngine] Infrastructure error in transaction:', infraErr?.message ?? 'unknown');
+    return {
+      ok: false, status: 503,
+      payload: {
+        error:   'TRANSACTION_ERROR',
+        message: 'Transaction could not be created due to a temporary infrastructure issue. Please retry.',
+        hint:    'This is NOT a liquidity or balance issue. The error is infrastructure-level.',
+      },
+    };
   }
 
   // ── STEP 5: Sequential provider routing with per-attempt audit logging ─────────
