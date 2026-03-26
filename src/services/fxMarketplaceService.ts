@@ -8,6 +8,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
 } from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clientRiskService } from './riskControls/clientRiskService';
@@ -587,9 +588,13 @@ export const fxMarketplaceService = {
       allAuditLogs = auditStored ? JSON.parse(auditStored) : [];
     } else {
       try {
-        const quotesSnap = await getDocs(collection(db, 'fx_quotes'));
+        const quotesSnap = await getDocs(
+          query(collection(db, 'fx_quotes'), orderBy('createdAt', 'desc'), limit(100))
+        );
         allQuotes = quotesSnap.docs.map(d => d.data() as FxQuoteRecord);
-        const auditSnap = await getDocs(collection(db, 'fx_audit_log'));
+        const auditSnap = await getDocs(
+          query(collection(db, 'fx_audit_log'), orderBy('createdAt', 'desc'), limit(100))
+        );
         allAuditLogs = auditSnap.docs.map(d => d.data() as FxAuditLog);
       } catch (e) {
         console.error('Failed to fetch marketplace stats:', e);

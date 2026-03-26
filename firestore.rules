@@ -24,7 +24,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.admin == true;
+      return isAuthenticated() && request.auth.token.isAdmin == true;
     }
 
     function ownsResource() {
@@ -35,11 +35,20 @@ service cloud.firestore {
       return isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
+    // Server-controlled KYC fields the client must never write
+    function kycFieldsClean(data) {
+      return !('reviewedAt'            in data)
+          && !('reviewedBy'            in data)
+          && !('rejectionReason'       in data)
+          && !('verificationProvider'  in data)
+          && !('riskScore'             in data);
+    }
+
     // ── User Profiles ─────────────────────────────────────────────────────────
 
     match /users/{userId} {
-      allow read: if isUser(userId) || isAdmin();
-      allow write: if isUser(userId);
+      allow read:   if isUser(userId) || isAdmin();
+      allow write:  if isUser(userId);
 
       // Transactions subcollection — client-written, append-only
       match /transactions/{txId} {
@@ -59,25 +68,68 @@ service cloud.firestore {
 
       // Family wallet subcollection
       match /family_wallet/{memberId} {
+        allow read:  if isUser(userId) || isAdmin();
+        allow write: if isUser(userId);
+      }
+
+      // Family members list
+      match /family_members/{memberId} {
+        allow read:  if isUser(userId) || isAdmin();
+        allow write: if isUser(userId);
+      }
+
+      // Family sent records — append only
+      match /family_sent/{docId} {
         allow read:   if isUser(userId) || isAdmin();
-        allow write:  if isUser(userId);
+        allow create: if isUser(userId);
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // Family audit log — append only, server writes preferred
+      match /family_audit_log/{docId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow create: if isUser(userId);
+        allow update: if false;
+        allow delete: if false;
       }
 
       // Recurring schedules per user
       match /recurring_schedules/{scheduleId} {
-        allow read:   if isUser(userId) || isAdmin();
-        allow write:  if isUser(userId);
+        allow read:  if isUser(userId) || isAdmin();
+        allow write: if isUser(userId);
       }
 
-      // Notifications subcollection
+      // Schedule execution records — backend worker writes, user reads
+      match /schedule_executions/{execId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow write:  if false; // worker only via Admin SDK
+      }
+
+      // Recurring audit log — append only
+      match /recurring_audit_log/{docId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow create: if isUser(userId);
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // Money request audit log — append only
+      match /request_audit_log/{docId} {
+        allow read:   if isUser(userId) || isAdmin();
+        allow create: if isUser(userId);
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // Notifications subcollection (per-user path) — backend writes
       match /notifications/{notifId} {
         allow read:   if isUser(userId);
-        allow write:  if false; // backend-only writes
+        allow write:  if false; // backend Admin SDK only
       }
     }
 
     // ── Top-level Transactions — client-written, append-only ─────────────────
-    // App writes a copy here for admin reporting
 
     match /transactions/{txId} {
       allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
@@ -89,30 +141,42 @@ service cloud.firestore {
     // ── Wallets / Balances — client reads, backend writes ────────────────────
 
     match /wallets/{userId} {
-      allow read:   if isUser(userId) || isAdmin();
-      allow write:  if false; // backend Admin SDK only
+      allow read:  if isUser(userId) || isAdmin();
+      allow write: if false; // backend Admin SDK only
+
+      match /entries/{entryId} {
+        allow read:  if isUser(userId) || isAdmin();
+        allow write: if false; // backend Admin SDK only
+      }
     }
 
     match /wallet_ledger/{entryId} {
-      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
-      allow write:  if false; // backend Admin SDK only
+      allow read:  if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write: if false;
     }
 
     match /ledger_entries/{entryId} {
-      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
-      allow write:  if false; // backend Admin SDK only
+      allow read:  if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write: if false;
+    }
+
+    // ── Payment Transactions — backend writes, users read own ─────────────────
+
+    match /payment_transactions/{txId} {
+      allow read:  if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write: if false; // backend Admin SDK only
     }
 
     // ── 2FA Collections — user read/write their own ───────────────────────────
 
     match /two_factor_settings/{userId} {
-      allow read:   if isUser(userId) || isAdmin();
-      allow write:  if isUser(userId);
+      allow read:  if isUser(userId) || isAdmin();
+      allow write: if isUser(userId);
     }
 
     match /two_factor_challenges/{userId} {
-      allow read:   if isUser(userId) || isAdmin();
-      allow write:  if isUser(userId);
+      allow read:  if isUser(userId) || isAdmin();
+      allow write: if isUser(userId);
     }
 
     // ── Rate Locks — client creates and reads their own ───────────────────────
@@ -147,28 +211,83 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /fx_conversions/{convId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated() && writingAsOwner();
+      allow update: if false;
+      allow delete: if false;
+    }
+
     // ── Payout Transactions — backend writes, users read own ─────────────────
 
     match /payout_transactions/{txId} {
+      allow read:  if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write: if false;
+    }
+
+    // ── KYC Documents ─────────────────────────────────────────────────────────
+    // Owner can submit (status must start as 'pending').
+    // Owner can update their own document but CANNOT change status or any
+    // server-controlled review field. Only the Admin SDK can update status.
+
+    match /kyc_documents/{userId} {
+      allow read:   if isUser(userId) || isAdmin();
+      allow create: if isUser(userId)
+                    && request.resource.data.status == 'pending'
+                    && kycFieldsClean(request.resource.data);
+      allow update: if isUser(userId)
+                    && request.resource.data.status == resource.data.status
+                    && kycFieldsClean(request.resource.data);
+      allow delete: if false;
+    }
+
+    // ── Top-level Notifications — backend creates, user updates read state ────
+
+    match /notifications/{notifId} {
       allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
-      allow write:  if false; // backend Admin SDK only
+      allow create: if false; // backend Admin SDK only
+      // Users may mark as read or delete their own notifications
+      allow update: if isAuthenticated() && ownsResource()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAuthenticated() && ownsResource();
+    }
+
+    // ── Support Chat — conversations and messages ─────────────────────────────
+
+    match /conversations/{convId} {
+      allow read:   if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if false;
+    }
+
+    match /messages/{msgId} {
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated()
+                    && request.resource.data.senderId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.senderId == request.auth.uid;
+      allow delete: if false;
     }
 
     // ── Audit Logs — immutable, backend only ──────────────────────────────────
 
     match /audit_logs/{logId} {
-      allow read:   if isAdmin();
-      allow write:  if false;
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
     match /admin_action_logs/{logId} {
-      allow read:   if isAdmin();
-      allow write:  if false;
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
     match /settlement_admin_audit_log/{logId} {
-      allow read:   if isAdmin();
-      allow write:  if false;
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
     // ── Treasury — backend / admin only ──────────────────────────────────────
@@ -296,21 +415,20 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() &&
                        (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow delete: if false;
+
+      match /campaign_audit_log/{logId} {
+        allow read:   if isAuthenticated() &&
+                         get(/databases/$(database)/documents/support_campaigns/$(campaignId)).data.createdBy == request.auth.uid
+                         || isAdmin();
+        allow write:  if false;
+      }
     }
 
-    // ── Top-level Notifications — backend writes ──────────────────────────────
-
-    match /notifications/{notifId} {
+    match /campaign_contributions/{contribId} {
       allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
-      allow write:  if false;
-    }
-
-    // ── KYC Documents ─────────────────────────────────────────────────────────
-
-    match /kyc_documents/{docId} {
-      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
-      allow create: if isAuthenticated();
-      allow update: if isAdmin();
+      allow create: if isAuthenticated() && writingAsOwner();
+      allow update: if false;
       allow delete: if false;
     }
 
@@ -330,40 +448,78 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ── Worker Queues — backend only ──────────────────────────────────────────
+    // ── Worker Queues — authenticated client workers create, admin reads ───────
 
     match /job_queue/{jobId} {
-      allow read:  if isAdmin();
-      allow write: if false;
+      allow read:   if isAdmin();
+      allow create: if isAuthenticated(); // client-side workers enqueue jobs
+      allow update: if false;
+      allow delete: if false;
     }
 
     match /dead_letter_queue/{jobId} {
-      allow read:  if isAdmin();
-      allow write: if false;
+      allow read:   if isAdmin();
+      allow create: if isAuthenticated(); // client-side workers write failed jobs
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ── System Config — admin SDK only ────────────────────────────────────────
+
+    match /system_config/{docId} {
+      allow read, write: if false;
     }
 
     // ── Push Notification Tokens ──────────────────────────────────────────────
 
     match /push_tokens/{userId} {
-      allow read:   if isUser(userId) || isAdmin();
-      allow write:  if isUser(userId);
+      allow read:  if isUser(userId) || isAdmin();
+      allow write: if isUser(userId);
     }
 
     // ── Risk Controls Layer — admin only ──────────────────────────────────────
 
     match /system_controls/{key} {
       allow read:  if isAdmin();
-      allow write: if false; // admin server only
+      allow write: if false;
     }
 
     match /risk_limits/{key} {
       allow read:  if isAdmin();
-      allow write: if false; // admin server only
+      allow write: if false;
     }
 
     match /risk_flags/{userId} {
       allow read:  if isAdmin() || isUser(userId);
-      allow write: if false; // admin server only
+      allow write: if false;
+    }
+
+    // ── Transfer Status Updates — backend writes, user reads own ─────────────
+
+    match /transfer_status_updates/{docId} {
+      allow read:  if isAuthenticated() && (ownsResource() || isAdmin());
+      allow write: if false;
+    }
+
+    // ── Money Requests ────────────────────────────────────────────────────────
+
+    match /money_requests/{reqId} {
+      allow read:   if isAuthenticated() && (ownsResource() || isAdmin());
+      allow create: if isAuthenticated() && writingAsOwner();
+      allow update: if isAuthenticated() && ownsResource();
+      allow delete: if false;
+    }
+
+    // ── Fraud / Risk Scoring — admin only ────────────────────────────────────
+
+    match /fraud_alerts/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    match /fraud_risk_scores/{docId} {
+      allow read:  if isAdmin();
+      allow write: if false;
     }
 
     // ── Default deny — anything not explicitly matched is blocked ─────────────

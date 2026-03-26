@@ -30,12 +30,6 @@ export async function verifyUser(
 
   const token = authHeader.slice(7);
 
-  // Debug: log token shape without exposing value
-  const tokenPreview = token.length
-    ? `len=${token.length} starts=${token.substring(0, 8)} dots=${(token.match(/\./g) ?? []).length}`
-    : '(empty)';
-  console.log('[verifyUser] Token shape:', tokenPreview);
-
   try {
     const decoded = await adminAuth.verifyIdToken(token);
     (req as UserAuthRequest).userId    = decoded.uid;

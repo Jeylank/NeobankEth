@@ -1,0 +1,104 @@
+Apply the Firebase security fixes now for Habeshare.
+
+Priority order:
+
+1. Lock kyc_documents status field
+2. Remove debug token logging in verifyUser.ts
+3. Add explicit Firestore rules for user subcollections
+4. Add explicit rules for notifications, support_campaigns, conversations/messages
+5. Add query limit to fx_quotes reads
+6. Verify every onSnapshot has proper unsubscribe cleanup
+
+Requirements:
+
+A) Fix Firestore rules for kyc_documents
+Use a correct rule that allows the authenticated user to create and update their own KYC document, but does NOT allow the client to change the status field after creation.
+
+Use this rule pattern:
+
+match /kyc_documents/{userId} {
+allow read: if request.auth != null && request.auth.uid == userId;
+
+allow create: if request.auth != null
+&& request.auth.uid == userId
+&& request.resource.data.status == "pending";
+
+allow update: if request.auth != null
+&& request.auth.uid == userId
+&& request.resource.data.status == resource.data.status;
+
+allow delete: if false;
+}
+
+Also ensure sensitive server-controlled fields such as reviewedAt, reviewedBy, rejectionReason, verificationProvider, and riskScore cannot be client-modified. Add field-level restrictions if needed.
+
+B) Remove debug token metadata logging
+In server/middleware/verifyUser.ts remove all logs that print token length, prefix, dot count, or any token-derived metadata.
+
+C) Add explicit Firestore rules for user subcollections
+Add owner-only access rules for:
+
+- users/{uid}/recipients
+- users/{uid}/family_members
+- users/{uid}/recurring_schedules
+- users/{uid}/family_sent
+- users/{uid}/family_audit_log
+  and any other user-owned subcollections already in the project
+
+Rule pattern:
+match /users/{userId}/{subCollection}/{docId} {
+allow read, write: if request.auth != null && request.auth.uid == userId;
+}
+
+If any of these collections should be read-only or server-write-only, enforce that explicitly instead of broad write access.
+
+D) Add explicit rules for notifications, campaigns, and chat
+
+1. notifications:
+   owner can read, only backend/admin can write if that is the intended model
+2. support_campaigns:
+   authenticated users can read
+   client writes only if the current app flow requires create/update; otherwise keep server-only
+3. campaign_contributions:
+   restrict to valid contributors only
+4. conversations/messages:
+   only conversation participants can read/write
+
+Do not leave these collections relying on implicit default deny. Make the intent explicit.
+
+E) Add limit to FX quote reads
+In src/services/fxMarketplaceService.ts replace any unbounded:
+getDocs(collection(db, "fx_quotes"))
+with a bounded query:
+query(collection(db, "fx_quotes"), limit(100))
+
+Prefer ordering by newest valid quote if appropriate.
+
+F) Verify onSnapshot cleanup
+Audit all chat and notification listeners.
+Every onSnapshot call must:
+
+- store the unsubscribe function
+- return unsubscribe in useEffect cleanup
+- avoid duplicate subscriptions on re-render
+
+G) Validate after changes
+
+- Build succeeds
+- Firestore rules compile and publish cleanly
+- Existing user flows still work:
+  - KYC submission
+  - notifications display
+  - support campaigns read path
+  - chat/conversations
+  - recipients/family/recurring schedules
+  - FX marketplace loading
+
+H) Final output
+Provide:
+
+1. exact files changed
+2. rules added/updated
+3. any collections now server-write-only
+4. any client flows affected
+5. any follow-up recommendations
