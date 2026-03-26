@@ -135,7 +135,28 @@ class WalletService {
     try {
       const snap = await getDoc(walletDocRef(userId));
       if (!snap.exists()) return null;
-      return snap.data() as Wallet;
+      const raw = snap.data() as Record<string, any>;
+      // Normalise any missing fields so the UI never crashes on an incomplete doc.
+      // updatedAt may be a Firestore Timestamp (server-written) or an ISO string.
+      const updatedAtRaw = raw.updatedAt;
+      let updatedAt: string;
+      if (!updatedAtRaw) {
+        updatedAt = new Date().toISOString();
+      } else if (typeof updatedAtRaw === 'string') {
+        updatedAt = updatedAtRaw;
+      } else if (typeof updatedAtRaw.toDate === 'function') {
+        updatedAt = updatedAtRaw.toDate().toISOString();
+      } else {
+        updatedAt = new Date().toISOString();
+      }
+      const wallet: Wallet = {
+        userId:          raw.userId ?? userId,
+        balances:        { EUR: 0, USD: 0, GBP: 0, ...raw.balances },
+        reservations:    { EUR: 0, USD: 0, GBP: 0, ...raw.reservations },
+        defaultCurrency: raw.defaultCurrency ?? 'EUR',
+        updatedAt,
+      };
+      return wallet;
     } catch (error) {
       console.error('Firestore getWallet failed:', error);
       this.enableFallback();

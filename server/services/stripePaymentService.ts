@@ -200,12 +200,14 @@ export const stripePaymentService = {
       const walletSnap = await t.get(walletRef(userId));
 
       if (!walletSnap.exists) {
-        // Initialise wallet if first top-up.
+        // Initialise wallet if first top-up — must include ALL fields the client expects.
         t.set(walletRef(userId), {
           userId,
-          balances:  { EUR: 0, USD: 0, GBP: 0, [currency]: amount },
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
+          balances:         { EUR: 0, USD: 0, GBP: 0, [currency]: amount },
+          reservations:     { EUR: 0, USD: 0, GBP: 0 },
+          defaultCurrency:  'EUR',
+          createdAt:        FieldValue.serverTimestamp(),
+          updatedAt:        FieldValue.serverTimestamp(),
         });
       } else {
         const walletData = walletSnap.data()!;
