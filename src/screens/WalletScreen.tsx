@@ -104,6 +104,12 @@ export default function WalletScreen() {
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('ALL');
   const [allEntries, setAllEntries] = useState<LedgerEntry[]>([]);
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
   const loadData = useCallback(async () => {
     if (!userId) {
       setLoading(false);
@@ -164,24 +170,32 @@ export default function WalletScreen() {
 
   const handleAddMoney = async () => {
     if (!addAmount.trim()) {
-      Alert.alert(t('common.error'), t('wallet.enterAmount'));
+      showToast(t('wallet.enterAmount') || 'Please enter an amount', 'error');
       return;
     }
     const amount = parseFloat(addAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert(t('common.error'), t('wallet.enterAmount'));
+      showToast(t('wallet.enterAmount') || 'Please enter a valid amount', 'error');
+      return;
+    }
+
+    // Card payments go through the real Stripe flow
+    if (addMethod === 'card') {
+      setShowAddMoneyModal(false);
+      setAddAmount('');
+      navigation.navigate('CardTopUp', { amount, currency: addCurrency });
       return;
     }
 
     setProcessing(true);
     try {
       await walletService.creditWallet(userId, addCurrency, amount, 'TOPUP', addMethod);
-      Alert.alert(t('common.success'), t('wallet.topUpSuccess'));
+      showToast(t('wallet.topUpSuccess') || 'Funds added successfully!', 'success');
       setShowAddMoneyModal(false);
       setAddAmount('');
       await loadData();
     } catch (err) {
-      Alert.alert(t('common.error'), t('wallet.topUpFailed'));
+      showToast(t('wallet.topUpFailed') || 'Top-up failed. Please try again.', 'error');
     } finally {
       setProcessing(false);
     }
@@ -220,34 +234,34 @@ export default function WalletScreen() {
 
   const handleConvert = async () => {
     if (!convertAmount.trim()) {
-      Alert.alert(t('common.error'), t('wallet.enterAmount'));
+      showToast(t('wallet.enterAmount') || 'Please enter an amount', 'error');
       return;
     }
     const amount = parseFloat(convertAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert(t('common.error'), t('wallet.enterAmount'));
+      showToast(t('wallet.enterAmount') || 'Please enter a valid amount', 'error');
       return;
     }
     if (convertFrom === convertTo) {
       return;
     }
     if (wallet && wallet.balances[convertFrom] < amount) {
-      Alert.alert(t('common.error'), t('wallet.insufficientBalance'));
+      showToast(t('wallet.insufficientBalance') || 'Insufficient balance', 'error');
       return;
     }
 
     setProcessing(true);
     try {
       await walletService.convertCurrency(userId, convertFrom, convertTo, amount);
-      Alert.alert(t('common.success'), t('wallet.conversionSuccess'));
+      showToast(t('wallet.conversionSuccess') || 'Conversion successful!', 'success');
       setShowConvertModal(false);
       setConvertAmount('');
       await loadData();
     } catch (err: any) {
       if (err?.message === 'Insufficient balance') {
-        Alert.alert(t('common.error'), t('wallet.insufficientBalance'));
+        showToast(t('wallet.insufficientBalance') || 'Insufficient balance', 'error');
       } else {
-        Alert.alert(t('common.error'), t('wallet.conversionFailed'));
+        showToast(t('wallet.conversionFailed') || 'Conversion failed. Please try again.', 'error');
       }
     } finally {
       setProcessing(false);
@@ -603,6 +617,24 @@ export default function WalletScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Inline toast notification */}
+      {toast && (
+        <View
+          style={[
+            styles.toastContainer,
+            toast.type === 'success' ? styles.toastSuccess : styles.toastError,
+          ]}
+          pointerEvents="none"
+        >
+          <Ionicons
+            name={toast.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
+            size={18}
+            color="#fff"
+          />
+          <Text style={styles.toastText}>{toast.message}</Text>
+        </View>
+      )}
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('wallet.title')}</Text>
         <Text style={styles.headerSubtitle}>{t('wallet.subtitle')}</Text>
@@ -664,7 +696,7 @@ export default function WalletScreen() {
             <Text style={styles.quickActionText}>{t('wallet.addMoney')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickAction} onPress={() => Alert.alert(t('wallet.send'))}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('Remittance')}>
             <View style={[styles.quickActionIcon, { backgroundColor: COLORS.blue + '15' }]}>
               <Ionicons name="send-outline" size={24} color={COLORS.blue} />
             </View>
@@ -719,6 +751,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: 12,
+    left: 16,
+    right: 16,
+    zIndex: 9999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  toastSuccess: {
+    backgroundColor: COLORS.success,
+  },
+  toastError: {
+    backgroundColor: COLORS.error,
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
