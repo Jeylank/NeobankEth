@@ -258,9 +258,14 @@ app.listen(PORT, () => {
   console.log(`    POST /api/payments/webhook`);
   console.log('  Simulation API (v1):');
   console.log(`    GET  /api/v1/health`);
-  console.log(`    POST /api/v1/wallet/topup`);
+  console.log(`    POST /api/v1/fx/quote               (lock quote, 60s TTL + 10s buffer)`);
   console.log(`    GET  /api/v1/fx/quotes`);
+  console.log(`    POST /api/v1/wallet/topup`);
   console.log(`    GET  /api/v1/wallet/:userId`);
+  console.log(`    POST /api/v1/remittance/initiate     (idempotency + liquidity + circuit-breaker)`);
+  console.log(`    GET  /api/v1/remittance/:txId`);
+  console.log(`    GET  /api/v1/liquidity`);
+  console.log(`    GET  /api/v1/circuit-breaker/status`);
   const simBase = `https://${(process.env.REPLIT_DOMAINS ?? 'localhost:5000').split(',')[0]}`;
   console.log(`  Sim base URL: ${simBase}/api/v1  (X-API-Key required if SIMULATION_API_KEY is set)`);
 });
