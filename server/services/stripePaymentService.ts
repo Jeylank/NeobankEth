@@ -32,7 +32,7 @@
 import Stripe from 'stripe';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '../firebaseAdmin';
-import { getUncachableStripeClient } from '../stripeClient';
+import { getUncachableStripeClient, getWebhookSecret } from '../stripeClient';
 import { writeAuditLog } from '../middleware/auditLog';
 
 // ─── Supported currencies & their Stripe multipliers ──────────────────────────
@@ -138,15 +138,8 @@ export const stripePaymentService = {
    * Called from the raw-body express route — payload MUST be a Buffer.
    */
   async handleWebhook(payload: Buffer, signature: string): Promise<void> {
-    const stripe          = await getUncachableStripeClient();
-    const webhookSecret   = process.env.STRIPE_WEBHOOK_SECRET;
-
-    if (!webhookSecret) {
-      throw new Error(
-        'STRIPE_WEBHOOK_SECRET is not set. ' +
-        'Please configure it via the Replit environment secrets.',
-      );
-    }
+    const stripe        = await getUncachableStripeClient();
+    const webhookSecret = await getWebhookSecret();
 
     // Signature verification — never trust the payload without this.
     let event: Stripe.Event;
@@ -215,7 +208,9 @@ export const stripePaymentService = {
           updatedAt: FieldValue.serverTimestamp(),
         });
       } else {
-        const currentBalance: number = walletSnap.data()![`balances.${currency}`] ?? 0;
+        const walletData = walletSnap.data()!;
+        const currentBalance: number =
+          (walletData.balances?.[currency] as number | undefined) ?? 0;
         t.update(walletRef(userId), {
           [`balances.${currency}`]: currentBalance + amount,
           updatedAt:               FieldValue.serverTimestamp(),

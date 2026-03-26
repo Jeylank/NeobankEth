@@ -14,6 +14,7 @@
 
 import Stripe from 'stripe';
 import { StripeSync } from 'stripe-replit-sync';
+import { Pool } from 'pg';
 
 // ─── Credential resolution ─────────────────────────────────────────────────────
 
@@ -90,6 +91,48 @@ export async function getUncachableStripeClient(): Promise<Stripe> {
   return new Stripe(secretKey, {
     apiVersion: '2026-02-25.clover',
   });
+}
+
+// ─── Webhook secret resolver ──────────────────────────────────────────────────
+// The managed webhook's signing secret is written to stripe._managed_webhooks
+// by stripe-replit-sync when the endpoint is first created. We read it from
+// there so the correct secret is always used, regardless of what is set in
+// the STRIPE_WEBHOOK_SECRET environment variable.
+
+let _cachedWebhookSecret: string | null = null;
+
+export async function getWebhookSecret(): Promise<string> {
+  if (_cachedWebhookSecret) return _cachedWebhookSecret;
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (databaseUrl) {
+    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+    try {
+      const result = await pool.query<{ secret: string }>(
+        'SELECT secret FROM stripe._managed_webhooks ORDER BY created DESC LIMIT 1',
+      );
+      if (result.rows.length > 0 && result.rows[0].secret) {
+        _cachedWebhookSecret = result.rows[0].secret;
+        return _cachedWebhookSecret;
+      }
+    } catch (err: any) {
+      console.warn('[Stripe] Could not read webhook secret from DB:', err.message);
+    } finally {
+      await pool.end().catch(() => {});
+    }
+  }
+
+  // Fallback: manually configured secret (Stripe dashboard webhook)
+  const envSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (envSecret) {
+    _cachedWebhookSecret = envSecret;
+    return envSecret;
+  }
+
+  throw new Error(
+    'No Stripe webhook secret available. ' +
+    'Run findOrCreateManagedWebhook() on startup, or set STRIPE_WEBHOOK_SECRET.',
+  );
 }
 
 // ─── StripeSync singleton ──────────────────────────────────────────────────────
