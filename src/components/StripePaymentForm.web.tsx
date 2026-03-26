@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { firebaseAuth } from '../services/firebase';
+import { createNotification } from '../services/firestoreNotifications';
 
 const COLORS = {
   primary:       '#006633',
@@ -106,6 +107,19 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
 
       if (paymentIntent?.status === 'succeeded') {
         setSucceeded(true);
+        // Write notification immediately from the client as a backup to the server webhook
+        const uid = firebaseAuth.currentUser?.uid;
+        if (uid) {
+          const symbols: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
+          const symbol = symbols[currency] ?? currency;
+          createNotification({
+            userId:  uid,
+            type:    'transaction',
+            title:   'Funds Added',
+            message: `${symbol}${amount.toFixed(2)} ${currency} has been added to your wallet.`,
+            data:    { amount, currency, transactionType: 'topup' },
+          }).catch(() => {/* non-critical */});
+        }
       } else {
         setCardError(`Payment status: ${paymentIntent?.status ?? 'unknown'}. Please try again.`);
       }

@@ -16,7 +16,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
 } from '../services/firebase';
 import { SkeletonCard } from '../components/SkeletonLoader';
@@ -121,30 +120,37 @@ export default function TransferTrackingScreen() {
   const fadeAnims    = useRef(STEP_ORDER.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    if (__DEV__) {
-      const mockUpdates = getMockUpdates(txId);
-      const built = buildTimeline(mockUpdates, t);
-      setSteps(built);
-      if (mockUpdates.length > 0) setProvider(mockUpdates[0].provider);
-      setLoading(false);
-      animateIn(built);
-      return;
-    }
-
+    // Query without orderBy to avoid needing a composite Firestore index.
+    // Sort client-side instead.
     const q = query(
       collection(db, 'transfer_status_updates'),
       where('txId', '==', txId),
-      orderBy('updatedAt', 'asc')
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const updates = snap.docs.map((d) => d.data() as StatusUpdate);
-      const built = buildTimeline(updates, t);
+    const applyUpdates = (updates: StatusUpdate[]) => {
+      // Sort client-side by updatedAt ascending
+      const sorted = [...updates].sort((a, b) => {
+        const aMs = a.updatedAt?.toDate?.()?.getTime() ?? 0;
+        const bMs = b.updatedAt?.toDate?.()?.getTime() ?? 0;
+        return aMs - bMs;
+      });
+      // Fall back to mock data when no real updates exist yet
+      const source = sorted.length > 0 ? sorted : getMockUpdates(txId);
+      const built = buildTimeline(source, t);
       setSteps(built);
-      if (updates.length > 0) setProvider(updates[0].provider);
+      if (source.length > 0) setProvider(source[0].provider);
       setLoading(false);
       animateIn(built);
-    });
+    };
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => applyUpdates(snap.docs.map((d) => d.data() as StatusUpdate)),
+      (_err) => {
+        // Firestore error (e.g. missing index or collection) — show mock data
+        applyUpdates([]);
+      },
+    );
 
     return () => unsub();
   }, [txId]);
