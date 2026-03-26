@@ -30,26 +30,45 @@ const NOTIFICATIONS_COLLECTION = 'notifications';
 export const subscribeToNotifications = (
   userId: string,
   callback: (notifications: Notification[]) => void,
+  onError?: (error: Error) => void,
   maxItems: number = 50
 ) => {
   const notificationsRef = collection(db, NOTIFICATIONS_COLLECTION);
+  // Avoid orderBy in the query — it requires a composite Firestore index.
+  // We sort client-side instead so the app works without index deployment.
   const q = query(
     notificationsRef,
     where('userId', '==', userId),
-    orderBy('createdAt', 'desc'),
     limit(maxItems)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const notifications: Notification[] = [];
-    snapshot.forEach((doc) => {
-      notifications.push({
-        id: doc.id,
-        ...doc.data()
-      } as Notification);
-    });
-    callback(notifications);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const notifications: Notification[] = [];
+      snapshot.forEach((doc) => {
+        notifications.push({
+          id: doc.id,
+          ...doc.data()
+        } as Notification);
+      });
+      // Sort by createdAt descending client-side
+      notifications.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() ?? (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const bTime = b.createdAt?.toMillis?.() ?? (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return bTime - aTime;
+      });
+      callback(notifications);
+    },
+    (error) => {
+      console.error('[Notifications] Firestore subscription error:', error);
+      if (onError) {
+        onError(error);
+      } else {
+        callback([]);
+      }
+    }
+  );
 };
 
 export const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {

@@ -94,11 +94,19 @@ export default function NotificationsScreen() {
       return;
     }
 
-    const unsubscribe = subscribeToNotifications(userId, (data) => {
-      setNotifications(data);
-      setLoading(false);
-      setRefreshing(false);
-    });
+    const unsubscribe = subscribeToNotifications(
+      userId,
+      (data) => {
+        setNotifications(data);
+        setLoading(false);
+        setRefreshing(false);
+      },
+      (_err) => {
+        // Firestore error (e.g. missing index) — stop loading and show empty state
+        setLoading(false);
+        setRefreshing(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [userId]);
