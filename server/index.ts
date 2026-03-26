@@ -268,6 +268,10 @@ app.listen(PORT, () => {
   console.log(`    POST /api/v1/recurring/process       (scheduleId-based idempotency)`);
   console.log(`    GET  /api/v1/liquidity               (auto-replenish enabled)`);
   console.log(`    GET  /api/v1/circuit-breaker/status`);
+  console.log(`    POST /api/v1/circuit-breaker/trip/:provider  (stripe|chapa|telebirr)`);
+  console.log(`    POST /api/v1/circuit-breaker/reset           (restore all to CLOSED)`);
+  console.log(`    POST /api/v1/simulation/reset                (full state wipe)`);
+
   const simBase = `https://${(process.env.REPLIT_DOMAINS ?? 'localhost:5000').split(',')[0]}`;
   console.log(`  Sim base URL: ${simBase}/api/v1  (X-API-Key required if SIMULATION_API_KEY is set)`);
 });

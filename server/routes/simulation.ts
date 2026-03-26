@@ -237,27 +237,34 @@ async function processRemittance(p: RemittanceParams): Promise<RemittanceResult>
   }
 
   // ── STEP 6: Provider routing with multi-attempt retry ─────────────────────────
-  // Per QA recommendation: "exponential backoff for transient errors".
-  // We exhaust all available providers before giving up.
+  // Routing is DETERMINISTIC in normal operation — no random failure injection.
+  // Random noise was removed because it caused cascade circuit-open failures
+  // across a full QA run (10+ requests × 10% failure rate = ~1-2 opens per session;
+  // after 3 opens the circuit trips and ALL subsequent requests fail).
+  //
+  // Provider failure scenarios are tested explicitly via:
+  //   POST /api/v1/circuit-breaker/trip/:provider   (manually open a provider)
+  //   POST /api/v1/circuit-breaker/reset            (restore all to CLOSED)
+  //
+  // The retry loop still exhausts all available providers before giving up,
+  // so a manually-tripped primary will automatically route to the secondary.
   let selectedProvider: string | null = null;
   const tried = new Set<string>();
-  const MAX_RETRIES = Object.keys(providers).length; // try every provider once
+  const MAX_PROVIDERS = Object.keys(providers).length;
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt < MAX_PROVIDERS; attempt++) {
     const candidate = selectProvider(tried);
     if (!candidate) break;
     tried.add(candidate);
 
-    // Failure probability decreases on each retry attempt (2% on last attempt)
-    const failChance = Math.max(0.02, 0.10 - attempt * 0.04);
-    if (Math.random() >= failChance) {
-      providerOk(candidate);
-      selectedProvider = candidate;
-      if (attempt > 0) console.info(`[SimAPI] Provider succeeded on retry ${attempt}: ${providers[candidate]?.name}`);
-      break;
+    // In simulation: closed providers always succeed, open providers are skipped by
+    // selectProvider(tried) — no further action needed here.
+    providerOk(candidate);
+    selectedProvider = candidate;
+    if (attempt > 0) {
+      console.info(`[SimAPI] Failover attempt ${attempt}: routed to ${providers[candidate]?.name}`);
     }
-    providerFail(candidate);
-    console.info(`[SimAPI] Provider ${providers[candidate]?.name} transient failure — attempt ${attempt + 1}/${MAX_RETRIES}`);
+    break;
   }
 
   if (!selectedProvider) {
@@ -265,7 +272,8 @@ async function processRemittance(p: RemittanceParams): Promise<RemittanceResult>
       ok: false, status: 503,
       payload: {
         error:      'PROVIDER_OUTAGE',
-        message:    'All payment providers are currently unavailable after retries. Please retry in 30 s.',
+        message:    'All payment providers are currently unavailable. Please retry in 30 s.',
+        hint:       'Use POST /api/v1/circuit-breaker/reset to restore providers in test environments.',
         retryAfter: 30,
       },
     };
@@ -540,6 +548,93 @@ router.get('/circuit-breaker/status', requireApiKey, (_req: Request, res: Respon
     resetAfterMs: p.resetMs,
   }]));
   res.json({ providers: status, timestamp: new Date().toISOString() });
+});
+
+// ─── POST /api/v1/circuit-breaker/trip/:provider ──────────────────────────────
+// Explicitly open a provider's circuit breaker for deterministic outage testing.
+// Supports: stripe | chapa | telebirr
+// After tripping, remittance calls will automatically failover to other providers.
+
+router.post('/circuit-breaker/trip/:provider', requireApiKey, (req: Request, res: Response) => {
+  const key = req.params.provider.toLowerCase();
+  const p   = providers[key];
+  if (!p) {
+    res.status(404).json({
+      error:     'UNKNOWN_PROVIDER',
+      message:   `Unknown provider '${key}'. Valid providers: ${Object.keys(providers).join(', ')}.`,
+      available: Object.keys(providers),
+    });
+    return;
+  }
+  p.open       = true;
+  p.failures   = p.threshold;
+  p.lastFailAt = Date.now();
+  console.warn(`[SimAPI] Circuit MANUALLY TRIPPED: ${p.name} (test scenario)`);
+  res.json({
+    provider: key, name: p.name, state: 'OPEN',
+    message:  `${p.name} circuit is now OPEN. Remittance calls will route to other providers.`,
+    hint:     'Call POST /api/v1/circuit-breaker/reset to restore all providers to CLOSED.',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ─── POST /api/v1/circuit-breaker/reset ──────────────────────────────────────
+// Restore ALL provider circuits to CLOSED. Use between test scenarios to ensure
+// a clean state. Also resets the idempotency store and liquidity pool.
+
+router.post('/circuit-breaker/reset', requireApiKey, (req: Request, res: Response) => {
+  const resetLiquidity   = (req.body?.resetLiquidity   !== false);
+  const resetIdempotency = (req.body?.resetIdempotency !== false);
+  const resetWallets     = (req.body?.resetWallets     === true);
+
+  // Reset all provider circuits
+  for (const p of Object.values(providers)) {
+    p.open = false; p.failures = 0; p.lastFailAt = 0;
+  }
+  console.info('[SimAPI] All provider circuits reset to CLOSED');
+
+  if (resetLiquidity) {
+    liquidityPoolETB = REPLENISH_TARGET;
+    console.info(`[SimAPI] Liquidity pool reset to ${REPLENISH_TARGET.toLocaleString()} ETB`);
+  }
+  if (resetIdempotency) {
+    idempotencyStore.clear();
+    console.info('[SimAPI] Idempotency store cleared');
+  }
+  if (resetWallets) {
+    userWallets.clear();
+    console.info('[SimAPI] All user wallets reset');
+  }
+
+  res.json({
+    message:            'Reset complete.',
+    providers:          Object.fromEntries(Object.keys(providers).map(k => [k, 'CLOSED'])),
+    liquidityReset:     resetLiquidity,
+    idempotencyCleared: resetIdempotency,
+    walletsReset:       resetWallets,
+    liquidityPoolETB:   liquidityPoolETB,
+    timestamp:          new Date().toISOString(),
+  });
+});
+
+// ─── POST /api/v1/simulation/reset ───────────────────────────────────────────
+// Full simulation environment reset — equivalent to circuit-breaker/reset with
+// all options enabled. Convenience endpoint for QA harness teardown/setup.
+
+router.post('/simulation/reset', requireApiKey, (_req: Request, res: Response) => {
+  for (const p of Object.values(providers)) { p.open = false; p.failures = 0; p.lastFailAt = 0; }
+  liquidityPoolETB = REPLENISH_TARGET;
+  idempotencyStore.clear();
+  quoteStore.clear();
+  txStore.clear();
+  userWallets.clear();
+  console.info('[SimAPI] Full simulation environment reset');
+  res.json({
+    message:          'Full simulation reset complete. All state cleared.',
+    liquidityPoolETB: REPLENISH_TARGET,
+    providers:        Object.fromEntries(Object.keys(providers).map(k => [k, 'CLOSED'])),
+    timestamp:        new Date().toISOString(),
+  });
 });
 
 export default router;
