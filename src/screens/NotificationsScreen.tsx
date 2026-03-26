@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
+import { getAuth } from 'firebase/auth';
 import { useAuth } from '../hooks/useAuth';
 import {
-  subscribeToNotifications,
+  fetchNotificationsFromApi,
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from '../services/firestoreNotifications';
@@ -87,39 +88,47 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [markingAll, setMarkingAll] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    if (!userId) {
+  const loadNotifications = useCallback(async (isRefreshing = false) => {
+    if (!userId) { setLoading(false); return; }
+    try {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) { setLoading(false); return; }
+      const idToken = await currentUser.getIdToken();
+      const data = await fetchNotificationsFromApi(idToken);
+      setNotifications(data);
+    } catch (err) {
+      console.error('[Notifications] Failed to load:', err);
+    } finally {
       setLoading(false);
-      return;
+      if (isRefreshing) setRefreshing(false);
     }
-
-    const unsubscribe = subscribeToNotifications(
-      userId,
-      (data) => {
-        setNotifications(data);
-        setLoading(false);
-        setRefreshing(false);
-      },
-      (_err) => {
-        // Firestore error (e.g. missing index) — stop loading and show empty state
-        setLoading(false);
-        setRefreshing(false);
-      }
-    );
-
-    return () => unsubscribe();
   }, [userId]);
+
+  // Initial load + poll every 20 seconds for near-real-time feel
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    loadNotifications();
+    pollRef.current = setInterval(() => loadNotifications(), 20_000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [userId, loadNotifications]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-  }, []);
+    loadNotifications(true);
+  }, [loadNotifications]);
 
   const handleMarkAllRead = async () => {
     if (!userId || markingAll) return;
     setMarkingAll(true);
     try {
-      await markAllNotificationsAsRead(userId);
+      // Use the already-loaded list to avoid the two-where composite-index issue
+      const unread = notifications.filter((n) => !n.read && n.id);
+      await Promise.all(unread.map((n) => markNotificationAsRead(n.id!)));
+      // Optimistically mark all as read in local state
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (err) {
       console.error('Failed to mark all as read:', err);
     } finally {
@@ -131,6 +140,10 @@ export default function NotificationsScreen() {
     if (!notification.read && notification.id) {
       try {
         await markNotificationAsRead(notification.id);
+        // Optimistically update local state
+        setNotifications((prev) =>
+          prev.map((n) => n.id === notification.id ? { ...n, read: true } : n)
+        );
       } catch (err) {
         console.error('Failed to mark as read:', err);
       }

@@ -15,7 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { transactionsApi, savingsApi, exchangeRatesApi } from '../services/api';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
-import { getUnreadCount } from '../services/firestoreNotifications';
+import { getAuth } from 'firebase/auth';
+import { fetchNotificationsFromApi } from '../services/firestoreNotifications';
 import '../i18n';
 
 const PRIMARY   = '#006633';
@@ -80,8 +81,19 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    const unsub = getUnreadCount(user.uid, setUnreadCount);
-    return () => unsub();
+    let cancelled = false;
+    const fetchCount = async () => {
+      try {
+        const currentUser = getAuth().currentUser;
+        if (!currentUser) return;
+        const token = await currentUser.getIdToken();
+        const notifs = await fetchNotificationsFromApi(token);
+        if (!cancelled) setUnreadCount(notifs.filter((n) => !n.read).length);
+      } catch { /* non-critical — badge stays at 0 */ }
+    };
+    fetchCount();
+    const iv = setInterval(fetchCount, 30_000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [user?.uid]);
 
   const { data: ratesData, refetch: refetchRates } = useQuery({

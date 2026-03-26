@@ -69,6 +69,23 @@ export const subscribeToNotifications = (
   );
 };
 
+/**
+ * Fetch notifications for the current user via the server API (Admin SDK).
+ * This bypasses Firestore client security rules entirely.
+ */
+export const fetchNotificationsFromApi = async (idToken: string): Promise<Notification[]> => {
+  const res = await fetch('/api/notifications', {
+    method:  'GET',
+    headers: { 'Authorization': `Bearer ${idToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? `Notifications API error ${res.status}`);
+  }
+  const { notifications } = await res.json();
+  return notifications as Notification[];
+};
+
 export const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
   // Write via server API using Admin SDK — the Firestore client rule blocks direct client writes.
   const user = getAuth().currentUser;

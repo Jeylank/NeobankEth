@@ -14,6 +14,44 @@ import { verifyUser, UserAuthRequest } from '../middleware/verifyUser';
 
 const router = Router();
 
+// ── GET /api/notifications — return current user's notifications ─────────────
+router.get('/', verifyUser, async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req as UserAuthRequest;
+
+  try {
+    // Single equality where — no composite index required.
+    // Sort by createdAt descending on the client.
+    const snap = await adminDb
+      .collection('notifications')
+      .where('userId', '==', userId)
+      .limit(50)
+      .get();
+
+    const notifications = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id:        d.id,
+        userId:    data.userId,
+        type:      data.type,
+        title:     data.title,
+        message:   data.message,
+        read:      data.read ?? false,
+        data:      data.data ?? {},
+        createdAt: data.createdAt?.toMillis?.() ?? null,
+      };
+    });
+
+    // Sort descending by createdAt server-side before sending
+    notifications.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+    res.json({ notifications });
+  } catch (err: any) {
+    console.error('[Notifications] Failed to fetch notifications:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Failed to fetch notifications.' });
+  }
+});
+
+// ── POST /api/notifications — create a notification via Admin SDK ─────────────
 router.post('/', verifyUser, async (req: Request, res: Response): Promise<void> => {
   const { userId } = req as UserAuthRequest;
   const { type, title, message, data } = req.body ?? {};
