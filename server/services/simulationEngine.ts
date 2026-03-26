@@ -66,8 +66,9 @@ export const liveRate = (from: string, to = 'ETB') =>
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const QUOTE_TTL_MS        = 90_000;   // 90 s locked quote window
-export const QUOTE_BUFFER_MS     = 30_000;   // +30 s grace buffer
+export const QUOTE_TTL_MS            = 90_000;  // 90 s locked quote window
+export const QUOTE_BUFFER_MS         = 30_000;  // +30 s grace buffer (deprecated — see below)
+export const QUOTE_PROACTIVE_REFRESH = 30_000;  // proactively refresh if < 30 s remaining
 export const DEFAULT_BALANCES    = { EUR: 1_000_000, USD: 1_000_000, GBP: 1_000_000 };
 export const DEFAULT_LIQUIDITY   = 50_000_000;  // 50 M ETB
 export const REPLENISH_THRESHOLD = 5_000_000;   // replenish when below this
@@ -339,13 +340,37 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     if (idemDoc.exists) {
       const d = idemDoc.data()!;
       console.info(`[SimEngine] Idempotent replay key=${rawKey} txId=${d.transactionId}`);
+
+      // ISSUE 3 FIX: Always return HTTP 200 for duplicates.
+      // If the record is still in PENDING state (written by the atomic tx but not yet
+      // updated by the provider step), read the live transaction status so the response
+      // reflects the most current state rather than the placeholder.
+      let liveStatus = d.status as string;
+      let liveResult = d.result as string;
+      if (liveStatus === 'PENDING') {
+        try {
+          const txDoc = await adminDb.collection(COL.transactions).doc(d.transactionId).get();
+          if (txDoc.exists) {
+            const txStatus = txDoc.data()!.status as string;
+            if (txStatus && txStatus !== 'PENDING') {
+              liveStatus = txStatus;
+              liveResult = txStatus === 'PROCESSING'
+                ? 'Transaction accepted and processing.'
+                : txStatus === 'COMPLETED'
+                  ? 'Transaction completed successfully.'
+                  : `Transaction ${txStatus.toLowerCase()}.`;
+            }
+          }
+        } catch { /* non-critical — fall back to stored status */ }
+      }
+
       return {
-        ok: true, status: 200,
+        ok: true, status: 200,          // ALWAYS 200, never 409 or 4xx for duplicates
         payload: {
           duplicate:     true,
           transactionId: d.transactionId,
-          status:        d.status,
-          result:        d.result,
+          status:        liveStatus,
+          result:        liveResult,
           ...(d.payload ?? {}),
         },
       };
@@ -361,22 +386,40 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   if (quoteId) {
     const quoteDoc = await adminDb.collection(COL.quotes).doc(quoteId).get();
     if (quoteDoc.exists) {
-      const qd       = quoteDoc.data()!;
-      const expiresMs = (qd.expiresAt as admin.firestore.Timestamp).toMillis();
-      if (Date.now() <= expiresMs + QUOTE_BUFFER_MS) {
-        rateUsed      = qd.rate as number;
+      const qd          = quoteDoc.data()!;
+      const expiresMs   = (qd.expiresAt as admin.firestore.Timestamp).toMillis();
+      const timeRemaining = expiresMs - Date.now();
+
+      // ISSUE 4 FIX: proactively refresh if < QUOTE_PROACTIVE_REFRESH (30 s) remaining
+      // — prevents expiry mid-flight during provider handshake.
+      // Old logic accepted quotes up to 30 s AFTER expiry; this is the correct inverse.
+      if (timeRemaining >= QUOTE_PROACTIVE_REFRESH) {
+        // Plenty of time left — use the locked rate directly.
+        rateUsed       = qd.rate as number;
         quoteFreshness = 'locked';
-        quoteDocRef   = quoteDoc.ref; // will be deleted inside transaction
+        quoteDocRef    = quoteDoc.ref; // deleted inside atomic tx to prevent double-use
       } else {
-        // Expired beyond buffer — auto-refresh with live rate + slippage penalty
-        rateUsed      = parseFloat((liveRate(sourceCcy) * 0.9985).toFixed(6));
-        quoteFreshness = 'auto-refreshed';
-        void quoteDoc.ref.delete(); // async cleanup — expired quote no longer needed
-        console.info(`[SimEngine] Quote ${quoteId} expired — auto-refreshed at ${rateUsed}`);
+        // < 30 s remaining OR already expired: auto-refresh with live rate.
+        // Apply 0.15 % slippage so the refreshed rate is conservative.
+        const freshRate = liveRate(sourceCcy);
+        const lockedRate = qd.rate as number;
+        // Rate-tolerance gate (< 0.05 % delta): use locked rate if close enough
+        const delta = Math.abs(freshRate - lockedRate) / lockedRate;
+        if (timeRemaining > 0 && delta < 0.0005) {
+          rateUsed       = lockedRate;
+          quoteFreshness = 'locked';
+          quoteDocRef    = quoteDoc.ref;
+          console.info(`[SimEngine] Quote ${quoteId} near-expiry (${timeRemaining}ms left) but rate within 0.05% — keeping locked rate`);
+        } else {
+          rateUsed       = parseFloat((freshRate * 0.9985).toFixed(6));
+          quoteFreshness = 'auto-refreshed';
+          void quoteDoc.ref.delete();
+          console.info(`[SimEngine] Quote ${quoteId} proactively refreshed (${timeRemaining}ms left) → ${rateUsed}`);
+        }
       }
     } else {
       // Unknown quote — use live rate with slippage
-      rateUsed      = parseFloat((liveRate(sourceCcy) * 0.9985).toFixed(6));
+      rateUsed       = parseFloat((liveRate(sourceCcy) * 0.9985).toFixed(6));
       quoteFreshness = 'auto-refreshed';
       console.info(`[SimEngine] Unknown quote ${quoteId} — using live rate with slippage`);
     }
@@ -488,37 +531,111 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     return { ok: false, status: 500, payload: { error: 'TRANSACTION_ERROR', message: 'Failed to create transaction record. Please retry.' } };
   }
 
-  // ── STEP 5: Provider routing (outside transaction — fast in-memory check) ─────
-  const tried = new Set<string>();
+  // ── STEP 5: Sequential provider routing with per-attempt audit logging ─────────
+  //
+  // ISSUE 1 FIX: Iterate ALL providers in order (stripe → chapa → telebirr).
+  // Only declare failure if every provider is exhausted — no early bail-out.
+  // Each attempt is logged to sim_audit (ISSUE 5 FIX).
+  //
+  // ISSUE 2 FIX (liquidity lifecycle):
+  //   RESERVED  = already deducted inside the Firestore atomic tx above
+  //   FINALIZED = when a provider accepts (no extra action needed)
+  //   RELEASED  = when all providers fail → rollback tx adds destinationAmount back
+  //
+  // This models reserve → finalize/release without a separate "reservation" document.
+  // The pool shows the deducted amount immediately (preventing overselling), and the
+  // rollback atomically restores it only on total failure.
+
+  interface ProviderAttempt { provider: string; success: boolean; reason?: string }
+  const providerAttempts: ProviderAttempt[] = [];
   let selectedProvider: string | null = null;
-  for (let i = 0; i < Object.keys(providers).length; i++) {
-    const candidate = selectProvider(tried);
-    if (!candidate) break;
-    tried.add(candidate);
-    providerOk(candidate);
-    selectedProvider = candidate;
-    if (i > 0) console.info(`[SimEngine] Failover: routed to ${providers[candidate]?.name}`);
-    break;
+
+  for (const [key, p] of Object.entries(providers)) {
+    const now = Date.now();
+
+    // Auto-reset expired circuit breaker before checking
+    if (p.open && now - p.lastFailAt >= p.resetMs) {
+      p.open = false; p.failures = 0;
+      console.info(`[SimEngine] Circuit auto-reset: ${p.name}`);
+    }
+
+    if (p.open) {
+      // Circuit is OPEN — skip this provider, log it, continue to next
+      providerAttempts.push({ provider: p.name, success: false, reason: 'circuit_open' });
+      void audit('PROVIDER_ATTEMPT_SKIPPED', 'provider', key, {
+        txId, provider: p.name, reason: 'circuit_open',
+      });
+      console.info(`[SimEngine] Skipping ${p.name} (circuit OPEN)`);
+      continue;
+    }
+
+    // Simulate provider execution.
+    // A closed circuit always succeeds in the simulation.
+    // In production this would be: await providerClients[key].execute(txRecord)
+    try {
+      providerOk(key);
+      selectedProvider = key;
+      providerAttempts.push({ provider: p.name, success: true });
+      void audit('PROVIDER_ATTEMPT_SUCCESS', 'provider', key, {
+        txId, provider: p.name, attempt: providerAttempts.length,
+      });
+      console.info(
+        providerAttempts.length > 1
+          ? `[SimEngine] Failover success: ${p.name} accepted after ${providerAttempts.length - 1} skip(s)`
+          : `[SimEngine] Provider selected: ${p.name}`
+      );
+      break; // provider accepted — stop iterating
+    } catch (execErr: any) {
+      providerFail(key);
+      providerAttempts.push({ provider: p.name, success: false, reason: execErr.message });
+      void audit('PROVIDER_ATTEMPT_FAILED', 'provider', key, {
+        txId, provider: p.name, error: execErr.message,
+      });
+      console.warn(`[SimEngine] ${p.name} execution failed: ${execErr.message} — trying next provider`);
+      // fall through to next iteration
+    }
   }
 
-  // ── STEP 6: No provider → rollback wallet + liquidity, mark tx FAILED ─────────
+  // ── STEP 6: All providers exhausted → release reservation, mark tx FAILED ─────
   if (!selectedProvider) {
+    // ISSUE 2 FIX: Release the reserved liquidity atomically.
+    // Re-read both docs inside the rollback transaction to avoid using stale values.
     try {
       await adminDb.runTransaction(async (t) => {
-        const [walletDoc, liqDoc] = await Promise.all([t.get(walletRef), t.get(liqRef)]);
-        const balances  = walletDoc.exists ? (walletDoc.data()!.balances as Record<string, number>) : {};
-        const liquidity = liqDoc.exists ? (liqDoc.data()!.availableETB as number) : 0;
-        const rollbackNow = admin.firestore.Timestamp.now();
-        t.update(txRef, { status: 'FAILED', failReason: 'PROVIDER_UNAVAILABLE', updatedAt: rollbackNow });
-        t.set(walletRef, { userId, balances: { ...balances, [sourceCcy]: (balances[sourceCcy] ?? 0) + amount }, updatedAt: rollbackNow });
-        t.set(liqRef,    { availableETB: (liquidity + destinationAmount), updatedAt: rollbackNow });
+        const [wDoc, lDoc] = await Promise.all([t.get(walletRef), t.get(liqRef)]);
+        const balances  = wDoc.exists ? (wDoc.data()!.balances as Record<string, number>) : {};
+        const liquidity = lDoc.exists ? (lDoc.data()!.availableETB as number) : 0;
+        const rNow = admin.firestore.Timestamp.now();
+
+        // Mark transaction FAILED
+        t.update(txRef, { status: 'FAILED', failReason: 'PROVIDER_UNAVAILABLE', updatedAt: rNow });
+
+        // Release wallet reservation (restore user balance)
+        t.set(walletRef, {
+          userId,
+          balances: { ...balances, [sourceCcy]: (balances[sourceCcy] ?? 0) + amount },
+          updatedAt: rNow,
+        });
+
+        // Release liquidity reservation (restore pool)
+        t.set(liqRef, { availableETB: liquidity + destinationAmount, updatedAt: rNow });
       });
-      // Clear idempotency placeholder so retries can proceed
+
+      // Remove idempotency placeholder so the next attempt is treated as fresh
       if (idemRef) await idemRef.delete();
     } catch (rollbackErr) {
-      console.error('[SimEngine] Rollback failed:', (rollbackErr as Error).message);
+      // CRITICAL: if rollback fails, liquidity and wallet are permanently desynchronised.
+      // In production this would page on-call; here we log for manual reconciliation.
+      console.error(
+        '[SimEngine] CRITICAL: Rollback failed — manual reconciliation required for txId:', txId,
+        (rollbackErr as Error).message
+      );
     }
-    void audit('TRANSACTION_FAILED', 'transaction', txId, { userId, reason: 'PROVIDER_UNAVAILABLE', type });
+
+    void audit('TRANSACTION_FAILED', 'transaction', txId, {
+      userId, reason: 'PROVIDER_UNAVAILABLE', type, providerAttempts,
+    });
+
     return { ok: false, status: 503, payload: SimError.providerOutage() };
   }
 
@@ -563,12 +680,15 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     });
   }
 
-  // ── STEP 9: Write audit log ────────────────────────────────────────────────────
+  // ── STEP 9: Write audit log with full provider attempt history ────────────────
   void audit('TRANSACTION_CREATED', 'transaction', txId, {
     userId, recipientId, amount,
     currency: sourceCcy, destinationAmount, destCcy,
     provider: providerName, type, quoteFreshness,
-    idempotencyKey: rawKey ?? 'none',
+    idempotencyKey:  rawKey ?? 'none',
+    providerAttempts,                  // full per-attempt log (ISSUE 5 FIX)
+    providersSkipped: providerAttempts.filter(a => !a.success).length,
+    providerSelected: providerAttempts.findIndex(a => a.success) + 1,
   });
 
   console.info(

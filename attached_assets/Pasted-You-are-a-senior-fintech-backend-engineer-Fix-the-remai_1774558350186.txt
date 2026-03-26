@@ -1,0 +1,142 @@
+You are a senior fintech backend engineer. Fix the remaining critical QA failures in my remittance backend.
+
+Current success rate: 50%. Target: ≥85%.
+
+---
+
+# 🔴 ISSUE 1: PROVIDER FALLBACK FAILURE
+
+Fix provider routing so fallback happens INSIDE the same request.
+
+IMPLEMENT:
+
+```js
+const providers = [providerA, providerB, providerC];
+
+for (const provider of providers) {
+  try {
+    const result = await provider.execute(transaction);
+
+    if (result.success) {
+      return result;
+    }
+  } catch (err) {
+    await logFailure(provider.name, err);
+  }
+}
+
+throw new Error("PROVIDER_UNAVAILABLE");
+```
+
+REQUIREMENTS:
+
+* No early return on first failure
+* Try all providers sequentially
+* Only fail if ALL providers fail
+
+---
+
+# 🔴 ISSUE 2: LIQUIDITY GUARANTEE
+
+Fix liquidity lifecycle to be deterministic.
+
+REQUIREMENTS:
+
+1. Reserve liquidity BEFORE provider call
+2. If success → finalize
+3. If failure → release immediately
+
+IMPLEMENT:
+
+```js
+await reserveLiquidity(amount);
+
+try {
+  const result = await executeWithFallback();
+
+  await finalizeLiquidity(amount);
+
+  return result;
+
+} catch (err) {
+  await releaseLiquidity(amount);
+  throw err;
+}
+```
+
+Ensure:
+
+* No liquidity leakage
+* No double reservation
+* Use Firestore transaction for reserve/release
+
+---
+
+# 🔴 ISSUE 3: IDEMPOTENCY RESPONSE
+
+Fix duplicate request handling.
+
+REQUIREMENTS:
+
+* Always return HTTP 200
+* Never throw error for duplicates
+
+RESPONSE FORMAT:
+
+```json
+{
+  "duplicate": true,
+  "transactionId": "...",
+  "status": "...",
+  "result": "..."
+}
+```
+
+---
+
+# 🔴 ISSUE 4: QUOTE HANDLING
+
+Prevent quote expiry during normal flow.
+
+IMPLEMENT:
+
+```js
+if (timeLeft < 30000) {
+  quote = await refreshQuote();
+}
+```
+
+Optional:
+
+* allow small rate tolerance (<0.05%)
+
+---
+
+# 🔴 ISSUE 5: LOGGING
+
+Log all provider attempts:
+
+```js
+await db.collection("auditLogs").add({
+  provider,
+  success: result.success,
+  error,
+  timestamp: new Date()
+});
+```
+
+---
+
+# 🔴 SUCCESS CRITERIA
+
+After fix:
+
+* Provider fallback ALWAYS works
+* No LIQUIDITY_SHORTAGE during normal flow
+* Duplicate requests return 200 with original result
+* No QUOTE_EXPIRED in standard scenarios
+* QA success rate ≥85%
+
+---
+
+Apply fixes without breaking existing architecture.
