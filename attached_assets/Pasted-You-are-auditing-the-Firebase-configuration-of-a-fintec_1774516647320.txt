@@ -1,0 +1,145 @@
+You are auditing the Firebase configuration of a fintech application called Habeshare.
+
+The project uses:
+
+- Firebase Auth
+- Firestore
+- Firebase Admin SDK (backend)
+- React Native frontend
+
+Your task is to analyze the entire codebase and produce a clear report of how Firebase is configured.
+
+---
+
+1️⃣ FIND FIREBASE CONFIG FILES
+
+Locate and analyze:
+
+- src/firebase.ts
+- src/services/firebaseAdmin.ts
+- any firebase config in environment variables
+- any usage of initializeApp()
+
+---
+
+2️⃣ CHECK AUTHENTICATION SETUP
+
+Report:
+
+- how Firebase Auth is initialized
+- which providers are enabled (email/password, phone, etc.)
+- how ID tokens are verified on backend
+- where auth middleware is used in API routes
+
+---
+
+3️⃣ CHECK FIRESTORE STRUCTURE
+
+List all collections used in the app:
+
+Example:
+
+- users
+- transactions
+- ledger_entries
+- fx_quotes
+- fx_reservations
+- audit_logs
+- treasury_liquidity
+- referrals
+- support_tickets
+- disputes
+
+For each collection, explain:
+
+- purpose
+- who writes to it (frontend or backend)
+- security risk level
+
+---
+
+4️⃣ CHECK FIRESTORE SECURITY RULES
+
+Analyze:
+
+firestore.rules
+
+Verify:
+
+- clients cannot write to financial collections
+- only authenticated users can read their own data
+- admin-only collections are protected
+
+Flag any unsafe rules.
+
+---
+
+5️⃣ CHECK ADMIN SDK USAGE
+
+Verify:
+
+- Firebase Admin is only used on backend
+- service account credentials are not exposed to frontend
+- admin initialization is secure
+
+---
+
+6️⃣ CHECK ENV VARIABLES
+
+List all Firebase-related env variables:
+
+- API keys
+- projectId
+- private keys
+
+Ensure:
+
+- no secrets are hardcoded
+- sensitive keys are only used server-side
+
+---
+
+7️⃣ CHECK REAL-TIME LISTENERS
+
+Find all Firestore onSnapshot usage.
+
+Explain:
+
+- which screens use real-time updates
+- any risk of excessive reads or cost
+
+---
+
+8️⃣ CHECK ERROR HANDLING
+
+Verify:
+
+- proper handling of permission errors
+- fallback logic (e.g. AsyncStorage)
+- user-friendly error messages
+
+---
+
+9️⃣ CHECK PERFORMANCE RISKS
+
+Identify:
+
+- unindexed queries
+- large collection scans
+- missing pagination
+- potential cost issues
+
+---
+
+🔟 OUTPUT FORMAT
+
+Provide a structured report:
+
+1. Firebase Setup Summary
+2. Auth Security Review
+3. Firestore Collections Overview
+4. Security Rules Assessment
+5. Risks & Vulnerabilities
+6. Recommended Fixes (priority list)
+
+Do NOT modify any code — only analyze and report.
