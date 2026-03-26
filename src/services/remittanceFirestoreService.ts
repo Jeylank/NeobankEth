@@ -3,6 +3,7 @@ import { db } from './firebase';
 import { getAuth } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clientRiskService, RiskError } from './riskControls/clientRiskService';
+import { createNotification } from './firestoreNotifications';
 
 const RECIPIENTS_STORAGE_KEY = 'habeshare_recipients';
 
@@ -107,6 +108,22 @@ export async function initiateTransferFirestore(data: {
       const ref = collection(db, 'users', user.uid, 'transactions');
       await addDoc(ref, record);
       await addDoc(collection(db, 'transactions'), record);
+
+      // ── Notification ──────────────────────────────────────────────────────
+      const currencySymbols: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
+      const symbol = currencySymbols[data.fromCurrency] ?? data.fromCurrency;
+      const recipientName = data.recipientName ?? 'your recipient';
+      try {
+        await createNotification({
+          userId: user.uid,
+          type:    'remittance',
+          title:   'Transfer Initiated',
+          message: `Your ${symbol}${data.amount.toFixed(2)} transfer to ${recipientName} is being processed.`,
+          data:    { txId, amount: data.amount, currency: data.fromCurrency, recipientName, status: 'pending' },
+        });
+      } catch {
+        // Non-critical — don't fail the transfer if notification write fails
+      }
     }
   } catch {
     try {

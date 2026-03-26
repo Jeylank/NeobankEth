@@ -253,6 +253,23 @@ export const stripePaymentService = {
       ip:         '0.0.0.0',
     });
 
+    // ── In-app notification ────────────────────────────────────────────────────
+    const currencySymbols: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
+    const symbol = currencySymbols[currency] ?? currency;
+    try {
+      await adminDb.collection('notifications').add({
+        userId,
+        type:      'transaction',
+        title:     'Funds Added',
+        message:   `${symbol}${amount.toFixed(2)} ${currency} has been added to your wallet.`,
+        read:      false,
+        data:      { amount, currency, stripePaymentIntentId: pi.id, transactionType: 'topup' },
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('[StripeWebhook] Failed to create notification:', err);
+    }
+
     console.info(
       `[StripeWebhook] Wallet credited: userId=${userId} +${amount} ${currency} (PI: ${pi.id})`,
     );
@@ -271,11 +288,31 @@ export const stripePaymentService = {
       return; // Idempotency — already handled.
     }
 
+    const failedTx = txSnap.data()!;
+
     await txRef.update({
       status:     'failed',
       failedAt:   FieldValue.serverTimestamp(),
       failReason: pi.last_payment_error?.message ?? 'Unknown failure',
     });
+
+    // ── In-app notification ────────────────────────────────────────────────────
+    try {
+      const { userId, amount, currency } = failedTx as { userId: string; amount: number; currency: string };
+      const currencySymbols: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
+      const symbol = currencySymbols[currency] ?? currency;
+      await adminDb.collection('notifications').add({
+        userId,
+        type:      'transaction',
+        title:     'Payment Failed',
+        message:   `Your ${symbol}${amount.toFixed(2)} ${currency} top-up could not be processed. Please try again.`,
+        read:      false,
+        data:      { amount, currency, stripePaymentIntentId: pi.id, transactionType: 'topup_failed' },
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('[StripeWebhook] Failed to create failure notification:', err);
+    }
 
     console.warn(`[StripeWebhook] Payment failed: PI=${pi.id}`);
   },
