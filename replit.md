@@ -68,6 +68,15 @@ The application leverages Expo SDK 50, React Native 0.73, React Navigation 6, an
 -   **Typed Errors:** Provides structured error responses for specific risk control failures.
 -   **Admin Endpoints:** Allows administrators to manage system controls, risk limits, and user risk flags (freeze/unfreeze/review).
 
+**Simulation Integration API (v2 — Production-Grade):**
+-   **`server/services/simulationEngine.ts`** — Shared simulation engine (single source of truth for all state). Exports `processRemittance()` (9-step QA-compliant transaction flow), `extractIdempotencyKey()` (reads `Idempotency-Key` header OR body `idempotencyKey`/`idempotency_key`), `SimError` (structured error registry), circuit-breaker helpers, and all in-memory stores.
+-   **`server/routes/simulation.ts`** — V1 routes mounted at `/api/v1`. Thin layer — delegates all business logic to `simulationEngine`.
+-   **`server/routes/campaigns.ts`** — RESTful campaign route mounted at `/api/campaigns`. `POST /api/campaigns/:campaignId/contribute` (campaignId in URL path per spec). Shares the same engine.
+-   **Transaction flow order (per QA spec):** 1. Read idempotency key, 2. Check duplicate (SUCCESS cache only), 3. Validate user balance (INSUFFICIENT_FUNDS), 4. FX rate / quote auto-refresh, 5. Validate destination + compliance, 6. Create tx record, 7. Provider routing (deterministic failover), 8. Execute (debit wallet + liquidity), 9. Save status + cache idempotency.
+-   **Duplicate response format:** `{ duplicate: true, transactionId, status, result, ...original }` — matches QA spec exactly.
+-   **Self-healing:** Expired FX quotes auto-refresh (live rate + 0.15% slippage); liquidity auto-replenishes to 50M ETB when below 5M ETB threshold; three providers (Stripe → Chapa → Telebirr) with deterministic failover (no random failures).
+-   **Test control endpoints:** `POST /api/v1/circuit-breaker/trip/:provider`, `POST /api/v1/circuit-breaker/reset`, `POST /api/v1/simulation/reset` — deterministic outage testing without probabilistic side effects.
+
 **Stripe Payment Integration:**
 -   **`server/stripeClient.ts`** — authenticates via Replit Stripe connector (falls back to `STRIPE_SECRET_KEY` env var). Exports `getUncachableStripeClient()` and `getStripeSync()`. On startup, runs `stripe-replit-sync` migrations against PostgreSQL (`DATABASE_URL`) and sets up a managed webhook.
 -   **`server/services/stripePaymentService.ts`** — `createPaymentIntent(userId, amount, currency)` creates a Stripe PaymentIntent and writes a `pending` record to Firestore `payment_transactions/{paymentIntentId}`. `handleWebhook(payload, sig)` verifies the Stripe signature, dispatches `payment_intent.succeeded` / `payment_intent.payment_failed`, credits the wallet via a Firestore atomic transaction (same schema as client `walletService`), writes a ledger entry, and marks the transaction `completed`. Full idempotency via pre-check on Firestore status.

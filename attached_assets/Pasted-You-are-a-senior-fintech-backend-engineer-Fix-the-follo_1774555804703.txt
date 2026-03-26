@@ -1,0 +1,182 @@
+You are a senior fintech backend engineer. Fix the following critical issues in my remittance backend so that it passes QA simulation and follows production-grade standards.
+
+## CONTEXT
+
+This is a remittance system using:
+
+* Node.js backend
+* Firestore database
+* Stripe + payout providers
+* Simulation tests failing due to idempotency, quote expiry, missing endpoints, and poor error handling
+
+## GOAL
+
+Make the transaction engine deterministic, idempotent, and QA-compliant.
+
+---
+
+## 🔴 ISSUE 1: IDEMPOTENCY (CRITICAL)
+
+Problem:
+
+* System only reads idempotency key from request body
+* Simulation sends `Idempotency-Key` via HTTP header
+* Duplicate requests return `INSUFFICIENT_FUNDS` instead of original result
+
+### FIX:
+
+1. Read idempotency key from:
+
+   * `req.get('Idempotency-Key')`
+   * fallback to body (`idempotencyKey`, `idempotency_key`)
+
+2. Before processing any transaction:
+
+   * Check if a transaction exists with same idempotency key
+   * If YES → return original transaction result (status, id, outcome)
+
+3. Store idempotency key in transaction record
+
+### Expected behavior:
+
+* Duplicate request returns:
+
+```json
+{
+  "duplicate": true,
+  "transactionId": "...",
+  "status": "...",
+  "result": "..."
+}
+```
+
+---
+
+## 🔴 ISSUE 2: MISSING CAMPAIGN ENDPOINT
+
+Problem:
+
+* Simulation calls campaign contribution endpoint
+* Backend returns 404 → mapped to `PAYOUT_REJECTED`
+
+### FIX:
+
+Create endpoint:
+
+POST /api/campaigns/:campaignId/contribute
+
+Behavior:
+
+* Validate campaign exists
+* Process payment using existing remittance/payment logic
+* Return success response
+
+Return error:
+
+* 404 → `CAMPAIGN_NOT_FOUND`
+
+---
+
+## 🔴 ISSUE 3: FX QUOTE EXPIRY
+
+Problem:
+
+* Quotes expire too quickly → `QUOTE_EXPIRED`
+
+### FIX:
+
+1. Set:
+
+   * Quote TTL = 90 seconds
+   * Safety buffer = 30 seconds
+
+2. Before transaction commit:
+
+   * If quote expired → return `QUOTE_EXPIRED`
+   * If quote near expiry (<30s left) → refresh or require reconfirmation
+
+3. Store `expiresAt` in quote object
+
+---
+
+## 🔴 ISSUE 4: INSUFFICIENT_FUNDS MISUSE
+
+Problem:
+
+* Used as catch-all error
+* Covers duplicates, failures, and real balance issues
+
+### FIX:
+
+1. Add pre-flight balance check BEFORE provider calls:
+
+```js
+if (userBalance < amount) {
+  return error('INSUFFICIENT_FUNDS');
+}
+```
+
+2. Separate errors clearly:
+
+* INSUFFICIENT_FUNDS → only for real balance issues
+* DUPLICATE_REQUEST → idempotency
+* QUOTE_EXPIRED → quote timing
+* PROVIDER_UNAVAILABLE → external failures
+* CAMPAIGN_NOT_FOUND → missing resource
+
+---
+
+## 🔴 ISSUE 5: TRANSACTION FLOW ORDER
+
+Ensure correct order:
+
+1. Read idempotency key
+2. Check duplicate request
+3. Validate user balance
+4. Validate quote
+5. Validate destination (campaign/user)
+6. Create transaction record
+7. Call payment provider
+8. Execute payout
+9. Save final status
+
+---
+
+## 🔴 ADDITIONAL REQUIREMENTS
+
+* Use clear structured error responses
+* Do NOT throw generic 500 errors
+* Use consistent JSON format:
+
+```json
+{
+  "error": "ERROR_CODE",
+  "message": "Human readable message"
+}
+```
+
+* All financial operations must be idempotent
+* No double charges allowed
+
+---
+
+## OUTPUT REQUIRED
+
+* Updated backend code
+* Updated endpoints
+* Clean transaction flow implementation
+* No breaking existing working logic
+
+---
+
+## SUCCESS CRITERIA
+
+* Duplicate requests return original result
+* No more QUOTE_EXPIRED in normal flow
+* Campaign contribution works (no 404)
+* INSUFFICIENT_FUNDS only triggered correctly
+* Simulation success rate significantly improves (>80%)
+
+---
+
+Apply fixes cleanly and safely without breaking existing architecture.

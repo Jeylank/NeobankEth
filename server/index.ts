@@ -28,6 +28,7 @@ import riskControlsRouter   from './routes/adminRiskControls';
 import systemConfigRouter   from './routes/systemConfigRoutes';
 import paymentsRouter       from './routes/payments';
 import simulationRouter    from './routes/simulation';
+import campaignsRouter     from './routes/campaigns';
 import adminUsersRouter    from './routes/adminUsers';
 import notificationsRouter from './routes/notifications';
 import { systemConfigService } from './services/systemConfigService';
@@ -136,6 +137,7 @@ app.use(API_PREFIX, adminUsersRouter);
 app.use('/api',              paymentsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/v1',           simulationRouter);
+app.use('/api/campaigns',    campaignsRouter);
 
 // ─── Static Web App (Expo dist) ───────────────────────────────────────────────
 // Serve the pre-built Expo web bundle and fall back to index.html so the
@@ -271,6 +273,8 @@ app.listen(PORT, () => {
   console.log(`    POST /api/v1/circuit-breaker/trip/:provider  (stripe|chapa|telebirr)`);
   console.log(`    POST /api/v1/circuit-breaker/reset           (restore all to CLOSED)`);
   console.log(`    POST /api/v1/simulation/reset                (full state wipe)`);
+  console.log('  RESTful Campaign API:');
+  console.log(`    POST /api/campaigns/:campaignId/contribute   (RESTful alias, campaignId in URL)`);
 
   const simBase = `https://${(process.env.REPLIT_DOMAINS ?? 'localhost:5000').split(',')[0]}`;
   console.log(`  Sim base URL: ${simBase}/api/v1  (X-API-Key required if SIMULATION_API_KEY is set)`);
