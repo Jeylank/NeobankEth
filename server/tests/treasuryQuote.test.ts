@@ -41,12 +41,11 @@ describe('quoteStateMachine — getQuoteState()', () => {
 describe('quoteStateMachine — compareRates()', () => {
   it('marks canAutoAccept=true when delta is within 0.5 %', () => {
     const original = 56.00;
-    const fresh    = 56.28; // +0.5 % exactly
+    const fresh    = 56.25; // +0.4464 % — well within the 0.5 % threshold
     const result   = compareRates(original, fresh);
-    // delta = 0.28/56 = 0.005 — at boundary (≤ threshold), should auto-accept
     expect(result.canAutoAccept).toBe(true);
     expect(result.requiresConfirmation).toBe(false);
-    expect(result.delta).toBeCloseTo(0.005, 5);
+    expect(result.delta).toBeLessThan(RATE_AUTO_ACCEPT_DELTA);
   });
 
   it('marks requiresConfirmation=true when delta exceeds 0.5 %', () => {

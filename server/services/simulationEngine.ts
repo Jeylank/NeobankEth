@@ -821,9 +821,6 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     const hasLiquidityFailure = providerAttempts.some(
       a => !a.success && a.reason === 'insufficient_provider_liquidity'
     );
-    const hasCircuitFailure   = providerAttempts.some(
-      a => !a.success && a.reason === 'circuit_open'
-    );
 
     // Determine transaction status for the rollback
     const rollbackStatus = hasLiquidityFailure ? 'PENDING_LIQUIDITY' : 'FAILED';
@@ -1056,7 +1053,7 @@ export async function resumeTransaction(
     await txRef.update({ status: 'PROCESSING', updatedAt: admin.firestore.Timestamp.now() });
 
     const result = await processRemittance({
-      userId, recipientId, amount, sourceCcy: currency, type,
+      userId, recipientId, amount, currency, type,
       metadata: { ...(metadata ?? {}), resumedFromTxId: transactionId, forcedRate: freshRate },
       quoteId: undefined,   // skip quote lookup — fresh rate already confirmed
     });
@@ -1084,7 +1081,7 @@ export async function resumeTransaction(
     userId:     resumeData.userId,
     recipientId: resumeData.recipientId,
     amount:     resumeData.amount,
-    sourceCcy:  resumeData.currency,
+    currency:   resumeData.currency,
     type:       resumeData.type,
     metadata:   { ...(resumeData.metadata ?? {}), resumedFromTxId: transactionId },
     quoteId:    undefined,  // use live rate on retry
