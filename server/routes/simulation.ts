@@ -22,7 +22,11 @@ import {
   resumeTransaction, type ResumeAction,
   seedSimulation, SEED_USERS, SEED_BALANCES_PER_CCY,
 } from '../services/simulationEngine';
-import { getProviderLiquidityAll, PROVIDER_LIQUIDITY_DEFAULTS } from '../services/treasuryRouter';
+import {
+  getProviderLiquidityAll,
+  PROVIDER_LIQUIDITY_DEFAULTS,
+  drainAllProviderLiquidity,
+} from '../services/treasuryRouter';
 import { getQuoteState } from '../services/quoteStateMachine';
 import { adminDb } from '../firebaseAdmin';
 
@@ -73,6 +77,7 @@ router.get('/health', (_req: Request, res: Response) => {
       'POST /api/v1/circuit-breaker/reset',
       'POST /api/v1/simulation/reset',
       'POST /api/v1/simulation/seed',
+      'POST /api/v1/simulation/drain',
       'POST /api/campaigns/:campaignId/contribute',
     ],
   });
@@ -419,6 +424,33 @@ router.post('/simulation/seed', requireApiKey, async (req: Request, res: Respons
   } catch (err: any) {
     console.error('[SimAPI] /simulation/seed error:', err.message);
     res.status(500).json({ error: 'SEED_FAILED', message: err.message });
+  }
+});
+
+// ─── POST /api/v1/simulation/drain ───────────────────────────────────────────
+//
+// Drains all per-provider liquidity pools to 0 ETB so the next transaction
+// exhausts every provider and returns PENDING_LIQUIDITY (202).
+//
+// Use this as a test setup step for the LIQUIDITY_SHORTAGE scenario:
+//   1. POST /api/v1/simulation/drain
+//   2. POST /api/v1/remittance/initiate  →  202 PENDING_LIQUIDITY
+//   3. POST /api/v1/remittance/resume    →  retry once pools are restored
+//
+// Restore with POST /api/v1/simulation/reset or POST /api/v1/simulation/reset + { seed: true }.
+
+router.post('/simulation/drain', requireApiKey, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const pools = await drainAllProviderLiquidity();
+    res.json({
+      message:    'All provider liquidity pools drained to 0 ETB. The next remittance call will return PENDING_LIQUIDITY (202).',
+      pools,
+      hint:       'To restore: POST /api/v1/simulation/reset (full reset) or wait for manual replenishment via the treasury/providers endpoint.',
+      timestamp:  new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[SimAPI] /simulation/drain error:', err.message);
+    res.status(500).json({ error: 'DRAIN_FAILED', message: err.message });
   }
 });
 

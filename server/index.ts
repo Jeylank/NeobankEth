@@ -274,6 +274,7 @@ app.listen(PORT, () => {
   console.log(`    POST /api/v1/circuit-breaker/reset           (restore all to CLOSED)`);
   console.log(`    POST /api/v1/simulation/reset                (full state wipe; pass { seed: true } to pre-fund wallets)`);
   console.log(`    POST /api/v1/simulation/seed                 (pre-fund test wallets — idempotent)`);
+  console.log(`    POST /api/v1/simulation/drain                (drain all provider pools → PENDING_LIQUIDITY test setup)`);
   console.log('  RESTful Campaign API:');
   console.log(`    POST /api/campaigns/:campaignId/contribute   (RESTful alias, campaignId in URL)`);
 

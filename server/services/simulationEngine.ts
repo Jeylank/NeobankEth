@@ -501,7 +501,7 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   //   QUOTE_EXPIRING  → compare live vs locked rate (delta check):
   //                     delta ≤ 0.5 %  → auto-accept, log quote_auto_refreshed
   //                     delta > 0.5 %  → return PENDING_REQUOTE (NO debit — user must confirm)
-  //   QUOTE_EXPIRED   → auto-refresh with live rate + 0.15% slippage
+  //   QUOTE_EXPIRED   → always PENDING_REQUOTE (user must confirm fresh rate — no silent slippage)
   //   no quote        → live rate, no slippage
 
   let rateUsed: number;
@@ -577,18 +577,61 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
         console.info(`[SimEngine] Quote auto-refreshed (delta=${comparison.deltaPercent} ≤ 0.5%): ${lockedRate} → ${freshRate}`);
 
       } else {
-        // QUOTE_EXPIRED — auto-refresh with 0.15% slippage (conservative rate)
-        const freshRate = liveRate(sourceCcy);
-        rateUsed        = parseFloat((freshRate * 0.9985).toFixed(6));
-        quoteFreshness  = 'auto-refreshed';
+        // QUOTE_EXPIRED — present the fresh rate to the user and require explicit
+        // confirmation before proceeding.  Silent slippage is never applied because
+        // the user locked a rate that is no longer valid; they must acknowledge the
+        // delta before any funds move.
+        const freshRate    = liveRate(sourceCcy);
+        const lockedRate   = qd.rate as number;
+        const comparison   = compareRates(lockedRate, freshRate);
+        const pendingTxId  = `tx_${randomUUID()}`;
+
+        await adminDb.collection(COL.transactions).doc(pendingTxId).set({
+          txId:         pendingTxId,
+          userId,
+          recipientId,
+          amount,
+          currency:     sourceCcy,
+          type,
+          metadata,
+          status:       'PENDING_REQUOTE',
+          quoteId,
+          originalRate: lockedRate,
+          freshRate,
+          delta:        comparison.delta,
+          deltaPercent: comparison.deltaPercent,
+          expiredQuote: true,
+          createdAt:    admin.firestore.Timestamp.now(),
+          updatedAt:    admin.firestore.Timestamp.now(),
+        });
+
         void quoteDoc.ref.delete();
-        console.info(`[SimEngine] Quote expired — using live rate with slippage: ${rateUsed}`);
+
+        void audit(QUOTE_AUDIT.reconfirmation_required, 'quote', quoteId, {
+          txId: pendingTxId, userId,
+          originalRate: lockedRate, freshRate,
+          delta: comparison.delta, deltaPercent: comparison.deltaPercent,
+          reason: 'quote_expired',
+        });
+
+        console.info(
+          `[SimEngine] PENDING_REQUOTE (quote expired): original=${lockedRate} → fresh=${freshRate} ` +
+          `(${comparison.deltaPercent}%). pendingTxId=${pendingTxId}`
+        );
+
+        return {
+          ok: true, status: 202,
+          payload: SimError.pendingRequote(
+            pendingTxId, lockedRate, freshRate,
+            comparison.delta, comparison.deltaPercent,
+          ),
+        };
       }
     } else {
-      // Unknown quoteId — treat as expired (live rate + slippage)
-      rateUsed       = parseFloat((liveRate(sourceCcy) * 0.9985).toFixed(6));
-      quoteFreshness = 'auto-refreshed';
-      console.info(`[SimEngine] Unknown quote ${quoteId} — using live rate with slippage`);
+      // No quote doc found — proceed with live rate, no slippage (no locked rate to protect)
+      rateUsed       = liveRate(sourceCcy);
+      quoteFreshness = 'live';
+      console.info(`[SimEngine] No quote found for quoteId=${quoteId} — using live rate`);
     }
   } else {
     rateUsed = liveRate(sourceCcy);

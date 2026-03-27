@@ -117,6 +117,27 @@ export async function resetAllProviderLiquidity(): Promise<void> {
   console.info('[TreasuryRouter] All provider liquidity pools reset to defaults.');
 }
 
+/**
+ * Drain all provider pools to 0 ETB — TEST USE ONLY.
+ * The next transaction will exhaust every ranked provider and return PENDING_LIQUIDITY (202).
+ * Restores with POST /api/v1/simulation/reset or resetAllProviderLiquidity().
+ */
+export async function drainAllProviderLiquidity(): Promise<Record<string, number>> {
+  const batch     = adminDb.batch();
+  const drained: Record<string, number> = {};
+  const now = admin.firestore.Timestamp.now();
+
+  for (const key of Object.keys(PROVIDER_LIQUIDITY_DEFAULTS)) {
+    const ref = adminDb.collection(COL_PROVIDER_LIQ).doc(key);
+    batch.set(ref, { availableETB: 0, updatedAt: now });
+    drained[key] = 0;
+  }
+
+  await batch.commit();
+  console.info('[TreasuryRouter] All provider pools drained to 0 ETB (test-only operation).');
+  return drained;
+}
+
 // ─── Scoring & Ranking ────────────────────────────────────────────────────────
 
 /**

@@ -21,9 +21,9 @@ The application is built using Expo SDK 50, React Native 0.73, React Navigation 
 -   **Security:** Session management, biometric confirmation, input sanitization, and account masking.
 -   **Admin Operations Console:** A suite of admin screens for monitoring payouts, fraud, support, disputes, liquidity, and reconciliation, with role-based access.
 -   **Risk Controls Layer:** Client-side and server-side risk enforcement, global kill switches for features, transaction/velocity limits, and safety guards.
--   **Simulation Integration API:** Provides endpoints for wallet top-up, FX quotes, campaign contributions, quote refresh, and transaction resume, with idempotency and self-healing mechanisms.
+-   **Simulation Integration API:** Provides endpoints for wallet top-up, FX quotes, campaign contributions, quote refresh, and transaction resume, with idempotency and self-healing mechanisms. Includes QA lifecycle endpoints: `POST /api/v1/simulation/seed` (pre-funds test wallets — idempotent), `POST /api/v1/simulation/drain` (exhausts all provider pools → PENDING_LIQUIDITY test setup), `POST /api/v1/simulation/reset` (full wipe; accepts `{ seed: true }` to combine reset + fund in one call).
 -   **Treasury Router:** Per-provider liquidity pools (sim_provider_liquidity/{stripe|chapa|telebirr}) with ranked provider selection by liquidity→health→cost→delivery. Providers: Stripe 20M ETB, Chapa 15M ETB, Telebirr 15M ETB defaults.
--   **Quote State Machine:** QUOTE_ACTIVE/QUOTE_EXPIRING/PENDING_REQUOTE/REQUOTED/QUOTE_EXPIRED states. Auto-accepts rate changes ≤ 0.5%; requires user confirmation for deltas > 0.5% (PENDING_REQUOTE).
+-   **Quote State Machine:** QUOTE_ACTIVE/QUOTE_EXPIRING/PENDING_REQUOTE/REQUOTED/QUOTE_EXPIRED states. Auto-accepts rate changes ≤ 0.5%; requires user confirmation for deltas > 0.5% (PENDING_REQUOTE). QUOTE_EXPIRED always triggers PENDING_REQUOTE — no silent slippage applied, user must acknowledge the fresh rate before funds move.
 -   **PENDING_LIQUIDITY Flow:** When all providers exhausted at per-provider level — atomically refunds user wallet + global pool, preserves tx for retry via POST /api/v1/remittance/resume.
 
 **Technical Implementations & Design Choices:**
