@@ -20,8 +20,9 @@ import {
   createQuote, getWalletBalances, getLiquidityETB,
   getOrAgeTx, stripeTopUp, fullReset, resetLiquidityPool,
   resumeTransaction, type ResumeAction,
+  seedSimulation, SEED_USERS, SEED_BALANCES_PER_CCY,
 } from '../services/simulationEngine';
-import { getProviderLiquidityAll } from '../services/treasuryRouter';
+import { getProviderLiquidityAll, PROVIDER_LIQUIDITY_DEFAULTS } from '../services/treasuryRouter';
 import { getQuoteState } from '../services/quoteStateMachine';
 import { adminDb } from '../firebaseAdmin';
 
@@ -71,6 +72,7 @@ router.get('/health', (_req: Request, res: Response) => {
       'POST /api/v1/circuit-breaker/trip/:provider',
       'POST /api/v1/circuit-breaker/reset',
       'POST /api/v1/simulation/reset',
+      'POST /api/v1/simulation/seed',
       'POST /api/campaigns/:campaignId/contribute',
     ],
   });
@@ -252,19 +254,59 @@ router.get('/remittance/:txId', requireApiKey, async (req: Request, res: Respons
 });
 
 // ─── GET /api/v1/liquidity ────────────────────────────────────────────────────
+//
+// Returns the global settlement pool status with multi-tier alerting:
+//   < 10% of capacity (5M ETB)  → CRITICAL (immediate intervention required)
+//   < 20% of capacity (10M ETB) → LOW      (automated replenishment imminent)
+//   ≥ 20%                       → OK
+
+const ALERT_LOW_THRESHOLD      = REPLENISH_TARGET * 0.20;  // 10M ETB
+const ALERT_CRITICAL_THRESHOLD = REPLENISH_TARGET * 0.10;  // 5M ETB
 
 router.get('/liquidity', requireApiKey, async (_req: Request, res: Response): Promise<void> => {
   try {
-    const availableETB = await getLiquidityETB();
-    const level = availableETB < 1_000_000 ? 'CRITICAL' :
-                  availableETB < 5_000_000 ? 'WARNING'  : 'OK';
+    const availableETB     = await getLiquidityETB();
+    const providerLiquidity = await getProviderLiquidityAll();
+
+    // Global pool alert level
+    const alertLevel =
+      availableETB < ALERT_CRITICAL_THRESHOLD ? 'CRITICAL' :
+      availableETB < ALERT_LOW_THRESHOLD       ? 'LOW'      : 'OK';
+
+    const alerts: string[] = [];
+    if (alertLevel === 'CRITICAL') {
+      alerts.push(`CRITICAL: Global pool at ${((availableETB / REPLENISH_TARGET) * 100).toFixed(1)}% capacity (${availableETB.toLocaleString()} ETB). Immediate replenishment required.`);
+    } else if (alertLevel === 'LOW') {
+      alerts.push(`LOW: Global pool at ${((availableETB / REPLENISH_TARGET) * 100).toFixed(1)}% capacity (${availableETB.toLocaleString()} ETB). Auto-replenishment will trigger at next transaction.`);
+    }
+
+    // Per-provider alerts
+    const providerAlerts: Record<string, { availableETB: number; alertLevel: string; alerts: string[] }> = {};
+    for (const [key, avail] of Object.entries(providerLiquidity)) {
+      const cap  = (PROVIDER_LIQUIDITY_DEFAULTS as Record<string, number>)[key] ?? avail;
+      const pct  = cap > 0 ? avail / cap : 1;
+      const pAlertLevel = pct < 0.10 ? 'CRITICAL' : pct < 0.20 ? 'LOW' : 'OK';
+      const pAlerts: string[] = [];
+      if (pAlertLevel !== 'OK') {
+        pAlerts.push(`${pAlertLevel}: ${key} provider pool at ${(pct * 100).toFixed(1)}% capacity (${avail.toLocaleString()} ETB).`);
+        alerts.push(pAlerts[0]);
+      }
+      providerAlerts[key] = { availableETB: avail, alertLevel: pAlertLevel, alerts: pAlerts };
+    }
+
     res.json({
-      pool: 'settlement_etb', availableETB,
+      pool:                  'settlement_etb',
+      availableETB,
+      capacityETB:           REPLENISH_TARGET,
+      utilizedPct:           parseFloat((((REPLENISH_TARGET - availableETB) / REPLENISH_TARGET) * 100).toFixed(1)),
+      alertLevel,
+      alerts:                alerts.length ? alerts : undefined,
       replenishThresholdETB: REPLENISH_THRESHOLD,
       replenishTargetETB:    REPLENISH_TARGET,
-      status: level, autoReplenishEnabled: true,
-      persistence: 'firestore',
-      timestamp: new Date().toISOString(),
+      autoReplenishEnabled:  true,
+      providers:             providerAlerts,
+      persistence:           'firestore',
+      timestamp:             new Date().toISOString(),
     });
   } catch (err: any) {
     res.status(500).json({ error: 'LIQUIDITY_READ_FAILED', message: err.message });
@@ -312,20 +354,71 @@ router.post('/circuit-breaker/reset', requireApiKey, async (req: Request, res: R
 });
 
 // ─── POST /api/v1/simulation/reset ───────────────────────────────────────────
+//
+// Clears all sim_ Firestore collections and resets in-memory circuit breakers.
+// Optional body: { seed: true } — immediately pre-funds the default test wallets
+// so QA scenarios can run without a separate seed call.
 
-router.post('/simulation/reset', requireApiKey, async (_req: Request, res: Response): Promise<void> => {
+router.post('/simulation/reset', requireApiKey, async (req: Request, res: Response): Promise<void> => {
   try {
     await fullReset();
+    const shouldSeed = req.body?.seed === true;
+    const seedResult = shouldSeed ? await seedSimulation() : undefined;
     res.json({
       message:          'Full simulation reset complete. All Firestore sim_ collections cleared.',
       liquidityPoolETB: REPLENISH_TARGET,
       providers:        Object.fromEntries(Object.keys(providers).map(k => [k, 'CLOSED'])),
       persistence:      'firestore',
+      ...(seedResult ? { seed: seedResult } : {}),
+      hint:             shouldSeed
+        ? `Seeded ${seedResult!.seededUsers.length} wallets: ${seedResult!.seededUsers.join(', ')}`
+        : 'Pass { seed: true } to pre-fund test wallets immediately after reset.',
       timestamp:        new Date().toISOString(),
     });
   } catch (err: any) {
     console.error('[SimAPI] /simulation/reset error:', err.message);
     res.status(500).json({ error: 'RESET_FAILED', message: err.message });
+  }
+});
+
+// ─── POST /api/v1/simulation/seed ────────────────────────────────────────────
+//
+// Pre-funds test wallets so QA scenarios start with known, non-zero balances.
+// Idempotent — repeated calls overwrite wallet docs with the specified balances.
+//
+// Body (all optional):
+//   users:    string[]            — user IDs to fund (default: SEED_USERS list)
+//   balances: { EUR, USD, GBP }  — per-user balances (default: 50_000 each)
+//
+// Also tops up the global liquidity pool if it is below REPLENISH_THRESHOLD.
+
+router.post('/simulation/seed', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      users    = SEED_USERS,
+      balances = SEED_BALANCES_PER_CCY,
+    } = (req.body ?? {}) as {
+      users?:    string[];
+      balances?: Record<string, number>;
+    };
+
+    if (!Array.isArray(users) || users.length === 0) {
+      res.status(400).json({ error: 'INVALID_USERS', message: '`users` must be a non-empty array of user ID strings.' });
+      return;
+    }
+    if (typeof balances !== 'object' || Object.keys(balances).length === 0) {
+      res.status(400).json({ error: 'INVALID_BALANCES', message: '`balances` must be a non-empty object (e.g. { EUR: 50000, USD: 50000 }).' });
+      return;
+    }
+
+    const result = await seedSimulation(users, balances);
+    res.status(200).json({
+      message:  `Seeded ${result.seededUsers.length} test wallet(s) successfully.`,
+      ...result,
+    });
+  } catch (err: any) {
+    console.error('[SimAPI] /simulation/seed error:', err.message);
+    res.status(500).json({ error: 'SEED_FAILED', message: err.message });
   }
 });
 

@@ -272,7 +272,8 @@ app.listen(PORT, () => {
   console.log(`    GET  /api/v1/circuit-breaker/status`);
   console.log(`    POST /api/v1/circuit-breaker/trip/:provider  (stripe|chapa|telebirr)`);
   console.log(`    POST /api/v1/circuit-breaker/reset           (restore all to CLOSED)`);
-  console.log(`    POST /api/v1/simulation/reset                (full state wipe)`);
+  console.log(`    POST /api/v1/simulation/reset                (full state wipe; pass { seed: true } to pre-fund wallets)`);
+  console.log(`    POST /api/v1/simulation/seed                 (pre-fund test wallets — idempotent)`);
   console.log('  RESTful Campaign API:');
   console.log(`    POST /api/campaigns/:campaignId/contribute   (RESTful alias, campaignId in URL)`);
 

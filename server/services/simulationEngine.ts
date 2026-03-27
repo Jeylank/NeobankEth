@@ -415,6 +415,13 @@ export async function checkIdempotency(idempotencyKey: string | null | undefined
     }
 
     console.info(`[SimEngine] Route-level idempotency hit key=${idempotencyKey} status=${liveStatus}`);
+
+    // For FAILED records: replay the original error response so the caller gets the
+    // same outcome as the first attempt (idempotency contract — no re-runs).
+    if (liveStatus === 'FAILED' && d.payload) {
+      return { ok: false, status: 422, payload: { duplicate: true, ...(d.payload as Record<string, unknown>) } };
+    }
+
     return {
       ok: true, status: 200,
       payload: {
@@ -687,22 +694,34 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     // FIX A: instanceof check prevents any Stripe / Firestore / network error from
     // being misclassified as INSUFFICIENT_FUNDS or LIQUIDITY_SHORTAGE.
     if (err instanceof SimDomainError) {
+      let failPayload: Record<string, unknown>;
+
       if (err.code === 'INSUFFICIENT_FUNDS') {
-        const { userBalance, requestedAmount, currency } = err.details;
-        return {
-          ok: false, status: 422,
-          payload: SimError.insufficientFunds(userBalance as number, requestedAmount as number, currency as string),
-        };
-      }
-      if (err.code === 'LIQUIDITY_SHORTAGE') {
+        const { userBalance, requestedAmount, currency: ccy } = err.details;
+        failPayload = SimError.insufficientFunds(userBalance as number, requestedAmount as number, ccy as string);
+      } else if (err.code === 'LIQUIDITY_SHORTAGE') {
         const { required, available } = err.details;
-        return {
-          ok: false, status: 422,
-          payload: SimError.liquidityShortage(required as number, available as number),
-        };
+        failPayload = SimError.liquidityShortage(required as number, available as number);
+      } else {
+        failPayload = { error: err.code, message: err.message };
       }
-      // Any other typed domain error
-      return { ok: false, status: 422, payload: { error: err.code, message: err.message } };
+
+      // ── Idempotency failure persistence ─────────────────────────────────────
+      // The Firestore atomic transaction was rolled back, so the idempotency
+      // placeholder was NEVER committed.  Write it NOW — outside the tx — so that
+      // any duplicate submission gets the cached failure instead of re-running.
+      if (idemRef) {
+        void idemRef.set({
+          transactionId: `failed_${safeKey ?? randomUUID()}`,
+          status:  'FAILED',
+          result:  (failPayload.message as string) ?? 'Transaction failed.',
+          payload: failPayload,
+          rawKey,
+          createdAt: admin.firestore.Timestamp.now(),
+        }).catch(ie => console.warn('[SimEngine] Could not persist idem failure (non-critical):', (ie as Error).message));
+      }
+
+      return { ok: false, status: 422, payload: failPayload };
     }
 
     // Infrastructure error (Firestore contention, network, etc.) — log it, return generic
@@ -967,6 +986,71 @@ export async function fullReset(): Promise<void> {
   // Re-initialise global liquidity pool AND per-provider pools
   await Promise.all([resetLiquidityPool(), resetAllProviderLiquidity()]);
   console.info('[SimEngine] Full simulation environment reset complete (including per-provider pools).');
+}
+
+// ─── Simulation Seed — pre-fund test wallets ──────────────────────────────────
+//
+// Writes wallet docs for the given user IDs with the seed balances.
+// This is the recommended setup step after POST /api/v1/simulation/reset.
+//
+// Important: seeding always OVERWRITES the existing wallet so repeated calls are
+// safe (idempotent).  It does NOT reset the global or per-provider liquidity pools
+// — call fullReset() first if you need a completely fresh environment.
+
+export const SEED_USERS = [
+  'sim_user_001', 'sim_user_002', 'sim_user_003',
+  'sim_user_004', 'sim_user_005',
+];
+
+/** Balances written to each test wallet on seed. 50k per currency = ample for any test. */
+export const SEED_BALANCES_PER_CCY: Record<string, number> = {
+  EUR: 50_000,
+  USD: 50_000,
+  GBP: 50_000,
+};
+
+export interface SeedResult {
+  seededUsers: string[];
+  balancesPerUser: Record<string, number>;
+  liquidityETB: number;
+  timestamp: string;
+}
+
+export async function seedSimulation(
+  users  = SEED_USERS,
+  balances: Record<string, number> = SEED_BALANCES_PER_CCY,
+): Promise<SeedResult> {
+  const now     = admin.firestore.Timestamp.now();
+  const batch   = adminDb.batch();
+
+  for (const userId of users) {
+    const ref = adminDb.collection(COL.wallets).doc(userId);
+    batch.set(ref, { userId, balances, updatedAt: now });
+  }
+
+  await batch.commit();
+
+  // Ensure the global liquidity pool is at full capacity after seeding
+  const liqRef = adminDb.collection(COL.liquidity).doc('pool');
+  const liqDoc = await liqRef.get();
+  const currentETB = liqDoc.exists ? (liqDoc.data()!.availableETB as number) : 0;
+  if (currentETB < REPLENISH_THRESHOLD) {
+    await liqRef.set({ availableETB: REPLENISH_TARGET, updatedAt: now });
+    console.info(`[SimEngine] Seed: liquidity pool restored to ${REPLENISH_TARGET.toLocaleString()} ETB`);
+  }
+
+  void audit('SIMULATION_SEEDED', 'system', 'seed', {
+    users, balances, liquidityETB: Math.max(currentETB, REPLENISH_TARGET),
+  });
+
+  console.info(`[SimEngine] Seed complete: ${users.length} wallets funded (${JSON.stringify(balances)})`);
+
+  return {
+    seededUsers:     users,
+    balancesPerUser: balances,
+    liquidityETB:    Math.max(currentETB, REPLENISH_TARGET),
+    timestamp:       new Date().toISOString(),
+  };
 }
 
 // ─── Resume a paused transaction (PENDING_LIQUIDITY or PENDING_REQUOTE) ────────
