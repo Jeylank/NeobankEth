@@ -1,0 +1,160 @@
+🚦 Production Readiness Checklist (Go / No-Go)
+
+1. Financial Integrity (CRITICAL — MUST PASS)
+
+- [ ] Wallet safety invariant enforced (no debit on pending states)
+- [ ] No double-debit or duplicate transaction scenarios
+- [ ] Idempotency fully implemented and validated under concurrency
+- [ ] FX rate integrity enforced (no silent slippage)
+- [ ] Requote flow required for expired or deviated FX (>0.5%)
+- [ ] Transaction atomicity guaranteed (no partial execution)
+
+✅ Go Condition: All checks pass with zero violations
+❌ No-Go: Any single failure
+
+---
+
+2. Deterministic Validation (CRITICAL)
+
+- [ ] All validation scenarios pass (e.g., 9/9 or latest suite)
+- [ ] Safety violations = 0
+- [ ] Integrity score = 100%
+- [ ] Reproducible results across multiple runs
+
+✅ Go Condition: Consistent 100% pass rate
+❌ No-Go: Any intermittent or flaky failure
+
+---
+
+3. Idempotency & Concurrency Safety (CRITICAL)
+
+- [ ] Same request repeated → only one transaction created
+- [ ] Concurrent requests do not create race conditions
+- [ ] Wallet balance remains consistent under load
+- [ ] Idempotency keys enforced at API level
+
+✅ Go Condition: Proven under stress tests
+❌ No-Go: Duplicate or inconsistent outcomes observed
+
+---
+
+4. Liquidity & Failover Handling
+
+- [ ] Liquidity shortage → HTTP 202 + PENDING_LIQUIDITY
+- [ ] No provider pool overdraw
+- [ ] Multi-provider failure handled safely
+- [ ] No transaction loss during provider outage
+
+✅ Go Condition: Graceful degradation verified
+❌ No-Go: Hard failures or partial execution
+
+---
+
+5. FX Handling & Market Safety
+
+- [ ] Quote TTL strictly enforced
+- [ ] Expired quotes never executed
+- [ ] Rate deviation >0.5% triggers requote
+- [ ] User must explicitly confirm new rate
+
+✅ Go Condition: No silent rate changes
+❌ No-Go: Any unacknowledged FX change
+
+---
+
+6. Error Handling & Classification
+
+- [ ] Errors correctly categorized (user / system / provider)
+- [ ] No generic 500 errors for expected failures
+- [ ] Safe fallback states used (202 instead of crash)
+- [ ] Critical errors (e.g., auth failure) trigger alerts
+
+✅ Go Condition: All error paths safe and predictable
+❌ No-Go: Unhandled or destructive errors
+
+---
+
+7. Observability & Logging
+
+- [ ] Every transaction traceable (ID, timestamp, quote ID)
+- [ ] Logs structured and queryable
+- [ ] Correlation IDs across services
+- [ ] Sensitive data not logged
+
+✅ Go Condition: Full traceability achieved
+❌ No-Go: Missing or inconsistent logs
+
+---
+
+8. Stress & Load Readiness
+
+- [ ] System stable under concurrent load (k6 or equivalent)
+- [ ] No financial invariant violations under stress
+- [ ] Acceptable latency (p95/p99 within target)
+- [ ] Error rate within acceptable threshold (<1–2%)
+
+✅ Go Condition: Stable under load
+❌ No-Go: Data inconsistency or crashes
+
+---
+
+9. External Provider Reliability
+
+- [ ] Provider failures handled gracefully
+- [ ] Retry logic correctly applied (only safe cases)
+- [ ] No infinite retry loops
+- [ ] Fallback or queueing implemented
+
+✅ Go Condition: System resilient to provider issues
+❌ No-Go: Funds stuck or lost
+
+---
+
+10. Security & Abuse Protection
+
+- [ ] Rate limiting in place
+- [ ] Replay attack protection (idempotency keys)
+- [ ] Authentication & API keys secured
+- [ ] Input validation enforced
+
+✅ Go Condition: No obvious abuse vectors
+❌ No-Go: Exploitable endpoints
+
+---
+
+11. Deployment & Rollout Strategy
+
+- [ ] Feature flags or kill switch available
+- [ ] Gradual rollout plan defined (beta → scale)
+- [ ] Rollback strategy tested
+- [ ] Monitoring dashboards active
+
+✅ Go Condition: Controlled deployment possible
+❌ No-Go: No rollback or control mechanism
+
+---
+
+🧾 FINAL DECISION
+
+✅ GO (Production Ready)
+
+- All CRITICAL sections pass
+- No safety violations
+- Stress tests confirm stability
+- Observability and rollback in place
+
+❌ NO-GO (Do Not Launch)
+
+- Any financial invariant broken
+- Idempotency failure
+- Wallet inconsistency detected
+- Uncontrolled provider failure behavior
+
+---
+
+🔥 RULE OF THUMB
+
+«In fintech:
+1 critical failure = NO-GO»
+
+There is no “almost ready” when real money is involved.
