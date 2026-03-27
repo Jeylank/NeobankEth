@@ -374,6 +374,9 @@ export interface RemittanceParams {
   userId: string; recipientId: string; amount: number; currency: string;
   type: string; quoteId?: string; metadata?: Record<string, unknown>;
   idempotencyKey?: string | null;
+  /** Bypass the quote/rate-lookup step and use this exact rate.
+   *  Used by PENDING_REQUOTE resume so the rate the user confirmed is the rate applied. */
+  forcedRate?: number;
 }
 
 export interface RemittanceResult { ok: boolean; status: number; payload: Record<string, unknown> }
@@ -442,7 +445,7 @@ export async function checkIdempotency(idempotencyKey: string | null | undefined
 export async function processRemittance(p: RemittanceParams): Promise<RemittanceResult> {
   const {
     userId, recipientId, amount, currency, type,
-    quoteId, metadata = {}, idempotencyKey,
+    quoteId, metadata = {}, idempotencyKey, forcedRate,
   } = p;
   const sourceCcy = currency.toUpperCase();
   const destCcy   = 'ETB';
@@ -508,7 +511,13 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   let quoteFreshness: 'locked' | 'auto-refreshed' | 'live' = 'live';
   let quoteDocRef: admin.firestore.DocumentReference | null = null;
 
-  if (quoteId) {
+  // forcedRate is set by PENDING_REQUOTE resume — the user explicitly confirmed
+  // this rate, so we must honour it exactly rather than re-sampling the live feed.
+  if (forcedRate) {
+    rateUsed       = forcedRate;
+    quoteFreshness = 'locked';
+    console.info(`[SimEngine] Using forcedRate=${forcedRate} (confirmed from PENDING_REQUOTE resume)`);
+  } else if (quoteId) {
     const quoteDoc = await adminDb.collection(COL.quotes).doc(quoteId).get();
     if (quoteDoc.exists) {
       const qd         = quoteDoc.data()!;
@@ -875,18 +884,30 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     }
   }
 
-  // ── STEP 6: All providers exhausted → classify, release reservation ──────────
+  // ── STEP 6: All providers exhausted → queue for retry ────────────────────────
+  //
+  // Whether providers failed due to insufficient per-provider liquidity, open
+  // circuit breakers, or execution errors, the transaction is ALWAYS queued with
+  // PENDING_LIQUIDITY (202) rather than rejected with a hard error.
+  //
+  // The root-cause reason is preserved in the Firestore record under `failReason`
+  // so operations/treasury teams can diagnose and act (rebalance vs. wait for
+  // provider recovery) without the user receiving a confusing hard failure.
   if (!selectedProvider) {
-    // Classify failure: if ANY provider was skipped due to per-provider liquidity
-    // (not circuit_open), the correct response is PENDING_LIQUIDITY.
-    // If ALL skips were due to circuit_open, it's a classic PROVIDER_UNAVAILABLE.
     const hasLiquidityFailure = providerAttempts.some(
       a => !a.success && a.reason === 'insufficient_provider_liquidity'
     );
+    const allCircuitsOpen = providerAttempts.length > 0 && providerAttempts.every(
+      a => !a.success && a.reason === 'circuit_open'
+    );
 
-    // Determine transaction status for the rollback
-    const rollbackStatus = hasLiquidityFailure ? 'PENDING_LIQUIDITY' : 'FAILED';
-    const rollbackReason = hasLiquidityFailure ? 'PENDING_LIQUIDITY'  : 'PROVIDER_UNAVAILABLE';
+    // Always queue — never hard-fail on all-provider exhaustion
+    const rollbackStatus = 'PENDING_LIQUIDITY';
+    const rollbackReason = hasLiquidityFailure
+      ? 'LIQUIDITY_EXHAUSTED'
+      : allCircuitsOpen
+        ? 'PROVIDER_UNAVAILABLE'
+        : 'ALL_PROVIDERS_FAILED';
 
     try {
       await adminDb.runTransaction(async (t) => {
@@ -925,24 +946,23 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
       );
     }
 
-    if (hasLiquidityFailure) {
-      void audit('liquidity_pending', 'transaction', txId, {
-        userId, requiredETB: destinationAmount, providerAttempts,
-        message: 'No provider has sufficient per-provider liquidity; transfer queued.',
-      });
-      console.info(`[SimEngine] PENDING_LIQUIDITY: txId=${txId} queued for retry`);
-      return {
-        ok:      true,
-        status:  202,
-        payload: SimError.pendingLiquidity(txId, 30),
-      };
-    }
-
-    // Classic PROVIDER_UNAVAILABLE (all circuits open)
-    void audit('TRANSACTION_FAILED', 'transaction', txId, {
-      userId, reason: 'PROVIDER_UNAVAILABLE', type, providerAttempts,
+    // All providers failed — queue for retry regardless of failure reason.
+    void audit('liquidity_pending', 'transaction', txId, {
+      userId, requiredETB: destinationAmount, providerAttempts,
+      failReason: rollbackReason,
+      message: allCircuitsOpen
+        ? 'All provider circuits open; transfer queued until providers recover.'
+        : 'No provider has sufficient liquidity; transfer queued for retry.',
     });
-    return { ok: false, status: 503, payload: SimError.providerOutage() };
+    console.info(
+      `[SimEngine] PENDING_LIQUIDITY (${rollbackReason}): txId=${txId} queued. ` +
+      `Attempts: ${providerAttempts.map(a => `${a.provider}=${a.reason ?? 'ok'}`).join(', ')}`
+    );
+    return {
+      ok:      true,
+      status:  202,
+      payload: SimError.pendingLiquidity(txId, allCircuitsOpen ? 5 : 30),
+    };
   }
 
   // ── STEP 7: Update transaction → PROCESSING (provider accepted) ───────────────
@@ -1181,9 +1201,20 @@ export async function resumeTransaction(
 
     const result = await processRemittance({
       userId, recipientId, amount, currency, type,
-      metadata: { ...(metadata ?? {}), resumedFromTxId: transactionId, forcedRate: freshRate },
-      quoteId: undefined,   // skip quote lookup — fresh rate already confirmed
+      metadata:    { ...(metadata ?? {}), resumedFromTxId: transactionId },
+      quoteId:     undefined,   // skip quote lookup — fresh rate already confirmed
+      forcedRate:  typeof freshRate === 'number' ? freshRate : undefined,
     });
+
+    // If the resume attempt itself was queued (unlikely but defensive)
+    // mark the original PENDING_REQUOTE tx as cancelled so the user
+    // can re-confirm once providers recover.
+    if (result.status === 202) {
+      await txRef.update({
+        status:    'PENDING_REQUOTE',
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+    }
 
     return { ok: result.ok, status: result.status, payload: result.payload as Record<string, unknown> };
   }
@@ -1213,6 +1244,31 @@ export async function resumeTransaction(
     metadata:   { ...(resumeData.metadata ?? {}), resumedFromTxId: transactionId },
     quoteId:    undefined,  // use live rate on retry
   });
+
+  // Reconcile the original PENDING_LIQUIDITY record based on the retry outcome.
+  if (result.status >= 200 && result.status < 300 && result.status !== 202) {
+    // Retry succeeded — close out the original record
+    await txRef.update({
+      status:       'COMPLETED',
+      resumedTxId:  (result.payload as any)?.transactionId ?? null,
+      updatedAt:    admin.firestore.Timestamp.now(),
+    });
+  } else if (result.status === 202) {
+    // Retry was queued again (providers still unavailable) — reset so the next
+    // resume attempt is not blocked by a stale PROCESSING status.
+    const prevRetryCount = typeof tx.retryCount === 'number' ? tx.retryCount : 0;
+    await txRef.update({
+      status:     'PENDING_LIQUIDITY',
+      retryCount: prevRetryCount + 1,
+      updatedAt:  admin.firestore.Timestamp.now(),
+    });
+  } else {
+    // Hard failure during retry — mark as FAILED so ops can investigate.
+    await txRef.update({
+      status:    'FAILED',
+      updatedAt: admin.firestore.Timestamp.now(),
+    });
+  }
 
   return { ok: result.ok, status: result.status, payload: result.payload as Record<string, unknown> };
 }
