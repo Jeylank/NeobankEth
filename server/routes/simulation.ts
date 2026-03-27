@@ -29,8 +29,12 @@ import {
   drainAllProviderLiquidity,
 } from '../services/treasuryRouter';
 import {
-  evaluateFraud, type FraudContext,
+  evaluateFraud, type FraudContext, FRAUD_COL,
 } from '../services/fraudEngine';
+import {
+  getRiskConfig, updateRiskConfig, resetRiskConfig, DEFAULT_RISK_CONFIG,
+  forceInvalidateCache,
+} from '../services/riskConfig';
 import { getQuoteState } from '../services/quoteStateMachine';
 import { adminDb } from '../firebaseAdmin';
 
@@ -628,6 +632,243 @@ router.get('/treasury/providers', requireApiKey, readLimiter, async (_req: Reque
     res.json({ providers: snapshot, timestamp: new Date().toISOString() });
   } catch (err: any) {
     console.error('[SimAPI] /treasury/providers error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FRAUD ANALYTICS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── GET /api/v1/fraud/decisions ─────────────────────────────────────────────
+// Query recent fraud decisions with optional filters.
+// Query params:
+//   userId    — filter to a specific user
+//   decision  — ALLOW | REVIEW | BLOCK
+//   limit     — 1–200 (default 50)
+//   since     — ISO timestamp (default: last 24 hours)
+
+router.get('/fraud/decisions', requireApiKey, readLimiter, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId    = req.query.userId   as string | undefined;
+    const decision  = req.query.decision as string | undefined;
+    const limit     = Math.min(200, Math.max(1, parseInt(req.query.limit as string ?? '50', 10) || 50));
+    const since     = req.query.since
+      ? new Date(req.query.since as string)
+      : new Date(Date.now() - 24 * 60 * 60 * 1000); // default: last 24h
+
+    // Single-field queries only (no composite indexes needed).
+    // Apply additional filters in-memory.
+    let query: FirebaseFirestore.Query = adminDb.collection(FRAUD_COL.decisions);
+    if (userId) {
+      query = query.where('userId', '==', userId);
+    }
+    // Fetch extra docs to compensate for in-memory filtering
+    const snap = await query.limit(limit * 4).get();
+
+    const sinceMs = since.getTime();
+    const docs = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter((d: any) => {
+        const ts: number = d.timestamp?.seconds
+          ? d.timestamp.seconds * 1000
+          : (typeof d.timestamp === 'number' ? d.timestamp : 0);
+        if (ts < sinceMs) return false;
+        if (decision && d.decision !== decision) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const ta = a.timestamp?.seconds ?? 0;
+        const tb = b.timestamp?.seconds ?? 0;
+        return tb - ta; // newest first
+      })
+      .slice(0, limit)
+      .map((d: any) => ({
+        decisionId:    d.id,
+        userId:        d.userId,
+        decision:      d.decision,
+        score:         d.score,
+        rulesTriggered: d.rulesTriggered ?? [],
+        amount:        d.amount,
+        currency:      d.currency,
+        recipientId:   d.recipientId,
+        transactionId: d.transactionId,
+        configVersion: d.configVersion,
+        timestamp:     d.timestamp?.seconds
+          ? new Date(d.timestamp.seconds * 1000).toISOString()
+          : null,
+      }));
+
+    res.json({
+      decisions: docs,
+      count:     docs.length,
+      filters:   { userId: userId ?? null, decision: decision ?? null, since: since.toISOString(), limit },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[SimAPI] /fraud/decisions error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ─── GET /api/v1/fraud/stats ──────────────────────────────────────────────────
+// Aggregate fraud statistics for the specified time window.
+// Query params:
+//   since  — ISO timestamp (default: last 24 hours)
+//   userId — optional scope to one user
+
+router.get('/fraud/stats', requireApiKey, readLimiter, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.query.userId as string | undefined;
+    const since  = req.query.since
+      ? new Date(req.query.since as string)
+      : new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    let query: FirebaseFirestore.Query = adminDb.collection(FRAUD_COL.decisions);
+    if (userId) query = query.where('userId', '==', userId);
+    const snap = await query.limit(2000).get(); // cap to avoid runaway reads
+
+    const sinceMs = since.getTime();
+    const docs = snap.docs
+      .map(d => d.data())
+      .filter(d => {
+        const ts: number = d.timestamp?.seconds
+          ? d.timestamp.seconds * 1000
+          : 0;
+        return ts >= sinceMs;
+      });
+
+    // Aggregate counts
+    const counts = { ALLOW: 0, REVIEW: 0, BLOCK: 0 };
+    const ruleCounts: Record<string, number> = {};
+    const scores: number[] = [];
+    const blockedUsers = new Set<string>();
+    const reviewedUsers = new Set<string>();
+
+    for (const d of docs) {
+      const dec = d.decision as 'ALLOW' | 'REVIEW' | 'BLOCK';
+      counts[dec] = (counts[dec] ?? 0) + 1;
+      scores.push(d.score ?? 0);
+      if (dec === 'BLOCK')  blockedUsers.add(d.userId);
+      if (dec === 'REVIEW') reviewedUsers.add(d.userId);
+      for (const rule of (d.rulesTriggered ?? [])) {
+        ruleCounts[rule] = (ruleCounts[rule] ?? 0) + 1;
+      }
+    }
+
+    const total = docs.length;
+    const avgScore = total > 0
+      ? Math.round(scores.reduce((s, n) => s + n, 0) / total * 10) / 10
+      : 0;
+    const maxScore = total > 0 ? Math.max(...scores) : 0;
+
+    const topRules = Object.entries(ruleCounts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([rule, count]) => ({ rule, count, pct: Math.round(count / total * 1000) / 10 }));
+
+    res.json({
+      window: { since: since.toISOString(), userId: userId ?? 'all' },
+      total,
+      decisions: {
+        allow:  counts.ALLOW,
+        review: counts.REVIEW,
+        block:  counts.BLOCK,
+      },
+      rates: {
+        blockRate:  total > 0 ? Math.round(counts.BLOCK  / total * 10000) / 100 : 0,
+        reviewRate: total > 0 ? Math.round(counts.REVIEW / total * 10000) / 100 : 0,
+      },
+      scores: { avg: avgScore, max: maxScore },
+      topRules,
+      uniqueUsers: {
+        blocked:  blockedUsers.size,
+        reviewed: reviewedUsers.size,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[SimAPI] /fraud/stats error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RISK CONFIGURATION TUNING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── GET /api/v1/risk/config ──────────────────────────────────────────────────
+// Returns the currently active risk configuration including rule weights,
+// decision thresholds, and velocity/anomaly limits.
+
+router.get('/risk/config', requireApiKey, readLimiter, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const config = await getRiskConfig();
+    res.json({ config, defaults: DEFAULT_RISK_CONFIG, timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    console.error('[SimAPI] /risk/config GET error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ─── PATCH /api/v1/risk/config ────────────────────────────────────────────────
+// Partially update the live risk configuration.
+// Body: { scores?: {...}, thresholds?: {...}, limits?: {...} }
+// All fields are optional — only provided fields are changed.
+//
+// Example — raise the block threshold to 80:
+//   PATCH /api/v1/risk/config  { "thresholds": { "block": 80 } }
+//
+// Example — increase velocity score and shorten the window to 5 minutes:
+//   PATCH /api/v1/risk/config  { "scores": { "VELOCITY_SPIKE": 40 }, "limits": { "velocityWindowMs": 300000 } }
+
+router.patch('/risk/config', requireApiKey, destructiveLimiter, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scores, thresholds, limits } = req.body ?? {};
+    if (!scores && !thresholds && !limits) {
+      res.status(400).json({
+        error: 'EMPTY_PATCH',
+        message: 'Request body must include at least one of: scores, thresholds, limits.',
+        example: { scores: { VELOCITY_SPIKE: 40 }, thresholds: { block: 75 } },
+      });
+      return;
+    }
+
+    // Validate thresholds if provided
+    if (thresholds) {
+      if (thresholds.block !== undefined && (typeof thresholds.block !== 'number' || thresholds.block < 1)) {
+        res.status(400).json({ error: 'INVALID_THRESHOLD', message: 'thresholds.block must be a positive number.' });
+        return;
+      }
+      if (thresholds.review !== undefined && (typeof thresholds.review !== 'number' || thresholds.review < 1)) {
+        res.status(400).json({ error: 'INVALID_THRESHOLD', message: 'thresholds.review must be a positive number.' });
+        return;
+      }
+      if (thresholds.block !== undefined && thresholds.review !== undefined && thresholds.block <= thresholds.review) {
+        res.status(400).json({ error: 'INVALID_THRESHOLD', message: 'thresholds.block must be greater than thresholds.review.' });
+        return;
+      }
+    }
+
+    const updatedBy = (req.headers['x-updated-by'] as string | undefined) ?? 'api';
+    const config = await updateRiskConfig({ scores, thresholds, limits }, updatedBy);
+    console.info(`[SimAPI] Risk config patched to v${config.version} by ${updatedBy}.`);
+    res.json({ message: 'Risk configuration updated.', config, timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    console.error('[SimAPI] /risk/config PATCH error:', err.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ─── POST /api/v1/risk/config/reset ──────────────────────────────────────────
+// Reset risk configuration to factory defaults.
+
+router.post('/risk/config/reset', requireApiKey, destructiveLimiter, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const updatedBy = (req.headers['x-updated-by'] as string | undefined) ?? 'api';
+    const config = await resetRiskConfig(updatedBy);
+    res.json({ message: 'Risk configuration reset to defaults.', config, timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    console.error('[SimAPI] /risk/config/reset error:', err.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
   }
 });

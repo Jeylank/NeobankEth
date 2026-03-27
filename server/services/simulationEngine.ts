@@ -1090,9 +1090,12 @@ export async function fullReset(): Promise<void> {
     })
   );
   resetAllProviders();
-  // Re-initialise global liquidity pool AND per-provider pools
+  // Re-initialise global liquidity pool, per-provider pools, fraud collections,
+  // and risk config cache (reset to defaults without a Firestore write).
+  const { forceInvalidateCache } = await import('./riskConfig');
+  forceInvalidateCache();
   await Promise.all([resetLiquidityPool(), resetAllProviderLiquidity(), resetFraudCollections()]);
-  console.info('[SimEngine] Full simulation environment reset complete (including per-provider and fraud collections).');
+  console.info('[SimEngine] Full simulation environment reset complete (including per-provider, fraud collections, and risk config cache).');
 }
 
 // ─── Simulation Seed — pre-fund test wallets ──────────────────────────────────
