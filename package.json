@@ -14,7 +14,8 @@
     "worker:recurring-support": "ts-node --project scripts/tsconfig.json scripts/runRecurringSupportWorker.ts",
     "server:admin": "ts-node --transpile-only --project server/tsconfig.json server/index.ts",
     "test:risk": "jest server/tests/riskControls.test.ts --no-coverage",
-    "test": "jest --no-coverage"
+    "test": "jest --no-coverage",
+    "test:load": "ts-node --transpile-only --project server/tsconfig.json server/tests/concurrentLoad.ts"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.1.3",
@@ -40,6 +41,7 @@
     "expo-splash-screen": "~0.26.4",
     "expo-status-bar": "~1.11.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
     "firebase": "^10.14.1",
     "firebase-admin": "^13.7.0",
     "i18next": "^23.7.16",

@@ -11,6 +11,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { readLimiter, writeLimiter, destructiveLimiter } from '../middleware/rateLimiter';
 import {
   FX_BASE_RATES, jitter, liveRate,
   QUOTE_TTL_MS, QUOTE_BUFFER_MS,
@@ -85,7 +86,7 @@ router.get('/health', (_req: Request, res: Response) => {
 
 // ─── POST /api/v1/fx/quote ────────────────────────────────────────────────────
 
-router.post('/fx/quote', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/fx/quote', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
   const { from, to } = req.body ?? {};
   const f = (from ?? '').toString().toUpperCase();
   const t = (to   ?? '').toString().toUpperCase();
@@ -115,7 +116,7 @@ router.post('/fx/quote', requireApiKey, async (req: Request, res: Response): Pro
 
 // ─── GET /api/v1/fx/quotes ────────────────────────────────────────────────────
 
-router.get('/fx/quotes', requireApiKey, (req: Request, res: Response) => {
+router.get('/fx/quotes', requireApiKey, readLimiter, (req: Request, res: Response) => {
   const from = ((req.query.from as string) ?? '').toUpperCase();
   const to   = ((req.query.to   as string) ?? '').toUpperCase();
   if (from && to) {
@@ -133,7 +134,7 @@ router.get('/fx/quotes', requireApiKey, (req: Request, res: Response) => {
 
 // ─── POST /api/v1/wallet/topup ────────────────────────────────────────────────
 
-router.post('/wallet/topup', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/wallet/topup', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
   const { userId, amount, currency = 'EUR' } = req.body as { userId?: unknown; amount?: unknown; currency?: unknown };
   if (!userId || typeof userId !== 'string') { res.status(400).json({ error: 'INVALID_USER_ID', message: 'userId is required.' }); return; }
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number.' }); return; }
@@ -157,7 +158,7 @@ router.post('/wallet/topup', requireApiKey, async (req: Request, res: Response):
 
 // ─── GET /api/v1/wallet/:userId ───────────────────────────────────────────────
 
-router.get('/wallet/:userId', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.get('/wallet/:userId', requireApiKey, readLimiter, async (req: Request, res: Response): Promise<void> => {
   const { userId } = req.params;
   try {
     // Try Firestore app wallet first (real wallet), fall back to sim wallet
@@ -177,7 +178,7 @@ router.get('/wallet/:userId', requireApiKey, async (req: Request, res: Response)
 
 // ─── POST /api/v1/remittance/initiate ─────────────────────────────────────────
 
-router.post('/remittance/initiate', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/remittance/initiate', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
   // FIX B: Idempotency check runs FIRST, before any field validation.
   // A duplicate request with a missing/invalid field must still return the
   // cached response (HTTP 200), not a 400 validation error.
@@ -201,7 +202,7 @@ router.post('/remittance/initiate', requireApiKey, async (req: Request, res: Res
 
 // ─── POST /api/v1/campaign/contribute ────────────────────────────────────────
 
-router.post('/campaign/contribute', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/campaign/contribute', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
   // FIX B: Idempotency check before field validation
   const idempotencyKey = extractIdempotencyKey(req.headers as any, req.body ?? {});
   const cached = await checkIdempotency(idempotencyKey);
@@ -223,7 +224,7 @@ router.post('/campaign/contribute', requireApiKey, async (req: Request, res: Res
 
 // ─── POST /api/v1/recurring/process ──────────────────────────────────────────
 
-router.post('/recurring/process', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/recurring/process', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
   // FIX B: Idempotency check before field validation
   const idempotencyKey =
     extractIdempotencyKey(req.headers as any, req.body ?? {}) ??
@@ -247,7 +248,7 @@ router.post('/recurring/process', requireApiKey, async (req: Request, res: Respo
 
 // ─── GET /api/v1/remittance/:txId ────────────────────────────────────────────
 
-router.get('/remittance/:txId', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.get('/remittance/:txId', requireApiKey, readLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const tx = await getOrAgeTx(req.params.txId);
     if (!tx) { res.status(404).json({ error: 'NOT_FOUND', message: `Transaction ${req.params.txId} not found.` }); return; }
@@ -268,7 +269,7 @@ router.get('/remittance/:txId', requireApiKey, async (req: Request, res: Respons
 const ALERT_LOW_THRESHOLD      = REPLENISH_TARGET * 0.20;  // 10M ETB
 const ALERT_CRITICAL_THRESHOLD = REPLENISH_TARGET * 0.10;  // 5M ETB
 
-router.get('/liquidity', requireApiKey, async (_req: Request, res: Response): Promise<void> => {
+router.get('/liquidity', requireApiKey, readLimiter, async (_req: Request, res: Response): Promise<void> => {
   try {
     const availableETB     = await getLiquidityETB();
     const providerLiquidity = await getProviderLiquidityAll();
@@ -320,7 +321,7 @@ router.get('/liquidity', requireApiKey, async (_req: Request, res: Response): Pr
 
 // ─── GET /api/v1/circuit-breaker/status ──────────────────────────────────────
 
-router.get('/circuit-breaker/status', requireApiKey, (_req: Request, res: Response) => {
+router.get('/circuit-breaker/status', requireApiKey, readLimiter, (_req: Request, res: Response) => {
   const now = Date.now();
   const status = Object.fromEntries(Object.entries(providers).map(([key, p]) => [key, {
     name: p.name, state: p.open ? 'OPEN' : 'CLOSED', failures: p.failures,
@@ -332,7 +333,7 @@ router.get('/circuit-breaker/status', requireApiKey, (_req: Request, res: Respon
 
 // ─── POST /api/v1/circuit-breaker/trip/:provider ─────────────────────────────
 
-router.post('/circuit-breaker/trip/:provider', requireApiKey, (req: Request, res: Response) => {
+router.post('/circuit-breaker/trip/:provider', requireApiKey, destructiveLimiter, (req: Request, res: Response) => {
   const key = req.params.provider.toLowerCase();
   if (!tripProvider(key)) {
     res.status(404).json({ error: 'UNKNOWN_PROVIDER', message: `Unknown provider '${key}'.`, available: Object.keys(providers) });
@@ -344,7 +345,7 @@ router.post('/circuit-breaker/trip/:provider', requireApiKey, (req: Request, res
 
 // ─── POST /api/v1/circuit-breaker/reset ──────────────────────────────────────
 
-router.post('/circuit-breaker/reset', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/circuit-breaker/reset', requireApiKey, destructiveLimiter, async (req: Request, res: Response): Promise<void> => {
   const doLiquidity = (req.body?.resetLiquidity !== false);
   resetAllProviders();
   if (doLiquidity) await resetLiquidityPool();
@@ -364,7 +365,7 @@ router.post('/circuit-breaker/reset', requireApiKey, async (req: Request, res: R
 // Optional body: { seed: true } — immediately pre-funds the default test wallets
 // so QA scenarios can run without a separate seed call.
 
-router.post('/simulation/reset', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/simulation/reset', requireApiKey, destructiveLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     await fullReset();
     const shouldSeed = req.body?.seed === true;
@@ -397,7 +398,7 @@ router.post('/simulation/reset', requireApiKey, async (req: Request, res: Respon
 //
 // Also tops up the global liquidity pool if it is below REPLENISH_THRESHOLD.
 
-router.post('/simulation/seed', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/simulation/seed', requireApiKey, destructiveLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       users    = SEED_USERS,
@@ -439,7 +440,7 @@ router.post('/simulation/seed', requireApiKey, async (req: Request, res: Respons
 //
 // Restore with POST /api/v1/simulation/reset or POST /api/v1/simulation/reset + { seed: true }.
 
-router.post('/simulation/drain', requireApiKey, async (_req: Request, res: Response): Promise<void> => {
+router.post('/simulation/drain', requireApiKey, destructiveLimiter, async (_req: Request, res: Response): Promise<void> => {
   try {
     const pools = await drainAllProviderLiquidity();
     res.json({
@@ -460,7 +461,7 @@ router.post('/simulation/drain', requireApiKey, async (_req: Request, res: Respo
 // the quote along with a rate comparison. The client uses this to decide whether
 // to show the "Rate Changed — Confirm" modal.
 
-router.post('/quote/refresh', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/quote/refresh', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
   const { quoteId, sourceCcy = 'EUR' } = req.body ?? {};
   if (!quoteId || typeof quoteId !== 'string') {
     res.status(400).json({ error: 'MISSING_FIELD', message: "'quoteId' is required." });
@@ -512,7 +513,7 @@ router.post('/quote/refresh', requireApiKey, async (req: Request, res: Response)
 //   { transactionId }                           → retry (action defaults to "retry")
 //   { transactionId, action: "cancel" }         → cancel the transfer
 
-router.post('/remittance/resume', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+router.post('/remittance/resume', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
   const { transactionId, action = 'retry' } = req.body ?? {};
 
   if (!transactionId || typeof transactionId !== 'string') {
@@ -542,7 +543,7 @@ router.post('/remittance/resume', requireApiKey, async (req: Request, res: Respo
 // ─── GET /api/v1/treasury/providers ──────────────────────────────────────────
 // Per-provider liquidity snapshot (admin-facing).
 
-router.get('/treasury/providers', requireApiKey, async (_req: Request, res: Response): Promise<void> => {
+router.get('/treasury/providers', requireApiKey, readLimiter, async (_req: Request, res: Response): Promise<void> => {
   try {
     const liquidityMap = await getProviderLiquidityAll();
     const snapshot = Object.entries(liquidityMap).map(([key, availableETB]) => ({

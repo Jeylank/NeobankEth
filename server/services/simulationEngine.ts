@@ -669,8 +669,26 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
 
   try {
     await adminDb.runTransaction(async (t) => {
-      // Read wallet and liquidity pool atomically
-      const [walletDoc, liqDoc] = await Promise.all([t.get(walletRef), t.get(liqRef)]);
+      // Read wallet, liquidity pool, and idempotency record atomically.
+      // Including idemRef in the read set means Firestore will ABORT and retry any
+      // concurrent transaction that tries to claim the same idempotency key — only
+      // one transaction can win, eliminating the check-then-act race condition.
+      const reads = await Promise.all([
+        t.get(walletRef),
+        t.get(liqRef),
+        idemRef ? t.get(idemRef) : Promise.resolve(null),
+      ]);
+      const [walletDoc, liqDoc, idemDocInTx] = reads;
+
+      // If another concurrent request already claimed this key (PENDING or SUCCESS),
+      // abort this transaction immediately — the winner's result will be replayed.
+      if (idemRef && idemDocInTx?.exists) {
+        throw new SimDomainError(
+          'IDEMPOTENCY_CLAIMED',
+          'This idempotency key was already claimed by a concurrent request.',
+          { rawKey },
+        );
+      }
 
       const balances = walletDoc.exists
         ? (walletDoc.data()!.balances as Record<string, number>)
@@ -746,6 +764,26 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
     // FIX A: instanceof check prevents any Stripe / Firestore / network error from
     // being misclassified as INSUFFICIENT_FUNDS or LIQUIDITY_SHORTAGE.
     if (err instanceof SimDomainError) {
+      // Concurrent request already owns this idempotency key — replay its result.
+      // The winner may still be processing (PENDING), so we wait briefly then poll.
+      if (err.code === 'IDEMPOTENCY_CLAIMED') {
+        await new Promise(r => setTimeout(r, 350));
+        const cached = await checkIdempotency(rawKey);
+        if (cached) {
+          console.info(`[SimEngine] Idempotency replay for key=${rawKey} after concurrent claim`);
+          return cached;
+        }
+        // Winner hasn't written its final result yet — tell caller to poll
+        return {
+          ok: true, status: 202,
+          payload: {
+            error:   'CONCURRENT_ACCEPTED',
+            message: 'A concurrent request with the same idempotency key is being processed.',
+            hint:    'Poll GET /api/v1/remittance/{transactionId} for the final status.',
+          },
+        };
+      }
+
       let failPayload: Record<string, unknown>;
 
       if (err.code === 'INSUFFICIENT_FUNDS') {

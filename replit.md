@@ -32,6 +32,9 @@ The application is built using Expo SDK 50, React Native 0.73, React Navigation 
 -   **Stripe Payment Integration:** Utilizes Stripe Payment Intents for card top-ups, with PCI compliance, webhook handling, and secure client-side integration.
 -   **Simulation Engine:** A shared engine for processing remittances and contributions with a 9-step QA-compliant transaction flow and robust error handling.
 -   **Caching:** Type-safe in-memory TTL cache used for system config, FX provider health, and FX quote deduplication.
+-   **Rate Limiting:** Tiered per-API-key rate limiting on all simulation endpoints: read (120/min), write (30/min), destructive (10/min). Returns 429 with `retryAfterSeconds`. Middleware: `server/middleware/rateLimiter.ts`.
+-   **Concurrent Idempotency Safety:** Idempotency key is now read INSIDE the Firestore atomic transaction alongside the wallet and liquidity pool. This prevents the check-then-act race condition — only one concurrent claimant wins; losers replay the winner's result.
+-   **Concurrent Load Test:** `server/tests/concurrentLoad.ts` — validates financial invariants under 20 concurrent transactions across 5 users: unique txId guarantee, no double-debit, no wallet overdraw, idempotency under concurrency (10 parallel same-key requests → 1 txId), and rate limiter engagement. Run with `npm run test:load`.
 
 ## External Dependencies
 -   **Firebase:** Authentication, Firestore (database), Firebase Storage.
