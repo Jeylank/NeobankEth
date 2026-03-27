@@ -1,0 +1,193 @@
+You are a senior backend engineer working on a fintech remittance system.
+
+Your task is to IMPLEMENT a real-time fraud detection layer into an existing Node.js + TypeScript backend (Express + Firestore/DB), WITHOUT breaking existing financial safety guarantees.
+
+---
+
+CONTEXT
+
+The system already has:
+
+- Deterministic validation (9+ scenarios passing)
+- Wallet safety invariant (no debit on pending states)
+- Idempotency (fixed under concurrency)
+- Rate limiting
+- Remittance engine ("simulationEngine.ts" or similar)
+
+Transactions currently flow like:
+
+initiate → validate → execute → complete
+
+---
+
+OBJECTIVE
+
+Add a FRAUD DETECTION LAYER that evaluates every remittance BEFORE execution.
+
+The fraud engine must return:
+
+- ALLOW → continue transaction
+- REVIEW → return 202 PENDING_REVIEW (no wallet debit)
+- BLOCK → return 403 FRAUD_BLOCKED (no wallet debit)
+
+---
+
+CRITICAL SAFETY RULES (DO NOT VIOLATE)
+
+1. Fraud layer MUST NOT:
+   
+   - debit wallets
+   - mutate balances
+   - execute transactions
+
+2. Fraud must run BEFORE transaction execution
+
+3. Wallet safety invariant must remain intact
+
+---
+
+IMPLEMENTATION TASKS
+
+1. Create Fraud Engine Module
+
+Create file:
+server/services/fraudEngine.ts
+
+Implement:
+
+- evaluateFraud(context)
+- scoring system (rules-based)
+- returns:
+  {
+  decision: "ALLOW" | "REVIEW" | "BLOCK",
+  score: number,
+  rulesTriggered: string[]
+  }
+
+---
+
+2. FRAUD RULES (MVP)
+
+Implement at least these:
+
+- NEW_DEVICE → +20
+- NEW_RECIPIENT → +15
+- AMOUNT_ANOMALY (>2.5x user avg) → +25
+- VELOCITY_SPIKE (>3 tx in 10 min) → +30
+- FAILED_LOGIN_BURST → +20
+- GEO_MISMATCH → +25
+
+Decision thresholds:
+
+- score >= 60 → BLOCK
+- score >= 30 → REVIEW
+- else → ALLOW
+
+---
+
+3. Integrate Into Remittance Flow
+
+Inside remittance initiate handler:
+
+- Build fraud context (userId, amount, recipientId, etc.)
+- Call evaluateFraud()
+- Branch logic:
+
+IF BLOCK:
+return 403 FRAUD_BLOCKED
+
+IF REVIEW:
+return 202 PENDING_REVIEW
+
+IF ALLOW:
+continue existing execution flow
+
+---
+
+4. Add New Transaction States
+
+Support:
+
+- PENDING_REVIEW
+- BLOCKED_FRAUD
+
+---
+
+5. Persist Fraud Decisions
+
+Create collection/table:
+
+fraud_decisions
+
+Store:
+
+- userId
+- transactionId (if exists)
+- score
+- rulesTriggered
+- decision
+- timestamp
+
+---
+
+6. Add Logging
+
+Log every fraud decision:
+
+console or structured logger:
+
+[FRAUD] user=... score=... decision=... rules=[...]
+
+---
+
+7. OPTIONAL (if easy)
+
+Add simple in-memory or Redis counters:
+
+- transactions per user (last 10 min)
+- failed login count
+
+---
+
+TESTING REQUIREMENTS
+
+Add basic tests:
+
+1. High-risk input → BLOCK → wallet unchanged
+2. Medium-risk → REVIEW → no debit
+3. Normal → ALLOW → transaction succeeds
+
+---
+
+CODE REQUIREMENTS
+
+- Use TypeScript
+- Keep code modular
+- Do not break existing tests
+- Do not modify wallet logic
+- Keep fraud layer isolated
+
+---
+
+OUTPUT
+
+Generate:
+
+1. fraudEngine.ts
+2. Integration changes in remittance handler
+3. Example fraud context builder
+4. Minimal tests or usage examples
+
+---
+
+GOAL
+
+Add fraud protection WITHOUT breaking:
+
+- idempotency
+- wallet safety
+- deterministic validation
+
+This must remain a SAFE, NON-DESTRUCTIVE layer.
+
+Focus on clean integration and correctness, not complexity.

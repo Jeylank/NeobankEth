@@ -1075,8 +1075,14 @@ async function batchDelete(collection: string, limit = 100): Promise<number> {
 }
 
 export async function fullReset(): Promise<void> {
+  // Simulation collections + fraud collections (imported lazily to avoid circular refs)
+  const { resetFraudCollections } = await import('./fraudEngine');
+  const allCols = [
+    ...Object.values(COL),
+    // fraud collections are cleared by resetFraudCollections() below
+  ];
   await Promise.all(
-    Object.values(COL).map(async (col) => {
+    allCols.map(async (col) => {
       let deleted = 0;
       let batch: number;
       do { batch = await batchDelete(col); deleted += batch; } while (batch > 0);
@@ -1085,8 +1091,8 @@ export async function fullReset(): Promise<void> {
   );
   resetAllProviders();
   // Re-initialise global liquidity pool AND per-provider pools
-  await Promise.all([resetLiquidityPool(), resetAllProviderLiquidity()]);
-  console.info('[SimEngine] Full simulation environment reset complete (including per-provider pools).');
+  await Promise.all([resetLiquidityPool(), resetAllProviderLiquidity(), resetFraudCollections()]);
+  console.info('[SimEngine] Full simulation environment reset complete (including per-provider and fraud collections).');
 }
 
 // ─── Simulation Seed — pre-fund test wallets ──────────────────────────────────

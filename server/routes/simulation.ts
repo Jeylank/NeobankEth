@@ -28,6 +28,9 @@ import {
   PROVIDER_LIQUIDITY_DEFAULTS,
   drainAllProviderLiquidity,
 } from '../services/treasuryRouter';
+import {
+  evaluateFraud, type FraudContext,
+} from '../services/fraudEngine';
 import { getQuoteState } from '../services/quoteStateMachine';
 import { adminDb } from '../firebaseAdmin';
 
@@ -192,6 +195,39 @@ router.post('/remittance/initiate', requireApiKey, writeLimiter, async (req: Req
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number.' }); return; }
   if (!FX_BASE_RATES[(currency as string).toUpperCase()]) { res.status(400).json({ error: 'UNSUPPORTED_CURRENCY', message: `Currency ${currency} is not supported.` }); return; }
 
+  // ── Fraud gate — runs BEFORE any wallet debit ──────────────────────────────
+  const fraudCtx: FraudContext = {
+    userId, recipientId, amount,
+    currency: (currency as string).toUpperCase(),
+    type: 'standard',
+    deviceId:  req.body?.deviceId  ?? req.headers['x-device-id'] as string | undefined,
+    ipAddress: (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+               ?? req.socket.remoteAddress,
+    userAgent: req.headers['user-agent'],
+    metadata,
+  };
+  const fraud = await evaluateFraud(fraudCtx);
+  if (fraud.decision === 'BLOCK') {
+    res.status(403).json({
+      error:   'FRAUD_BLOCKED',
+      message: 'Transaction blocked by fraud risk controls.',
+      score:   fraud.score,
+      rules:   fraud.rulesTriggered,
+      decisionId: fraud.decisionId,
+    });
+    return;
+  }
+  if (fraud.decision === 'REVIEW') {
+    res.status(202).json({
+      status:   'PENDING_REVIEW',
+      message:  'Transaction queued for fraud review. Wallet not debited.',
+      score:    fraud.score,
+      rules:    fraud.rulesTriggered,
+      decisionId: fraud.decisionId,
+    });
+    return;
+  }
+
   const result = await processRemittance({
     userId, recipientId, amount,
     currency: (currency as string).toUpperCase(),
@@ -213,6 +249,26 @@ router.post('/campaign/contribute', requireApiKey, writeLimiter, async (req: Req
   if (!campaignId || typeof campaignId !== 'string') { res.status(400).json({ error: 'INVALID_CAMPAIGN_ID', message: 'campaignId is required.' }); return; }
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number.' }); return; }
   if (!purpose || typeof purpose !== 'string') { res.status(400).json({ error: 'MISSING_PURPOSE', message: 'purpose is required for campaign contributions (AML compliance).' }); return; }
+
+  // ── Fraud gate ──────────────────────────────────────────────────────────────
+  const fraudCtx: FraudContext = {
+    userId, recipientId: `campaign:${campaignId}`, amount,
+    currency: (currency as string).toUpperCase(),
+    type: 'campaign_contribution',
+    deviceId:  req.body?.deviceId ?? req.headers['x-device-id'] as string | undefined,
+    ipAddress: (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+               ?? req.socket.remoteAddress,
+    userAgent: req.headers['user-agent'],
+  };
+  const fraud = await evaluateFraud(fraudCtx);
+  if (fraud.decision === 'BLOCK') {
+    res.status(403).json({ error: 'FRAUD_BLOCKED', message: 'Contribution blocked by fraud risk controls.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
+    return;
+  }
+  if (fraud.decision === 'REVIEW') {
+    res.status(202).json({ status: 'PENDING_REVIEW', message: 'Contribution queued for fraud review. Wallet not debited.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
+    return;
+  }
 
   const result = await processRemittance({
     userId, recipientId: `campaign:${campaignId}`, amount,
@@ -237,6 +293,26 @@ router.post('/recurring/process', requireApiKey, writeLimiter, async (req: Reque
   if (!scheduleId || typeof scheduleId !== 'string') { res.status(400).json({ error: 'INVALID_SCHEDULE_ID', message: 'scheduleId is required.' }); return; }
   if (!recipientId || typeof recipientId !== 'string') { res.status(400).json({ error: 'INVALID_RECIPIENT', message: 'recipientId is required.' }); return; }
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number.' }); return; }
+
+  // ── Fraud gate ──────────────────────────────────────────────────────────────
+  const fraudCtx: FraudContext = {
+    userId, recipientId, amount,
+    currency: (currency as string).toUpperCase(),
+    type: 'recurring_support',
+    deviceId:  req.body?.deviceId ?? req.headers['x-device-id'] as string | undefined,
+    ipAddress: (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+               ?? req.socket.remoteAddress,
+    userAgent: req.headers['user-agent'],
+  };
+  const fraud = await evaluateFraud(fraudCtx);
+  if (fraud.decision === 'BLOCK') {
+    res.status(403).json({ error: 'FRAUD_BLOCKED', message: 'Recurring payment blocked by fraud risk controls.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
+    return;
+  }
+  if (fraud.decision === 'REVIEW') {
+    res.status(202).json({ status: 'PENDING_REVIEW', message: 'Recurring payment queued for fraud review. Wallet not debited.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
+    return;
+  }
 
   const result = await processRemittance({
     userId, recipientId, amount,
