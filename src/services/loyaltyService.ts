@@ -111,7 +111,7 @@ class LoyaltyService {
       const referralCode = this.generateReferralCode(userId);
       const defaultInfo: ReferralInfo = {
         referralCode,
-        referralLink: `https://habeshare.com/ref/${referralCode}`,
+        referralLink: `https://sumsuma.com/ref/${referralCode}`,
         totalReferrals: 0,
         successfulReferrals: 0,
         pendingReferrals: 0,

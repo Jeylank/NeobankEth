@@ -1,7 +1,7 @@
 /**
  * AdminSystemMonitorScreen.tsx
  * ─────────────────────────────
- * Production system health monitoring for Habeshare admins.
+ * Production system health monitoring for Sumsuma admins.
  *
  * Shows:
  *   • System health (DB status, uptime, env var validation)

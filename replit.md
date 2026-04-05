@@ -1,7 +1,7 @@
-# Habeshare Mobile App
+# Sumsuma Mobile App
 
 ## Overview
-Habeshare is a non-custodial mobile banking application for the Ethiopian diaspora, built with Expo React Native, offering web support. It serves as an intermediary for financial services such as remittance tracking, bill payments, and KYC verification, processed through licensed Ethiopian financial institutions. The platform aims to simplify financial interactions with Ethiopia, providing features like family support automation, group funding (Family Circle, Support Campaigns), and multi-currency management with transparent FX services. The project's vision is to establish a secure, comprehensive financial bridge to Ethiopia without directly holding user funds.
+Sumsuma is a non-custodial mobile banking application for the Ethiopian diaspora, built with Expo React Native, offering web support. It serves as an intermediary for financial services such as remittance tracking, bill payments, and KYC verification, processed through licensed Ethiopian financial institutions. The platform aims to simplify financial interactions with Ethiopia, providing features like family support automation, group funding (Family Circle, Support Campaigns), and multi-currency management with transparent FX services. The project's vision is to establish a secure, comprehensive financial bridge to Ethiopia without directly holding user funds.
 
 ## User Preferences
 I want to interact with you in a clear and concise manner. Prioritize high-level architectural and design decisions over minute implementation details. When proposing changes or explaining concepts, focus on the 'why' before the 'how'. For development tasks, I prefer an iterative approach, with clear checkpoints and opportunities for feedback. Do not introduce new external dependencies or significant architectural changes without prior discussion and approval.
@@ -12,7 +12,7 @@ The application is built using Expo SDK 50, React Native 0.73, React Navigation 
 **Core Features:**
 -   **User Management & KYC:** Firebase-backed authentication, phone number validation, and ID document scanning.
 -   **Multi-Language Support:** Internationalization for English, Amharic, Oromo, and Tigrinya.
--   **Non-Custodial Financial Model:** Habeshare intermediates transactions and provides status summaries.
+-   **Non-Custodial Financial Model:** Sumsuma intermediates transactions and provides status summaries.
 -   **Family Support & Group Funding:** Features like Family Wallet, Family Request, Recurring Support Automation, Family Circle, and Support Campaigns.
 -   **Multi-Currency Wallet:** Ledger-based architecture for EUR/USD/GBP, supporting top-ups via Card, Chapa, and Telebirr.
 -   **Transparent FX Services:** Displays live foreign exchange rates, rate calculator, and quick conversion.

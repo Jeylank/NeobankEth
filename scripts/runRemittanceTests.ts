@@ -1,10 +1,10 @@
 /**
  * scripts/runRemittanceTests.ts
  *
- * Habeshare Automated Remittance Test Runner
+ * Sumsuma Automated Remittance Test Runner
  * ------------------------------------------
  * Simulates the full lifecycle of remittance transactions in the
- * Habeshare non-custodial partner model. Habeshare does NOT hold
+ * Sumsuma non-custodial partner model. Sumsuma does NOT hold
  * funds — all balances and payouts are processed by licensed
  * Ethiopian financial institutions.
  *
@@ -140,7 +140,7 @@ function createTestUser(
   const uid = generateId('USR');
   const user: TestUser = {
     uid,
-    email: email ?? `${uid.toLowerCase()}@test.habeshare.com`,
+    email: email ?? `${uid.toLowerCase()}@test.sumsuma.com`,
     displayName: name,
     kycStatus: 'unverified',
     role,
@@ -1042,9 +1042,9 @@ async function testFailureLiquidityShortage(): Promise<void> {
 async function main(): Promise<void> {
   console.log('');
   console.log('╔══════════════════════════════════════════════════════════════╗');
-  console.log('║           HABESHARE REMITTANCE TEST RUNNER                  ║');
+  console.log('║           SUMSUMA REMITTANCE TEST RUNNER                  ║');
   console.log('║           Non-Custodial Partner Model                       ║');
-  console.log('║           Habeshare does NOT hold user funds.               ║');
+  console.log('║           Sumsuma does NOT hold user funds.               ║');
   console.log('╚══════════════════════════════════════════════════════════════╝');
   console.log('');
 

@@ -110,19 +110,19 @@ class PaymentGatewayService {
     telebirr: {
       provider: 'telebirr',
       apiBaseUrl: 'https://api.telebirr.com',
-      callbackUrl: 'https://habeshare.com/webhooks/telebirr',
+      callbackUrl: 'https://sumsuma.com/webhooks/telebirr',
       isTestMode: true,
     },
     chapa: {
       provider: 'chapa',
       apiBaseUrl: 'https://api.chapa.co',
-      callbackUrl: 'https://habeshare.com/webhooks/chapa',
+      callbackUrl: 'https://sumsuma.com/webhooks/chapa',
       isTestMode: true,
     },
     santimpay: {
       provider: 'santimpay',
       apiBaseUrl: 'https://api.santimpay.com',
-      callbackUrl: 'https://habeshare.com/webhooks/santimpay',
+      callbackUrl: 'https://sumsuma.com/webhooks/santimpay',
       isTestMode: true,
     },
   };

@@ -427,7 +427,7 @@ async function testRecurringSupport() {
 // ══════════════════════════════════════════════════════
 async function runAll() {
   console.log('╔═══════════════════════════════════════════════════╗');
-  console.log('║   HABESHARE SCENARIO TEST SUITE                  ║');
+  console.log('║   SUMSUMA SCENARIO TEST SUITE                  ║');
   console.log('║   Non-Custodial Partner Model                    ║');
   console.log('╚═══════════════════════════════════════════════════╝');
 

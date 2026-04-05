@@ -1,7 +1,7 @@
 /**
  * errorHandler.ts
  * ────────────────
- * Global error handling for the Habeshare backend worker and API layer.
+ * Global error handling for the Sumsuma backend worker and API layer.
  *
  * Responsibilities:
  *   - Recognise all custom error classes and map them to structured responses

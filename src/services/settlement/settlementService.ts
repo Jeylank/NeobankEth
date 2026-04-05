@@ -1,7 +1,7 @@
 /**
  * settlementService.ts
  * ─────────────────────
- * Main orchestration entry point for the Habeshare Settlement Engine.
+ * Main orchestration entry point for the Sumsuma Settlement Engine.
  *
  * Responsibilities:
  *   - Create settlement obligations after payout completion

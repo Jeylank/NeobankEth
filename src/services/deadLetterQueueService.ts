@@ -1,7 +1,7 @@
 /**
  * deadLetterQueueService.ts
  * ──────────────────────────
- * Retry + Dead Letter Queue (DLQ) for Habeshare background jobs.
+ * Retry + Dead Letter Queue (DLQ) for Sumsuma background jobs.
  *
  * Any job that fails after exhausting retries is moved to the `dead_letter_queue`
  * Firestore collection for manual investigation or replay.

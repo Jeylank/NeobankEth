@@ -1,7 +1,7 @@
 /**
  * reconciliationWorker.ts
  * ───────────────────────
- * Scheduled reconciliation jobs for Habeshare.
+ * Scheduled reconciliation jobs for Sumsuma.
  *
  * In React Native / Expo, these are triggered by:
  *   - admin manual trigger (POST /api/admin/reconciliation/run)

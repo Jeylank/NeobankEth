@@ -1,13 +1,13 @@
 /**
  * treasuryTypes.ts
  * ─────────────────
- * All TypeScript types for the Habeshare Treasury Engine.
+ * All TypeScript types for the Sumsuma Treasury Engine.
  *
  * The Treasury Engine is a READ-MOSTLY, AUDIT-FIRST system.
  * It tracks liquidity, reservations, settlement obligations, and
- * movements for every payout executed through Habeshare partners.
+ * movements for every payout executed through Sumsuma partners.
  *
- * Habeshare is NON-CUSTODIAL — it never holds user funds.
+ * Sumsuma is NON-CUSTODIAL — it never holds user funds.
  * This engine tracks treasury positions at licensed financial partners only.
  */
 

@@ -200,7 +200,7 @@ export default function DashboardScreen() {
             <View style={[s.logoStripe, { backgroundColor: RED }]} />
           </View>
           <View>
-            <Text style={s.headerBrand}>Habeshare</Text>
+            <Text style={s.headerBrand}>Sumsuma</Text>
             {firstName ? (
               <Text style={s.headerGreeting}>{t('dashboard.welcome', { name: firstName })}</Text>
             ) : null}

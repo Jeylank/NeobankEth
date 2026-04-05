@@ -6,7 +6,7 @@
  * Alert types:
  *   SETTLEMENT_OVERDUE   — batch not settled within SLA window
  *   SETTLEMENT_MISMATCH  — partner-reported amount != internal sum
- *   NEGATIVE_EXPOSURE    — Habeshare net exposure goes negative
+ *   NEGATIVE_EXPOSURE    — Sumsuma net exposure goes negative
  *   BATCH_FAILURE        — a settlement batch transitions to FAILED
  *
  * Collection: settlement_alerts/{alertId}
@@ -163,7 +163,7 @@ function _devAlertStubs(): SettlementAlert[] {
       status: 'RESOLVED',
       createdAt: new Date(Date.now() - 172_800_000).toISOString(),
       resolvedAt: new Date(Date.now() - 86_400_000).toISOString(),
-      resolvedBy: 'admin@habeshare.com',
+      resolvedBy: 'admin@sumsuma.com',
     },
   ];
 }

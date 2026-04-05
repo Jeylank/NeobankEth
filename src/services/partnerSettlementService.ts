@@ -1,12 +1,12 @@
 /**
  * partnerSettlementService.ts
  * ────────────────────────────
- * Tracks net financial balances between Habeshare and each payout partner.
+ * Tracks net financial balances between Sumsuma and each payout partner.
  *
  * This service operates on a RUNNING NET BALANCE model:
  *   - inflow  = funds received FROM a partner (e.g. top-up settled by Chapa)
  *   - outflow = funds sent TO a partner (e.g. payout dispatched via Telebirr)
- *   - netBalance = inflow − outflow  (positive = Habeshare is owed; negative = Habeshare owes)
+ *   - netBalance = inflow − outflow  (positive = Sumsuma is owed; negative = Sumsuma owes)
  *
  * IMPORTANT: this is separate from treasury/settlementService.ts which tracks
  * per-payout settlement OBLIGATIONS. This service aggregates totals and

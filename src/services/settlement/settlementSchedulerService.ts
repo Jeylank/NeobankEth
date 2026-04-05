@@ -1,7 +1,7 @@
 /**
  * settlementSchedulerService.ts
  * ───────────────────────────────
- * Automated scheduler for the Habeshare Settlement Engine.
+ * Automated scheduler for the Sumsuma Settlement Engine.
  *
  * Because this is an Expo client app (no persistent server process),
  * the scheduler is triggered in two ways:

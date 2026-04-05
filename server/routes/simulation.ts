@@ -59,7 +59,7 @@ function requireApiKey(req: Request, res: Response, next: () => void): void {
 
 router.get('/health', (_req: Request, res: Response) => {
   res.json({
-    status: 'ok', service: 'habeshare-simulation-api', version: 'v1',
+    status: 'ok', service: 'sumsuma-simulation-api', version: 'v1',
     persistence: 'firestore',
     timestamp: new Date().toISOString(),
     selfHealingFeatures: [
@@ -129,13 +129,13 @@ router.get('/fx/quotes', requireApiKey, readLimiter, (req: Request, res: Respons
   if (from && to) {
     const rate = FX_BASE_RATES[from]?.[to];
     if (!rate) { res.status(404).json({ error: 'PAIR_NOT_FOUND', message: `No rate for ${from}→${to}.` }); return; }
-    res.json({ from, to, rate: parseFloat((rate * jitter()).toFixed(6)), timestamp: new Date().toISOString(), source: 'habeshare-fx' });
+    res.json({ from, to, rate: parseFloat((rate * jitter()).toFixed(6)), timestamp: new Date().toISOString(), source: 'sumsuma-fx' });
     return;
   }
   const quotes: object[] = [];
   for (const [b, targets] of Object.entries(FX_BASE_RATES))
     for (const [tgt, r] of Object.entries(targets))
-      quotes.push({ from: b, to: tgt, rate: parseFloat((r * jitter()).toFixed(6)), timestamp: new Date().toISOString(), source: 'habeshare-fx' });
+      quotes.push({ from: b, to: tgt, rate: parseFloat((r * jitter()).toFixed(6)), timestamp: new Date().toISOString(), source: 'sumsuma-fx' });
   res.json({ quotes, count: quotes.length });
 });
 

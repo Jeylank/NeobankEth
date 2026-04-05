@@ -1,7 +1,7 @@
 /**
  * treasuryService.ts
  * ───────────────────
- * Main orchestration layer for the Habeshare Treasury Engine.
+ * Main orchestration layer for the Sumsuma Treasury Engine.
  *
  * Coordinates:
  *  - liquidityService (pool reads and balance mutations)

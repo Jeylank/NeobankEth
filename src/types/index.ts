@@ -583,10 +583,10 @@ export type AuditEventName = (typeof AUDIT_EVENTS)[keyof typeof AUDIT_EVENTS];
 /**
  * SettlementRecord — Firestore document in partner_settlements/{provider_currency}.
  *
- * Tracks the running net balance between Habeshare and each payout partner.
+ * Tracks the running net balance between Sumsuma and each payout partner.
  * netBalance = inflow − outflow
- *   positive → partner owes Habeshare
- *   negative → Habeshare owes partner
+ *   positive → partner owes Sumsuma
+ *   negative → Sumsuma owes partner
  */
 export interface SettlementRecord {
   settlementId: string;

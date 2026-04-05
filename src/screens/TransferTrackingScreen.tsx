@@ -75,9 +75,9 @@ const STEP_DESCS: Record<string, string> = {
 function getMockUpdates(txId: string): StatusUpdate[] {
   const now = Date.now();
   return [
-    { txId, status: 'initiated',    provider: 'Habeshare', updatedAt: { toDate: () => new Date(now - 4 * 60000) }, details: 'Transfer request received' },
-    { txId, status: 'fx_conversion',provider: 'Habeshare', updatedAt: { toDate: () => new Date(now - 3 * 60000) }, details: 'Currency converted at market rate' },
-    { txId, status: 'processing',   provider: 'Habeshare', updatedAt: { toDate: () => new Date(now - 2 * 60000) }, details: 'Payment being processed' },
+    { txId, status: 'initiated',    provider: 'Sumsuma', updatedAt: { toDate: () => new Date(now - 4 * 60000) }, details: 'Transfer request received' },
+    { txId, status: 'fx_conversion',provider: 'Sumsuma', updatedAt: { toDate: () => new Date(now - 3 * 60000) }, details: 'Currency converted at market rate' },
+    { txId, status: 'processing',   provider: 'Sumsuma', updatedAt: { toDate: () => new Date(now - 2 * 60000) }, details: 'Payment being processed' },
   ];
 }
 

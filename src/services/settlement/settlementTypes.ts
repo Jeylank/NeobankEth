@@ -1,7 +1,7 @@
 /**
  * settlementTypes.ts
  * ───────────────────
- * All TypeScript types for the Habeshare Settlement Engine.
+ * All TypeScript types for the Sumsuma Settlement Engine.
  * These mirror the Firestore document schemas exactly.
  *
  * Collections (prefixed 'se_' to avoid collision with treasury settlement_obligations):

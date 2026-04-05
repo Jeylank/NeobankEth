@@ -1,10 +1,10 @@
 /**
  * settlementService.ts
  * ─────────────────────
- * Manages settlement obligations between Habeshare and its payout partners.
+ * Manages settlement obligations between Sumsuma and its payout partners.
  *
  * A settlement obligation is opened when a confirmed payout is dispatched
- * to a provider. The obligation tracks that Habeshare has utilized that
+ * to a provider. The obligation tracks that Sumsuma has utilized that
  * provider's liquidity and needs to settle (wire funds back) within the
  * agreed window (default: 48 hours).
  *

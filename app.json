@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "NeoBanker",
-    "slug": "neobanker-mobile",
+    "name": "Sumsuma",
+    "slug": "sumsuma-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -10,17 +10,17 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.neobanker.mobile"
+      "bundleIdentifier": "com.sumsuma.mobile"
     },
     "android": {
-      "package": "com.neobanker.mobile"
+      "package": "com.sumsuma.mobile"
     },
     "web": {
       "bundler": "metro"
     },
     "extra": {
       "eas": {
-        "projectId": "neobanker-mobile"
+        "projectId": "sumsuma-mobile"
       }
     },
     "plugins": [

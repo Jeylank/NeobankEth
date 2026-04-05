@@ -1,7 +1,7 @@
 /**
  * runRecurringSupportWorker.ts
  * ─────────────────────────────
- * Standalone Node.js cron process for Habeshare recurring support automation.
+ * Standalone Node.js cron process for Sumsuma recurring support automation.
  *
  * Run with:
  *   npm run worker:recurring-support

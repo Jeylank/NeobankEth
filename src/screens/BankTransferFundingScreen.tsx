@@ -42,8 +42,8 @@ export default function BankTransferFundingScreen() {
   const reference = `TOPUP-${shortId}`;
 
   const BANK_DETAILS = [
-    { key: 'bankName',  label: 'Bank Name',      value: 'Habeshare Partner Bank',        icon: 'business'         },
-    { key: 'accName',   label: 'Account Name',   value: 'Habeshare Financial Services',  icon: 'person'           },
+    { key: 'bankName',  label: 'Bank Name',      value: 'Sumsuma Partner Bank',        icon: 'business'         },
+    { key: 'accName',   label: 'Account Name',   value: 'Sumsuma Financial Services',  icon: 'person'           },
     { key: 'iban',      label: 'IBAN',            value: 'DE89 3704 0044 0532 0130 00',   icon: 'card'             },
     { key: 'swift',     label: 'BIC / SWIFT',     value: 'COBADEFFXXX',                   icon: 'globe'            },
     { key: 'ref',       label: 'Reference',       value: reference,                        icon: 'pricetag'         },

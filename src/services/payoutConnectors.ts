@@ -18,7 +18,7 @@ import type {
   AccountValidationResult,
 } from '../types';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.habeshare.com';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://api.sumsuma.com';
 const IS_DEV = __DEV__;
 const LOCAL_PAYOUTS_KEY = 'payout_transactions';
 
@@ -156,7 +156,7 @@ async function sendTelebirrPayoutAPI(request: PayoutRequest): Promise<ProviderPa
     amount: request.amount,
     currency: 'ETB',
     reference_id: reference,
-    remark: request.description || 'Habeshare payout',
+    remark: request.description || 'Sumsuma payout',
   });
 
   if (!result.ok) {
@@ -188,7 +188,7 @@ async function sendBankPayoutAPI(request: PayoutRequest): Promise<ProviderPayout
     amount: request.amount,
     currency: request.currency,
     reference,
-    narration: request.description || 'Habeshare bank payout',
+    narration: request.description || 'Sumsuma bank payout',
   });
 
   if (!result.ok) {

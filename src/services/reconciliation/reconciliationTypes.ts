@@ -1,7 +1,7 @@
 /**
  * reconciliationTypes.ts
  * ──────────────────────
- * All TypeScript types for the Habeshare Reconciliation Engine.
+ * All TypeScript types for the Sumsuma Reconciliation Engine.
  * These mirror the Firestore document schemas exactly.
  */
 

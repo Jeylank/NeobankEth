@@ -181,7 +181,7 @@
     "stillPendingMessage": "Transfer partners are still at capacity. Please try again in {{minutes}} minutes.",
     "retryErrorTitle": "Retry Failed",
     "retryErrorGeneric": "Could not retry the transfer. Please try again.",
-    "disclaimer": "Your funds are safe. Habeshare does not hold your money — your balance has already been restored."
+    "disclaimer": "Your funds are safe. Sumsuma does not hold your money — your balance has already been restored."
   },
   "billPayments": {
     "title": "Pay Bills",
@@ -232,7 +232,7 @@
     "haveAccount": "Already have an account? Sign In",
     "or": "or",
     "signInWith": "Sign in with",
-    "tagline": "Habeshare Global",
+    "tagline": "Sumsuma Global",
     "secureFooter": "Secure Services for the Ethiopian Diaspora",
     "sendCode": "Send Verification Code",
     "enterCode": "Enter Verification Code",
@@ -795,17 +795,17 @@
     "copied": "Copied!",
     "codeCopied": "Referral code copied to clipboard",
     "linkCopied": "Referral link copied to clipboard",
-    "shareTitle": "Join Habeshare",
-    "shareMessage": "Join Habeshare and get 100 ETB bonus! Use my referral code: {{code}}\n\nDownload now: {{link}}",
+    "shareTitle": "Join Sumsuma",
+    "shareMessage": "Join Sumsuma and get 100 ETB bonus! Use my referral code: {{code}}\n\nDownload now: {{link}}",
     "inviteSent": "Invitation sent successfully!",
     "inviteFailed": "Failed to send invitation",
     "enterEmail": "Please enter an email address",
     "validEmail": "Please enter a valid email address",
     "termsTitle": "Referral Terms",
-    "termsText": "Referral rewards are credited after your friend completes their first transaction. Both parties must have verified accounts. Habeshare reserves the right to modify or cancel the referral program at any time. Rewards are processed by our licensed financial partners."
+    "termsText": "Referral rewards are credited after your friend completes their first transaction. Both parties must have verified accounts. Sumsuma reserves the right to modify or cancel the referral program at any time. Rewards are processed by our licensed financial partners."
   },
   "legal": {
-    "disclaimer": "Habeshare is a technology platform. Money services are provided by licensed financial institutions in Ethiopia.",
+    "disclaimer": "Sumsuma is a technology platform. Money services are provided by licensed financial institutions in Ethiopia.",
     "fundsDisclaimer": "Funds are processed by licensed financial institutions in Ethiopia.",
     "ratesProvided": "Rates provided by partner"
   },
@@ -1206,13 +1206,13 @@
   },
   "partnerSettlements": {
     "title": "Partner Settlements",
-    "subtitle": "Net balance between Habeshare and each payout partner",
+    "subtitle": "Net balance between Sumsuma and each payout partner",
     "netBalance": "Net Balance",
     "inflow": "Total Inflow",
     "outflow": "Total Outflow",
     "lastUpdated": "Last Updated",
-    "positiveHint": "Partner owes Habeshare",
-    "negativeHint": "Habeshare owes partner",
+    "positiveHint": "Partner owes Sumsuma",
+    "negativeHint": "Sumsuma owes partner",
     "balanceTrend": "Balance by Provider",
     "noData": "No settlement data yet",
     "currency": "Currency",

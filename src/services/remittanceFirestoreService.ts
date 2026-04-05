@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clientRiskService, RiskError } from './riskControls/clientRiskService';
 import { createNotification } from './firestoreNotifications';
 
-const RECIPIENTS_STORAGE_KEY = 'habeshare_recipients';
+const RECIPIENTS_STORAGE_KEY = 'sumsuma_recipients';
 
 export interface RemittanceRecord {
   txId:           string;
@@ -127,10 +127,10 @@ export async function initiateTransferFirestore(data: {
     }
   } catch {
     try {
-      const existing = await AsyncStorage.getItem('habeshare_transactions');
+      const existing = await AsyncStorage.getItem('sumsuma_transactions');
       const list = existing ? JSON.parse(existing) : [];
       list.unshift({ ...record, createdAt: new Date().toISOString() });
-      await AsyncStorage.setItem('habeshare_transactions', JSON.stringify(list.slice(0, 100)));
+      await AsyncStorage.setItem('sumsuma_transactions', JSON.stringify(list.slice(0, 100)));
     } catch {
       // best effort
     }

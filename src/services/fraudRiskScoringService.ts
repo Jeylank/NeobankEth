@@ -1,7 +1,7 @@
 /**
  * fraudRiskScoringService.ts
  * ───────────────────────────
- * Transaction risk scoring for Habeshare fraud detection.
+ * Transaction risk scoring for Sumsuma fraud detection.
  *
  * Calculates a risk score (0–100) based on multiple signals:
  *   - Large transaction amount (+30)

@@ -336,8 +336,8 @@ export default function ProfileScreen() {
           <View style={[styles.stripe, { backgroundColor: '#FFD700' }]} />
           <View style={[styles.stripe, { backgroundColor: '#FF0000' }]} />
         </View>
-        <Text style={styles.appVersion}>Habeshare v1.0.0</Text>
-        <Text style={styles.footerText}>Habeshare Global</Text>
+        <Text style={styles.appVersion}>Sumsuma v1.0.0</Text>
+        <Text style={styles.footerText}>Sumsuma Global</Text>
       </View>
 
       <View style={styles.bottomPadding} />

@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
 ];
 
 const CONTACT_OPTIONS = [
-  { id: 'email', label: 'Email Support', icon: 'mail' as const, value: 'support@habeshare.com' },
+  { id: 'email', label: 'Email Support', icon: 'mail' as const, value: 'support@sumsuma.com' },
   { id: 'phone', label: 'Phone Support', icon: 'call' as const, value: '+251 911 123 456' },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'logo-whatsapp' as const, value: '+251 911 123 456' },
 ];

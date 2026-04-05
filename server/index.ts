@@ -1,7 +1,7 @@
 /**
  * server/index.ts
  * ───────────────
- * Habeshare Admin Operations API
+ * Sumsuma Admin Operations API
  *
  * Express server exposing admin-only endpoints for:
  *   Payout monitoring, Fraud alerts, Support tickets,
@@ -118,7 +118,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 // ─── Health Check (public) ────────────────────────────────────────────────────
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'habeshare-admin-api', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'sumsuma-admin-api', timestamp: new Date().toISOString() });
 });
 
 // ─── Admin API Routes ─────────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ const _keepAlive = setInterval(() => {}, 1000 * 60 * 60);
 _keepAlive.unref === undefined || void 0; // never unref this timer
 
 app.listen(PORT, () => {
-  console.log(`✓ Habeshare Admin API running on port ${PORT}`);
+  console.log(`✓ Sumsuma Admin API running on port ${PORT}`);
   console.log(`  Health:  http://localhost:${PORT}/health`);
   console.log('  Routes:');
   console.log(`    GET  ${API_PREFIX}/payouts`);

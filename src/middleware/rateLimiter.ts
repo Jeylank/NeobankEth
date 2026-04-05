@@ -1,7 +1,7 @@
 /**
  * rateLimiter.ts
  * ───────────────
- * Firestore-based sliding window rate limiter for the Habeshare backend.
+ * Firestore-based sliding window rate limiter for the Sumsuma backend.
  *
  * Uses Firestore so rate limit state is shared across multiple worker processes
  * and server instances — no in-memory state required.

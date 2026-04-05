@@ -1,7 +1,7 @@
 /**
  * systemHealthService.ts
  * ───────────────────────
- * System health monitoring for the Habeshare backend.
+ * System health monitoring for the Sumsuma backend.
  *
  * Provides:
  *   1. ENV VAR VALIDATION   — check required secrets at worker startup

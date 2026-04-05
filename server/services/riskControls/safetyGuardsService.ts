@@ -70,7 +70,7 @@ async function logBlockedOp(
   try {
     await adminDb.collection(AUDIT_COL).add({
       adminId:    'system',
-      adminEmail: 'system@habeshare.internal',
+      adminEmail: 'system@sumsuma.internal',
       action:     event,
       entityId:   userId,
       entityType: 'user',

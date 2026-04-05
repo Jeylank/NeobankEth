@@ -1,7 +1,7 @@
 /**
  * server/tests/concurrentLoad.ts
  * ────────────────────────────────
- * Concurrent stress test for the Habeshare Simulation API.
+ * Concurrent stress test for the Sumsuma Simulation API.
  *
  * Tests three invariants under concurrency:
  *   A) Financial safety   — wallet is debited exactly once per unique tx
@@ -119,7 +119,7 @@ function info(msg: string): void { console.log(`  ℹ  ${msg}`); }
 
 async function main(): Promise<void> {
   console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║       Habeshare — Concurrent Load & Safety Test          ║');
+  console.log('║       Sumsuma — Concurrent Load & Safety Test          ║');
   console.log('╚══════════════════════════════════════════════════════════╝');
   console.log(`  Base URL:    ${BASE_URL}`);
   console.log(`  Concurrency: ${CONCURRENCY} unique transactions`);

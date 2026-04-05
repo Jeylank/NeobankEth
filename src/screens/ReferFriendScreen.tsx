@@ -52,7 +52,7 @@ export default function ReferFriendScreen() {
   });
 
   const referralCode = referralData?.code || 'LOADING...';
-  const referralLink = `https://habeshare.com/invite/${referralCode}`;
+  const referralLink = `https://sumsuma.com/invite/${referralCode}`;
   const totalReferred = referralData?.totalReferred || 0;
   const totalEarnings = referralData?.totalEarnings || 0;
   const pendingRewards = referralData?.pendingRewards || 0;

@@ -1,7 +1,7 @@
 /**
  * requestLogger.ts
  * ─────────────────
- * Request tracing and logging middleware for the Habeshare backend.
+ * Request tracing and logging middleware for the Sumsuma backend.
  *
  * Generates a unique requestId (trace ID) for every incoming request,
  * attaches it to the response headers so clients can reference it in

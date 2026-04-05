@@ -1,12 +1,12 @@
 /**
  * AdminSettlementsScreen.tsx
  * ───────────────────────────
- * Displays net settlement balances between Habeshare and each payout partner.
+ * Displays net settlement balances between Sumsuma and each payout partner.
  * Uses partnerSettlementService via adminService.getPartnerSettlements().
  *
  * Color convention:
- *   positive netBalance (green) → partner owes Habeshare
- *   negative netBalance (red)   → Habeshare owes partner
+ *   positive netBalance (green) → partner owes Sumsuma
+ *   negative netBalance (red)   → Sumsuma owes partner
  */
 
 import React, { useState, useCallback } from 'react';

@@ -1,7 +1,7 @@
 /**
  * settlementWorker.ts
  * ───────────────────
- * Backend settlement cron job functions for Habeshare.
+ * Backend settlement cron job functions for Sumsuma.
  *
  * These functions are designed to run from a persistent Node.js process
  * (scripts/runSettlementWorker.ts) on a schedule, completely independently

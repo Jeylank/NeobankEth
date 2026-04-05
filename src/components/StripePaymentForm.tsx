@@ -23,7 +23,7 @@ export default function StripePaymentForm({ amount, currency }: StripePaymentFor
       <Text style={styles.title}>Card Top-Up</Text>
       <Text style={styles.body}>
         Card payments ({currency} {amount.toFixed(2)}) are available on the web version of this app.
-        {'\n\n'}Open Habeshare in your mobile browser to add funds by card.
+        {'\n\n'}Open Sumsuma in your mobile browser to add funds by card.
       </Text>
     </View>
   );

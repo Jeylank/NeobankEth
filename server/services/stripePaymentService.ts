@@ -109,7 +109,7 @@ export const stripePaymentService = {
         currency: upperCurrency.toLowerCase(),
         metadata: {
           userId,
-          app:      'habeshare',
+          app:      'sumsuma',
           category: 'TOPUP',
         },
         automatic_payment_methods: { enabled: true },

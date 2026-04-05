@@ -411,7 +411,7 @@ export default function AuthScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.logo}>Habeshare</Text>
+          <Text style={styles.logo}>Sumsuma</Text>
           <Text style={styles.subtitle}>{t('auth.tagline')}</Text>
           <View style={styles.flagStripe}>
             <View style={[styles.stripe, { backgroundColor: '#006633' }]} />

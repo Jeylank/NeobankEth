@@ -37,7 +37,7 @@ export const biometricService = {
 
   authenticate: async (promptMessage?: string): Promise<boolean> => {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: promptMessage || 'Authenticate to access Habeshare',
+      promptMessage: promptMessage || 'Authenticate to access Sumsuma',
       cancelLabel: 'Cancel',
       disableDeviceFallback: false,
       fallbackLabel: 'Use Password',

@@ -183,7 +183,7 @@ export default function RootNavigator() {
           <Stack.Screen name="TransferSuccess" component={TransferSuccessScreen} options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="Recipients" component={RecipientsScreen} options={{ title: 'Recipients' }} />
           <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} options={{ title: 'Personal Information' }} />
-          <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Habeshare' }} />
+          <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Sumsuma' }} />
           <Stack.Screen name="TwoFactorSetup" component={TwoFactorSetupScreen} options={{ title: 'Two-Factor Authentication' }} />
           <Stack.Screen name="AdminConsole" component={AdminConsoleScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminOverview" component={AdminOverviewScreen} options={{ title: 'Overview' }} />

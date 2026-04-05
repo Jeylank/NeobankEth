@@ -21,10 +21,10 @@ const C = {
 };
 
 const LINKS = [
-  { label: 'Privacy Policy',    icon: 'lock-closed-outline',  url: 'https://habeshare.com/privacy' },
-  { label: 'Terms of Service',  icon: 'document-text-outline', url: 'https://habeshare.com/terms' },
-  { label: 'Help & Support',    icon: 'help-circle-outline',   url: 'https://habeshare.com/support' },
-  { label: 'Website',           icon: 'globe-outline',         url: 'https://habeshare.com' },
+  { label: 'Privacy Policy',    icon: 'lock-closed-outline',  url: 'https://sumsuma.com/privacy' },
+  { label: 'Terms of Service',  icon: 'document-text-outline', url: 'https://sumsuma.com/terms' },
+  { label: 'Help & Support',    icon: 'help-circle-outline',   url: 'https://sumsuma.com/support' },
+  { label: 'Website',           icon: 'globe-outline',         url: 'https://sumsuma.com' },
 ];
 
 const FEATURES = [
@@ -47,7 +47,7 @@ export default function AboutScreen() {
           <View style={s.logoCircle}>
             <Text style={s.logoText}>H</Text>
           </View>
-          <Text style={s.appName}>Habeshare</Text>
+          <Text style={s.appName}>Sumsuma</Text>
           <Text style={s.tagline}>Secure Finance for the Ethiopian Diaspora</Text>
           <View style={s.versionBadge}>
             <Text style={s.versionText}>Version 1.0.0</Text>
@@ -55,9 +55,9 @@ export default function AboutScreen() {
         </View>
 
         <View style={s.card}>
-          <Text style={s.cardTitle}>About Habeshare</Text>
+          <Text style={s.cardTitle}>About Sumsuma</Text>
           <Text style={s.aboutText}>
-            Habeshare is a non-custodial financial platform that connects the Ethiopian diaspora
+            Sumsuma is a non-custodial financial platform that connects the Ethiopian diaspora
             with their families back home. We facilitate remittances, bill payments, and family
             support through licensed Ethiopian financial institutions — we never hold your funds.
           </Text>
@@ -99,7 +99,7 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        <Text style={s.copyright}>© 2026 Habeshare Global. All rights reserved.</Text>
+        <Text style={s.copyright}>© 2026 Sumsuma Global. All rights reserved.</Text>
       </ScrollView>
     </SafeAreaView>
   );

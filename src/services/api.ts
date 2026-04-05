@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.habeshare.com';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.sumsuma.com';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

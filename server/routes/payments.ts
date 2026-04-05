@@ -1,7 +1,7 @@
 /**
  * server/routes/payments.ts
  * ──────────────────────────
- * Stripe payment endpoints for Habeshare wallet top-ups.
+ * Stripe payment endpoints for Sumsuma wallet top-ups.
  *
  * Routes
  * ──────

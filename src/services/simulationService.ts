@@ -67,7 +67,7 @@ export async function runSignup(
   const userId = generateId('USR');
   const signupData = {
     userId,
-    email: 'demo.user@habeshare.com',
+    email: 'demo.user@sumsuma.com',
     phone: '+251912345678',
     method: 'email',
     createdAt: now(),

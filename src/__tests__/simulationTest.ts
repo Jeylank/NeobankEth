@@ -34,7 +34,7 @@ function logStep(label: string, state: SimulationState) {
 
 async function runFullTest() {
   console.log('═══════════════════════════════════════════════════');
-  console.log('  HABESHARE END-TO-END FLOW SIMULATION');
+  console.log('  SUMSUMA END-TO-END FLOW SIMULATION');
   console.log('  Non-Custodial Partner Model');
   console.log('═══════════════════════════════════════════════════');
 

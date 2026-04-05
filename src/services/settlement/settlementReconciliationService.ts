@@ -1,7 +1,7 @@
 /**
  * settlementReconciliationService.ts
  * ────────────────────────────────────
- * Compares partner-reported settlement totals against Habeshare internal
+ * Compares partner-reported settlement totals against Sumsuma internal
  * obligation sums. Generates settlement_reconciliation_reports and raises
  * SETTLEMENT_MISMATCH alerts when differences are detected.
  *

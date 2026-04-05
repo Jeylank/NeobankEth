@@ -1,7 +1,7 @@
 /**
  * reconciliationService.ts   (top-level facade)
  * ────────────────────────────────────────────────
- * Entry point for the Habeshare Reconciliation & Settlement Engine.
+ * Entry point for the Sumsuma Reconciliation & Settlement Engine.
  *
  * This facade layer sits on top of the detailed engine in
  * src/services/reconciliation/ and adds:
@@ -248,7 +248,7 @@ function matchAgainstReport(
         expectedAmount: tx.amount,
         actualAmount: 0,
         currency: tx.currency,
-        mismatchReason: `Transaction ${tx.txId} found in Habeshare records but not in partner report.`,
+        mismatchReason: `Transaction ${tx.txId} found in Sumsuma records but not in partner report.`,
       });
       continue;
     }
@@ -300,7 +300,7 @@ function matchAgainstReport(
         expectedAmount: 0,
         actualAmount: item.amount,
         currency: item.currency,
-        mismatchReason: `Partner entry ${item.providerRef} has no matching Habeshare transaction.`,
+        mismatchReason: `Partner entry ${item.providerRef} has no matching Sumsuma transaction.`,
       });
     }
   }

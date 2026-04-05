@@ -1,7 +1,7 @@
 /**
  * runSettlementWorker.ts
  * ───────────────────────
- * Standalone Node.js cron process for Habeshare settlement automation.
+ * Standalone Node.js cron process for Sumsuma settlement automation.
  *
  * Run with:
  *   npm run worker:settlement

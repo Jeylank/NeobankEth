@@ -1,7 +1,7 @@
 /**
  * webhookService.ts
  * ──────────────────
- * Processes inbound provider webhooks for Habeshare.
+ * Processes inbound provider webhooks for Sumsuma.
  *
  * When a payout provider (Chapa, Telebirr, Ethiopian banks) sends a status
  * update, this service:
@@ -54,7 +54,7 @@ type WebhookProvider =
   | 'BANK_ABYSSINIA';
 
 export interface ProviderWebhookPayload {
-  /** Internal Habeshare transaction ID */
+  /** Internal Sumsuma transaction ID */
   txId: string;
   /** Provider's own reference number */
   providerRef: string;
@@ -237,7 +237,7 @@ export const webhookService = {
           provider,
           amount,
           currency,
-          direction: 'inflow', // Reversal = funds coming back to Habeshare
+          direction: 'inflow', // Reversal = funds coming back to Sumsuma
         });
         result.settlementRecorded = true;
 

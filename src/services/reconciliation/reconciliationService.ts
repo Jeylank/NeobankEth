@@ -1,7 +1,7 @@
 /**
  * reconciliationService.ts
  * ────────────────────────
- * Main orchestration entrypoint for the Habeshare Reconciliation Engine.
+ * Main orchestration entrypoint for the Sumsuma Reconciliation Engine.
  *
  * Responsibilities:
  *  - create and manage reconciliation runs

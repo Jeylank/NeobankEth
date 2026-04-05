@@ -576,7 +576,7 @@ async function testRecurringBatchPartialFailure() {
 // ══════════════════════════════════════════════════════
 async function runAll() {
   console.log('╔═══════════════════════════════════════════════════╗');
-  console.log('║   HABESHARE FAILURE SCENARIO TEST SUITE          ║');
+  console.log('║   SUMSUMA FAILURE SCENARIO TEST SUITE          ║');
   console.log('║   Non-Custodial Partner Model                    ║');
   console.log('╚═══════════════════════════════════════════════════╝');
 
