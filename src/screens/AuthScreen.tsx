@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -411,7 +412,13 @@ export default function AuthScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.logo}>Sumsuma</Text>
+          <View style={styles.logoCard}>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
           <Text style={styles.subtitle}>{t('auth.tagline')}</Text>
           <View style={styles.flagStripe}>
             <View style={[styles.stripe, { backgroundColor: '#006633' }]} />
@@ -490,10 +497,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
+  logoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
   logo: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    width: 160,
+    height: 100,
   },
   subtitle: {
     fontSize: 16,

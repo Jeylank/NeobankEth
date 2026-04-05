@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,10 +45,11 @@ export default function AboutScreen() {
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         <View style={s.hero}>
-          <View style={s.logoCircle}>
-            <Text style={s.logoText}>H</Text>
-          </View>
-          <Text style={s.appName}>Sumsuma</Text>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={s.logo}
+            resizeMode="contain"
+          />
           <Text style={s.tagline}>Secure Finance for the Ethiopian Diaspora</Text>
           <View style={s.versionBadge}>
             <Text style={s.versionText}>Version 1.0.0</Text>
@@ -110,13 +112,11 @@ const s = StyleSheet.create({
   scroll:    { padding: 20 },
 
   hero: { alignItems: 'center', marginBottom: 28 },
-  logoCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
+  logo: {
+    width: 200,
+    height: 125,
+    marginBottom: 8,
   },
-  logoText:     { fontSize: 36, fontWeight: '800', color: C.white },
-  appName:      { fontSize: 24, fontWeight: '800', color: C.text },
   tagline:      { fontSize: 14, color: C.sub, textAlign: 'center', marginTop: 4, lineHeight: 20 },
   versionBadge: {
     marginTop: 10, paddingHorizontal: 14, paddingVertical: 5,
