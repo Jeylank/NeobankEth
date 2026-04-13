@@ -32,6 +32,7 @@ import campaignsRouter     from './routes/campaigns';
 import adminUsersRouter    from './routes/adminUsers';
 import notificationsRouter from './routes/notifications';
 import agentPayoutRouter   from './routes/agentPayout';
+import dashboardRouter     from './routes/dashboard';
 import { systemConfigService } from './services/systemConfigService';
 import { getStripeSync }    from './stripeClient';
 import { stripePaymentService } from './services/stripePaymentService';
@@ -139,6 +140,7 @@ app.use('/api',              paymentsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/v1',           simulationRouter);
 app.use('/api/v1',           agentPayoutRouter);
+app.use(API_PREFIX,          dashboardRouter);
 app.use('/api/campaigns',    campaignsRouter);
 
 // ─── Static Web App (Expo dist) ───────────────────────────────────────────────
@@ -247,6 +249,10 @@ app.listen(PORT, () => {
   console.log(`    POST ${API_PREFIX}/risk-flags/:userId/active`);
   console.log(`    GET  ${API_PREFIX}/risk-summary`);
   console.log(`    GET  ${API_PREFIX}/risk-blocked-metrics`);
+  console.log('  Dashboard:');
+  console.log(`    GET  ${API_PREFIX}/dashboard/transfers  (stuck txns, state summary, recent failures)`);
+  console.log(`    GET  ${API_PREFIX}/dashboard/agents     (roster, city stats, low-float warnings)`);
+  console.log(`    GET  ${API_PREFIX}/dashboard/alerts     (all actionable alerts, severity-sorted)`);
   console.log('  System Config:');
   console.log(`    GET  ${API_PREFIX}/system-config`);
   console.log(`    POST ${API_PREFIX}/system-config`);
