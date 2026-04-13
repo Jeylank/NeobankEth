@@ -31,6 +31,7 @@ import simulationRouter    from './routes/simulation';
 import campaignsRouter     from './routes/campaigns';
 import adminUsersRouter    from './routes/adminUsers';
 import notificationsRouter from './routes/notifications';
+import agentPayoutRouter   from './routes/agentPayout';
 import { systemConfigService } from './services/systemConfigService';
 import { getStripeSync }    from './stripeClient';
 import { stripePaymentService } from './services/stripePaymentService';
@@ -137,6 +138,7 @@ app.use(API_PREFIX, adminUsersRouter);
 app.use('/api',              paymentsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/v1',           simulationRouter);
+app.use('/api/v1',           agentPayoutRouter);
 app.use('/api/campaigns',    campaignsRouter);
 
 // ─── Static Web App (Expo dist) ───────────────────────────────────────────────

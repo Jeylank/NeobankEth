@@ -1,0 +1,147 @@
+Build a backend module for a remittance app called "Sumsuma" using Node.js (Express) and PostgreSQL.
+
+The goal is to extend an existing remittance system by adding an "Agent Payout" module (hybrid hawala-style but fully tracked).
+
+Requirements:
+
+1. Existing system already has:
+- users
+- transfers
+- payments
+- FX quotes
+
+We are ADDING:
+- agent payout functionality
+
+---
+
+2. Create database models:
+
+Table: agents
+- id (UUID)
+- full_name
+- phone
+- city
+- status (online/offline)
+- available_float (numeric)
+- score (numeric)
+- created_at
+
+Table: assignments
+- id (UUID)
+- transfer_id (FK)
+- agent_id (FK)
+- status (assigned/accepted/rejected/completed)
+- created_at
+- updated_at
+
+Extend transfers table:
+- payout_method (string: bank | mobile_money | agent_cash)
+- assigned_agent_id (nullable)
+
+---
+
+3. Build API endpoints:
+
+POST /agents
+GET /agents
+GET /agents?city=Addis
+
+POST /transfers/:id/assign-agent
+→ selects best agent based on:
+   - same city
+   - available_float >= transfer amount
+   - status = online
+   - highest score
+
+POST /agents/:id/accept-assignment
+POST /agents/:id/reject-assignment
+
+POST /transfers/:id/send-otp
+POST /payouts/verify-otp
+POST /payouts/mark-paid
+
+---
+
+4. Implement agent assignment logic:
+
+- find agents in same city
+- filter by available_float
+- sort by score descending
+- assign top agent
+- create assignment record
+- update transfer status to AGENT_ASSIGNED
+
+---
+
+5. Implement OTP verification:
+
+- generate 6-digit OTP
+- store hashed OTP with expiry (5 minutes)
+- verify before payout
+- block payout if OTP invalid
+
+---
+
+6. Implement payout completion:
+
+POST /payouts/mark-paid:
+- verify OTP token
+- ensure transfer is READY_FOR_PAYOUT
+- mark transfer as PAID_OUT
+- reduce agent available_float
+- log event in transfer timeline
+
+---
+
+7. Add transfer state machine:
+
+States:
+- PAYMENT_PENDING
+- FUNDS_RECEIVED
+- AGENT_ASSIGNED
+- OTP_SENT
+- READY_FOR_PAYOUT
+- PAID_OUT
+- COMPLETED
+- FAILED
+
+---
+
+8. Add basic logging:
+
+Table: transfer_timeline
+- transfer_id
+- status
+- note
+- created_at
+
+---
+
+9. Add safety checks:
+
+- do not assign agent if float is insufficient
+- prevent duplicate payout (idempotency)
+- reject payout if OTP not verified
+
+---
+
+10. Keep code modular:
+
+- controllers/
+- services/
+- routes/
+- models/
+
+---
+
+11. Bonus:
+Add simple console logs for:
+- agent assigned
+- OTP generated
+- payout completed
+
+---
+
+Keep the code clean, readable, and production-oriented.
+Use async/await and proper error handling.
