@@ -7,7 +7,7 @@ Sumsuma is a non-custodial mobile banking application for the Ethiopian diaspora
 I want to interact with you in a clear and concise manner. Prioritize high-level architectural and design decisions over minute implementation details. When proposing changes or explaining concepts, focus on the 'why' before the 'how'. For development tasks, I prefer an iterative approach, with clear checkpoints and opportunities for feedback. Do not introduce new external dependencies or significant architectural changes without prior discussion and approval.
 
 ## System Architecture
-The application is built using Expo SDK 50, React Native 0.73, React Navigation 6, and TypeScript. Firebase is used for authentication and notifications, while TanStack React Query handles data fetching.
+The application is built using Expo SDK 52, React Native 0.74, React Navigation 6, and TypeScript. Firebase is used for authentication and notifications, while TanStack React Query handles data fetching.
 
 **Core Features:**
 -   **User Management & KYC:** Firebase-backed authentication, phone number validation, and ID document scanning.
