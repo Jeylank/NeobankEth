@@ -25,6 +25,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "ios": {
+        "image": "latest"
+      },
       "env": {
         "APP_ENV": "production"
       }
@@ -34,7 +37,7 @@
     "production": {
       "ios": {
         "appleId": "zdealsinfo@gmail.com",
-        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
+        "ascAppId": "6766098328",
         "appleTeamId": "3PZ64Y39BK"
       }
     }
