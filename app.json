@@ -58,9 +58,7 @@
       "bundler": "metro"
     },
     "extra": {
-      "eas": {
-        "projectId": "sumsuma-mobile"
-      }
+      "eas": {}
     },
     "plugins": [
       "expo-secure-store",
