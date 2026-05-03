@@ -2,3 +2,5 @@ attached_assets/
 .local/
 server/tests/
 scripts/
+dist/
+web-build/
