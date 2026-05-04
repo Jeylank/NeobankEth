@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sumsuma.mobile",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "deploymentTarget": "13.4",
       "infoPlist": {
         "NSCameraUsageDescription": "Sumsuma uses your camera to capture ID documents for identity verification (KYC).",
@@ -34,7 +34,9 @@
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ]
       }
@@ -59,7 +61,9 @@
       "bundler": "metro"
     },
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "f5e4f328-47f2-4b83-a9b9-ef6dc88bb5a1"
+      }
     },
     "plugins": [
       "expo-secure-store",
