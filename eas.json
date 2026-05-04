@@ -29,7 +29,8 @@
         "image": "macos-sequoia-15.6-xcode-26.2"
       },
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     }
   },
