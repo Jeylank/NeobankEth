@@ -19,6 +19,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.sumsuma.mobile",
       "buildNumber": "1",
+      "deploymentTarget": "13.4",
       "infoPlist": {
         "NSCameraUsageDescription": "Sumsuma uses your camera to capture ID documents for identity verification (KYC).",
         "NSPhotoLibraryUsageDescription": "Sumsuma accesses your photo library to upload ID documents for identity verification (KYC).",
