@@ -1,4 +1,3 @@
-import './global.css';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
