@@ -18,13 +18,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sumsuma.mobile",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "NSCameraUsageDescription": "Sumsuma uses your camera to capture ID documents for identity verification (KYC).",
         "NSPhotoLibraryUsageDescription": "Sumsuma accesses your photo library to upload ID documents for identity verification (KYC).",
         "NSFaceIDUsageDescription": "Sumsuma uses Face ID to securely authenticate you and protect your financial account.",
         "NSUserNotificationUsageDescription": "Sumsuma sends you transfer status updates, payment confirmations, and important account alerts.",
-        "NSLocationWhenInUseUsageDescription": "Sumsuma may use your location to detect unusual account activity and protect against fraud."
+        "NSLocationWhenInUseUsageDescription": "Sumsuma may use your location to detect unusual account activity and protect against fraud.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "associatedDomains": [
         "applinks:sumsuma.com"
@@ -53,7 +54,8 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
