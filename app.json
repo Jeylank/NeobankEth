@@ -67,14 +67,6 @@
     "plugins": [
       "expo-secure-store",
       [
-        "expo-build-properties",
-        {
-          "ios": {
-            "deploymentTarget": "13.4"
-          }
-        }
-      ],
-      [
         "expo-local-authentication",
         {
           "faceIDPermission": "Sumsuma uses Face ID to securely authenticate you and protect your financial account."
