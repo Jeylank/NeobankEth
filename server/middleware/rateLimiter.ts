@@ -17,21 +17,16 @@
  * can observe remaining quota without hitting the limit.
  */
 
-import rateLimit, { Options, RateLimitRequestHandler } from 'express-rate-limit';
+import rateLimit, { Options, RateLimitRequestHandler, ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response } from 'express';
 
 // ─── Key generator ────────────────────────────────────────────────────────────
 // Prefer the API key (one bucket per caller regardless of IP).
-// Fall back to IP (works behind Replit's reverse proxy).
+// Fall back to IP using the official ipKeyGenerator helper (IPv6-safe).
 function keyGenerator(req: Request): string {
   const apiKey = req.headers['x-api-key'];
   if (apiKey && typeof apiKey === 'string' && apiKey.length > 0) return `apikey:${apiKey}`;
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const firstIp = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0].trim();
-    return `ip:${firstIp}`;
-  }
-  return `ip:${req.ip ?? 'unknown'}`;
+  return `ip:${ipKeyGenerator(req)}`;
 }
 
 // ─── Shared handler ───────────────────────────────────────────────────────────

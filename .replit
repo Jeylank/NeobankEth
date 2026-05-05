@@ -49,7 +49,7 @@ externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npx", "serve", "dist", "-l", "5000"]
+run = ["npm", "run", "server:admin"]
 build = ["npx", "expo", "export", "--platform", "web"]
 
 [userenv]
