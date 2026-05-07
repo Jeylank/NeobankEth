@@ -1,7 +1,10 @@
 node_modules/
 .expo/
-dist/
 web-build/
+dist/_expo/
+dist/assets/
+dist/metadata.json
+dist/bundles/
 ios/
 android/
 attached_assets/

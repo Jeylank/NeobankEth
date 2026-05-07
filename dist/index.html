@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sumsuma Admin API</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7f6; color: #1a1a1a; }
+    .header { background: #006633; color: #fff; padding: 20px 32px; display: flex; align-items: center; gap: 12px; }
+    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .badge { background: rgba(255,255,255,0.2); font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px; }
+    .container { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+    .status-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #16a34a; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(22,163,74,0.2); }
+    .status-text { font-size: 15px; font-weight: 600; color: #15803d; }
+    .status-sub { font-size: 13px; color: #6b7280; margin-top: 2px; }
+    .section-title { font-size: 13px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; }
+    .route-group { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .route-group-header { padding: 12px 20px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-weight: 700; color: #374151; }
+    .route { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+    .route:last-child { border-bottom: none; }
+    .method { font-weight: 700; font-size: 11px; min-width: 38px; padding: 2px 0; color: #fff; border-radius: 4px; text-align: center; }
+    .method.get { background: #2563eb; }
+    .method.post { background: #16a34a; }
+    .method.patch { background: #d97706; }
+    .path { font-family: 'SF Mono', Consolas, monospace; color: #374151; font-size: 12px; }
+    .desc { color: #9ca3af; font-size: 12px; margin-left: auto; }
+    .health-btn { display: inline-block; background: #006633; color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 8px; }
+    .health-btn:hover { background: #008844; }
+    .footer { text-align: center; font-size: 12px; color: #9ca3af; margin-top: 40px; padding-bottom: 32px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Sumsuma Admin API</h1>
+    <span class="badge">v1.0</span>
+  </div>
+
+  <div class="container">
+
+    <div class="status-card">
+      <div class="dot"></div>
+      <div>
+        <div class="status-text">Server is running</div>
+        <div class="status-sub" id="ts">Loading…</div>
+      </div>
+      <a href="/health" class="health-btn" style="margin-left:auto">Health check</a>
+    </div>
+
+    <div class="section-title">API Routes</div>
+
+    <div class="route-group">
+      <div class="route-group-header">Payments (Stripe)</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/payments/publishable-key</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/payments/create-intent</span><span class="desc">wallet top-up</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/payments/webhook</span><span class="desc">Stripe-signed</span></div>
+    </div>
+
+    <div class="route-group">
+      <div class="route-group-header">Simulation (v1)</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/v1/health</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/wallet/topup</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/fx/quote</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/remittance/initiate</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/simulation/seed</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/simulation/reset</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/simulation/drain</span></div>
+    </div>
+
+    <div class="route-group">
+      <div class="route-group-header">Admin</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/dashboard/transfers</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/dashboard/agents</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/dashboard/alerts</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/payouts</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/fraud-alerts</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/liquidity</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/risk-summary</span></div>
+    </div>
+
+    <div class="route-group">
+      <div class="route-group-header">Risk Config</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/v1/risk/config</span></div>
+      <div class="route"><span class="method patch">PATCH</span><span class="path">/api/v1/risk/config</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/risk/config/reset</span></div>
+    </div>
+
+  </div>
+
+  <div class="footer">Sumsuma &mdash; Non-custodial mobile banking for the Ethiopian diaspora</div>
+
+  <script>
+    fetch('/health').then(r => r.json()).then(d => {
+      document.getElementById('ts').textContent = 'Last checked: ' + new Date(d.timestamp).toLocaleTimeString();
+    }).catch(() => {
+      document.getElementById('ts').textContent = 'Could not reach /health';
+    });
+  </script>
+</body>
+</html>
