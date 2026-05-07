@@ -1,0 +1,76 @@
+
+> sumsuma-mobile@1.0.0 server:admin
+> ts-node --transpile-only --project server/tsconfig.json server/index.ts
+
+[1G[0K✓ Sumsuma Admin API running on port 5000
+  Health:  http://localhost:5000/health
+  Routes:
+    GET  /api/admin/payouts
+    GET  /api/admin/fraud-alerts
+    POST /api/admin/fraud-action
+    GET  /api/admin/support-tickets
+    POST /api/admin/support-action
+    GET  /api/admin/disputes
+    POST /api/admin/dispute-action
+    GET  /api/admin/liquidity
+    GET  /api/admin/reconciliation
+    GET  /api/admin/reconciliation/runs
+    GET  /api/admin/reconciliation/run/:runId
+    GET  /api/admin/reconciliation/alerts
+    POST /api/admin/reconciliation/run
+    POST /api/admin/reconciliation/alert-action
+  Risk Controls:
+    GET  /api/admin/system-controls
+    POST /api/admin/system-controls/:key
+    GET  /api/admin/risk-limits
+    POST /api/admin/risk-limits/:key
+    GET  /api/admin/risk-flags
+    GET  /api/admin/risk-flags/:userId
+    POST /api/admin/risk-flags/:userId/freeze
+    POST /api/admin/risk-flags/:userId/unfreeze
+    POST /api/admin/risk-flags/:userId/review
+    POST /api/admin/risk-flags/:userId/active
+    GET  /api/admin/risk-summary
+    GET  /api/admin/risk-blocked-metrics
+  Dashboard:
+    GET  /api/admin/dashboard/transfers  (stuck txns, state summary, recent failures)
+    GET  /api/admin/dashboard/agents     (roster, city stats, low-float warnings)
+    GET  /api/admin/dashboard/alerts     (all actionable alerts, severity-sorted)
+  System Config:
+    GET  /api/admin/system-config
+    POST /api/admin/system-config
+    POST /api/admin/system-config/refresh
+  User Management:
+    POST /api/admin/users/bootstrap  (ADMIN_BOOTSTRAP_SECRET — first admin only)
+    POST /api/admin/users/promote    (requires existing admin)
+    POST /api/admin/users/demote     (requires existing admin)
+    GET  /api/admin/users/:uid/claims
+  Payments (Stripe):
+    GET  /api/payments/publishable-key
+    POST /api/payments/create-intent
+    POST /api/payments/webhook
+  Simulation API (v1):
+    GET  /api/v1/health
+    POST /api/v1/fx/quote                (lock quote, 90s TTL + 30s buffer)
+    GET  /api/v1/fx/quotes
+    POST /api/v1/wallet/topup
+    GET  /api/v1/wallet/:userId
+    POST /api/v1/remittance/initiate     (Idempotency-Key header | user-balance | liquidity | circuit-breaker)
+    GET  /api/v1/remittance/:txId
+    POST /api/v1/campaign/contribute     (AML compliance metadata required)
+    POST /api/v1/recurring/process       (scheduleId-based idempotency)
+    GET  /api/v1/liquidity               (auto-replenish enabled)
+    GET  /api/v1/circuit-breaker/status
+    POST /api/v1/circuit-breaker/trip/:provider  (stripe|chapa|telebirr)
+    POST /api/v1/circuit-breaker/reset           (restore all to CLOSED)
+    POST /api/v1/simulation/reset                (full state wipe; pass { seed: true } to pre-fund wallets)
+    POST /api/v1/simulation/seed                 (pre-fund test wallets — idempotent)
+    POST /api/v1/simulation/drain                (drain all provider pools → PENDING_LIQUIDITY test setup)
+  RESTful Campaign API:
+    POST /api/campaigns/:campaignId/contribute   (RESTful alias, campaignId in URL)
+  Sim base URL: https://08a9245b-5f48-44e1-8f97-7868b3994725-00-2rcx47a59k92i.spock.replit.dev/api/v1  (X-API-Key required if SIMULATION_API_KEY is set)
+[Stripe] Schema ready.
+{ autoExpandLists: [90mundefined[39m, stripeApiVersion: [90mundefined[39m } StripeSync initialized
+[Stripe] Managed webhook configured.
+[2026-05-06T18:36:07.736Z] GET /
+[2026-05-06T19:52:11.076Z] GET /

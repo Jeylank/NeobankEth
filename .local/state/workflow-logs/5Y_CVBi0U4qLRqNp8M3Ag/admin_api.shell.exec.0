@@ -1,0 +1,5 @@
+
+> sumsuma-mobile@1.0.0 server:admin
+> ts-node --transpile-only --project server/tsconfig.json server/index.ts
+
+[1G[0K

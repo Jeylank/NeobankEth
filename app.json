@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sumsuma.mobile",
-      "buildNumber": "4",
+      "buildNumber": "7",
       "infoPlist": {
         "NSCameraUsageDescription": "Sumsuma uses your camera to capture ID documents for identity verification (KYC).",
         "NSPhotoLibraryUsageDescription": "Sumsuma accesses your photo library to upload ID documents for identity verification (KYC).",
@@ -88,7 +88,8 @@
           "color": "#006633",
           "sounds": []
         }
-      ]
+      ],
+      "expo-localization"
     ]
   }
 }
