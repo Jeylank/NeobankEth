@@ -67,6 +67,7 @@
       }
     },
     "plugins": [
+      "./plugins/withXcodeWarnings",
       "expo-secure-store",
       [
         "expo-local-authentication",
