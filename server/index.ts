@@ -143,23 +143,93 @@ app.use('/api/v1',           agentPayoutRouter);
 app.use(API_PREFIX,          dashboardRouter);
 app.use('/api/campaigns',    campaignsRouter);
 
-// ─── Static Web App (Expo dist) ───────────────────────────────────────────────
-// Serve the pre-built Expo web bundle and fall back to index.html so the
-// client-side router handles all non-API paths. API routes are mounted above
-// this middleware so they always take precedence.
+// ─── Root status page ─────────────────────────────────────────────────────────
+app.get('/', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sumsuma Admin API</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6f8;color:#1a1a2e;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}
+    .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:680px;width:100%;padding:40px}
+    .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+    .dot{width:36px;height:36px;border-radius:10px;background:#006633;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px}
+    h1{font-size:22px;font-weight:700;color:#006633}
+    .subtitle{font-size:13px;color:#888;margin-top:2px}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;color:#006633;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;margin-bottom:28px}
+    .pulse{width:8px;height:8px;border-radius:50%;background:#006633;animation:pulse 1.5s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .section{margin-bottom:24px}
+    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#aaa;margin-bottom:10px}
+    .route{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+    .route:last-child{border-bottom:none}
+    .method{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;min-width:38px;text-align:center}
+    .get{background:#e3f2fd;color:#1565c0}
+    .post{background:#fce4ec;color:#b71c1c}
+    .patch{background:#fff3e0;color:#e65100}
+    .path{font-family:'SF Mono',Monaco,monospace;color:#333;flex:1}
+    .footer{margin-top:28px;font-size:12px;color:#bbb;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="dot">S</div>
+      <div>
+        <h1>Sumsuma Admin API</h1>
+        <div class="subtitle">Non-custodial mobile banking · Ethiopian diaspora</div>
+      </div>
+    </div>
+    <div class="badge"><span class="pulse"></span> Server running · Port ${PORT}</div>
 
-const DIST_DIR = path.resolve(__dirname, '..', 'dist');
-app.use(express.static(DIST_DIR));
+    <div class="section">
+      <div class="section-title">Admin</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/dashboard/transfers</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/dashboard/agents</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/dashboard/alerts</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/payouts</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/liquidity</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/admin/risk-summary</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Simulation (v1)</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/v1/health</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/wallet/topup</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/remittance/initiate</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/fx/quote</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/v1/liquidity</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/simulation/reset</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/v1/simulation/seed</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Fraud &amp; Risk</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/v1/fraud/decisions</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/v1/fraud/stats</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/v1/risk/config</span></div>
+      <div class="route"><span class="method patch">PATCH</span><span class="path">/api/v1/risk/config</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Payments</div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/payments/publishable-key</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/payments/create-intent</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/payments/webhook</span></div>
+    </div>
+
+    <div class="footer">Sumsuma · Admin API · ${new Date().getFullYear()}</div>
+  </div>
+</body>
+</html>`);
+});
 
 app.use((req: Request, res: Response) => {
-  // Only return JSON 404s for /api/* paths; everything else serves the SPA.
-  if (req.path.startsWith('/api/')) {
-    res.status(404).json({ error: 'Endpoint not found' });
-  } else {
-    res.sendFile(path.join(DIST_DIR, 'index.html'), (err) => {
-      if (err) res.status(404).json({ error: 'Not found' });
-    });
-  }
+  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
