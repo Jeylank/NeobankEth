@@ -1,8 +1,14 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.sumsuma.com';
+// On web the app and API are co-located on the same origin, so we use a
+// relative base URL (empty string).  On native we need an absolute URL.
+const API_BASE_URL =
+  Platform.OS === 'web'
+    ? ''
+    : (process.env.EXPO_PUBLIC_API_URL || 'https://api.sumsuma.com');
 
 const api = axios.create({
   baseURL: API_BASE_URL,

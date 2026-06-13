@@ -120,13 +120,6 @@ export default function TransferTrackingScreen() {
   const fadeAnims    = useRef(STEP_ORDER.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    // Query without orderBy to avoid needing a composite Firestore index.
-    // Sort client-side instead.
-    const q = query(
-      collection(db, 'transfer_status_updates'),
-      where('txId', '==', txId),
-    );
-
     const applyUpdates = (updates: StatusUpdate[]) => {
       // Sort client-side by updatedAt ascending
       const sorted = [...updates].sort((a, b) => {
@@ -143,16 +136,31 @@ export default function TransferTrackingScreen() {
       animateIn(built);
     };
 
-    const unsub = onSnapshot(
-      q,
-      (snap) => applyUpdates(snap.docs.map((d) => d.data() as StatusUpdate)),
-      (_err) => {
-        // Firestore error (e.g. missing index or collection) — show mock data
-        applyUpdates([]);
-      },
-    );
+    let unsub: (() => void) | null = null;
 
-    return () => unsub();
+    try {
+      // Query without orderBy to avoid needing a composite Firestore index.
+      // Wrap in try/catch: Firebase env vars are not available in web builds,
+      // so collection()/onSnapshot() can throw synchronously — fall back to mock.
+      const q = query(
+        collection(db, 'transfer_status_updates'),
+        where('txId', '==', txId),
+      );
+
+      unsub = onSnapshot(
+        q,
+        (snap) => applyUpdates(snap.docs.map((d) => d.data() as StatusUpdate)),
+        (_err) => {
+          // Firestore error (e.g. missing index, network, bad config) — show mock
+          applyUpdates([]);
+        },
+      );
+    } catch {
+      // Synchronous throw — Firebase not configured (web build without env vars)
+      applyUpdates([]);
+    }
+
+    return () => { if (unsub) unsub(); };
   }, [txId]);
 
   const animateIn = (builtSteps: TimelineStep[]) => {
