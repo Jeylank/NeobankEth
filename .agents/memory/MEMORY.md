@@ -1,2 +1,4 @@
 - [Stripe subscription architecture](stripe-subscription.md) — full sub flow wired; Premium price via EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID env var
 - [Stripe API version](stripe-api-version.md) — pinned to 2025-01-27.acacia (stable); was broken on 2026-02-25.clover (preview)
+- [Expo web build & unified server](expo-web-unified-server.md) — how the app + API are served from one port 5000 process
+- [NativeWind v2 web build fix](nativewind-web-build.md) — babel.config.js must skip nativewind/babel on web builds

@@ -1,5 +1,12 @@
 module.exports = function(api) {
-  api.cache(true);
+  // api.caller() must be invoked before api.cache() — Babel enforces this order.
+  const isWeb = api.caller(
+    (caller) => !!(caller && caller.name === 'metro' && caller.platform === 'web')
+  );
+
+  // Cache per platform so native and web each get their own compiled config.
+  api.cache.using(() => isWeb ? 'web' : 'native');
+
   return {
     presets: ['babel-preset-expo'],
     plugins: [
@@ -12,7 +19,9 @@ module.exports = function(api) {
           },
         },
       ],
-      'nativewind/babel',
+      // nativewind v2 babel plugin uses synchronous PostCSS which breaks on
+      // web builds. Skip it for web — styling is handled via CSS directly.
+      ...(!isWeb ? ['nativewind/babel'] : []),
     ],
   };
 };

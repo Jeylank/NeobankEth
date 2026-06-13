@@ -17,10 +17,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Admin API"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "Admin API"
+name = "Start application"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -38,14 +38,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 5904
-externalPort = 3000
-
-[[ports]]
-localPort = 7777
-externalPort = 3001
 
 [[ports]]
 localPort = 8081

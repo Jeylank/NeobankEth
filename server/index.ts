@@ -143,8 +143,14 @@ app.use('/api/v1',           agentPayoutRouter);
 app.use(API_PREFIX,          dashboardRouter);
 app.use('/api/campaigns',    campaignsRouter);
 
-// ─── Root status page ─────────────────────────────────────────────────────────
-app.get('/', (_req: Request, res: Response) => {
+// ─── Expo Web App — static files ─────────────────────────────────────────────
+// Serve the built Expo web bundle from /dist.  API routes are already mounted
+// above so they take priority; anything else falls through to the SPA.
+const DIST_DIR = path.join(__dirname, '..', 'dist');
+app.use(express.static(DIST_DIR));
+
+// ─── API status page (moved from /) ───────────────────────────────────────────
+app.get('/api-docs', (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -232,8 +238,23 @@ app.get('/', (_req: Request, res: Response) => {
 </html>`);
 });
 
+// ─── SPA Fallback ─────────────────────────────────────────────────────────────
+// For any non-API route not matched above, serve the Expo web index.html so
+// that React Navigation deep-links and refreshes work correctly.
 app.use((req: Request, res: Response) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  if (req.path.startsWith('/api/') || req.path.startsWith('/health')) {
+    res.status(404).json({ error: 'Endpoint not found' });
+    return;
+  }
+  const indexPath = path.join(DIST_DIR, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      // dist not yet built — show a helpful message
+      res.status(503).send(
+        '<h2>App not built yet.</h2><p>The server is running but the Expo web bundle has not been compiled. The workflow will rebuild it on next start.</p>'
+      );
+    }
+  });
 });
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
