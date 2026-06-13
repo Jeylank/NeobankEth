@@ -155,6 +155,7 @@ export default function ProfileScreen() {
       items: [
         { icon: 'person-outline', label: 'Personal Information', action: () => navigation.navigate('PersonalInformation' as never) },
         { icon: 'card-outline', label: 'KYC Verification', action: () => navigation.navigate('KYC') },
+        { icon: 'star-outline', label: 'Manage Plan', action: () => navigation.navigate('Subscription' as never) },
         { icon: 'notifications-outline', label: 'Notifications', action: () => navigation.navigate('Notifications') },
       ],
     },

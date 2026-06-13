@@ -69,6 +69,7 @@ import AdminSchedulerHistoryScreen from '../screens/admin/AdminSchedulerHistoryS
 import AdminSystemMonitorScreen from '../screens/admin/AdminSystemMonitorScreen';
 import AdminSchedulerRunsScreen from '../screens/admin/AdminSchedulerRunsScreen';
 import AdminRiskControlsScreen from '../screens/admin/AdminRiskControlsScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -212,6 +213,7 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminSystemMonitor" component={AdminSystemMonitorScreen} options={{ title: 'System Monitor' }} />
           <Stack.Screen name="AdminSchedulerRuns" component={AdminSchedulerRunsScreen} options={{ title: 'Recurring Support Runs' }} />
           <Stack.Screen name="AdminRiskControls" component={AdminRiskControlsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Manage Plan' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

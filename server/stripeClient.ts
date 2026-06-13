@@ -89,7 +89,7 @@ export async function getStripePublishableKey(): Promise<string> {
 export async function getUncachableStripeClient(): Promise<Stripe> {
   const secretKey = await getStripeSecretKey();
   return new Stripe(secretKey, {
-    apiVersion: '2026-02-25.clover',
+    apiVersion: '2025-01-27.acacia',
   });
 }
 

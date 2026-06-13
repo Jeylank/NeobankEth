@@ -103,8 +103,11 @@ export default function CardTopUpScreen() {
         </View>
 
         {/* ── Stripe card form (web) / stub (native) ───────── */}
+        {/* key forces a full remount when amount or currency changes,
+            so the Elements instance is recreated with the correct amount. */}
         {parsedAmount > 0 ? (
           <StripePaymentForm
+            key={`${parsedAmount}-${currency}`}
             amount={parsedAmount}
             currency={currency}
             onSuccess={handleSuccess}

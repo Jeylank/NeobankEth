@@ -216,10 +216,14 @@ app.get('/', (_req: Request, res: Response) => {
     </div>
 
     <div class="section">
-      <div class="section-title">Payments</div>
+      <div class="section-title">Payments &amp; Subscriptions</div>
       <div class="route"><span class="method get">GET</span><span class="path">/api/payments/publishable-key</span></div>
       <div class="route"><span class="method post">POST</span><span class="path">/api/payments/create-intent</span></div>
       <div class="route"><span class="method post">POST</span><span class="path">/api/payments/webhook</span></div>
+      <div class="route"><span class="method get">GET</span><span class="path">/api/payments/subscription</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/payments/setup-intent</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/payments/subscribe</span></div>
+      <div class="route"><span class="method post">POST</span><span class="path">/api/payments/unsubscribe</span></div>
     </div>
 
     <div class="footer">Sumsuma · Admin API · ${new Date().getFullYear()}</div>

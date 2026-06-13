@@ -1,16 +1,37 @@
 /**
  * StripePaymentForm.web.tsx
  * ─────────────────────────
- * Web-only Stripe Elements card form.
- * Renders a secure hosted CardElement for collecting card details.
- * Imported by CardTopUpScreen; Expo Metro resolves .web.tsx on web builds.
+ * Web-only Stripe payment form using the modern PaymentElement.
+ *
+ * Uses deferred intent creation (mode-based Elements) so the UI renders
+ * immediately without a server round-trip. The PaymentIntent is created on
+ * the server only when the user clicks "Pay", right before confirmation.
+ *
+ * Flow
+ * ────
+ *   1. Fetch publishable key → initialise Stripe.js
+ *   2. Mount <Elements mode="payment" amount currency> — no round-trip yet
+ *   3. User clicks "Pay":
+ *        a. elements.submit()          — validates card fields
+ *        b. POST /api/payments/create-intent → clientSecret
+ *        c. stripe.confirmPayment()    — confirms with redirect: 'if_required'
+ *   4. On success → onSuccess() callback
+ *
+ * redirect: 'if_required' means:
+ *   • No 3DS needed → resolves immediately with paymentIntent.status = 'succeeded'
+ *   • 3DS required  → redirects to bank, then back to return_url
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
 import { firebaseAuth } from '../services/firebase';
 import { createNotification } from '../services/firestoreNotifications';
 
@@ -26,11 +47,7 @@ const COLORS = {
   error:         '#EF4444',
 };
 
-function getApiBaseUrl(): string {
-  return '';
-}
-
-// ─── Inner form (inside <Elements>) ───────────────────────────────────────────
+// ─── Inner form (must live inside <Elements>) ──────────────────────────────────
 
 interface InnerFormProps {
   amount:    number;
@@ -46,35 +63,34 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
   const [succeeded,  setSucceeded]  = useState(false);
   const [cardError,  setCardError]  = useState<string | null>(null);
 
-  // Auto-navigate to wallet after showing success for 2 seconds
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (succeeded) {
-      timerRef.current = setTimeout(() => {
-        onSuccess();
-      }, 2200);
+      timerRef.current = setTimeout(() => onSuccess(), 2200);
     }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [succeeded, onSuccess]);
 
   const handlePay = async () => {
     if (!stripe || !elements) return;
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) return;
-
     setProcessing(true);
     setCardError(null);
 
     try {
-      // 1. Get Firebase ID token
+      // Step 1 — validate card fields without network call.
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setCardError(submitError.message ?? 'Please check your card details.');
+        return;
+      }
+
+      // Step 2 — get Firebase token.
       const idToken = await firebaseAuth.getIdToken();
       if (!idToken) throw new Error('You must be signed in to add funds.');
 
-      // 2. Create PaymentIntent on server
-      const intentRes = await fetch(`${getApiBaseUrl()}/api/payments/create-intent`, {
+      // Step 3 — create a PaymentIntent on the server.
+      const intentRes = await fetch('/api/payments/create-intent', {
         method:  'POST',
         headers: {
           'Content-Type':  'application/json',
@@ -84,44 +100,43 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
       });
 
       if (!intentRes.ok) {
-        let errorMsg = `Payment service error (${intentRes.status})`;
-        try {
-          const data = await intentRes.json();
-          errorMsg = data.error ?? data.message ?? errorMsg;
-        } catch { /* ignore */ }
-        throw new Error(errorMsg);
+        let msg = `Payment service error (${intentRes.status})`;
+        try { const d = await intentRes.json(); msg = d.error ?? d.message ?? msg; } catch {}
+        throw new Error(msg);
       }
 
       const { clientSecret } = await intentRes.json();
 
-      // 3. Confirm card payment with Stripe.js
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+      // Step 4 — confirm payment. redirect: 'if_required' handles both
+      // instant confirmations (most cards) and 3DS redirects.
+      const returnUrl = `${window.location.origin}/wallet`;
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+        elements,
         clientSecret,
-        { payment_method: { card: cardElement } },
-      );
+        confirmParams: { return_url: returnUrl },
+        redirect: 'if_required',
+      });
 
-      if (stripeError) {
-        setCardError(stripeError.message ?? 'Payment failed. Please try again.');
+      if (confirmError) {
+        setCardError(confirmError.message ?? 'Payment failed. Please try again.');
         return;
       }
 
       if (paymentIntent?.status === 'succeeded') {
         setSucceeded(true);
-        // Write notification immediately from the client as a backup to the server webhook
         const uid = firebaseAuth.currentUser?.uid;
         if (uid) {
           const symbols: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
-          const symbol = symbols[currency] ?? currency;
           createNotification({
             userId:  uid,
             type:    'transaction',
             title:   'Funds Added',
-            message: `${symbol}${amount.toFixed(2)} ${currency} has been added to your wallet.`,
+            message: `${symbols[currency] ?? currency}${amount.toFixed(2)} ${currency} has been added to your wallet.`,
             data:    { amount, currency, transactionType: 'topup' },
-          }).catch(() => {/* non-critical */});
+          }).catch(() => {});
         }
       } else {
-        setCardError(`Payment status: ${paymentIntent?.status ?? 'unknown'}. Please try again.`);
+        setCardError(`Unexpected payment status: ${paymentIntent?.status ?? 'unknown'}. Please try again.`);
       }
     } catch (err: any) {
       setCardError(err.message ?? 'An unexpected error occurred.');
@@ -130,7 +145,6 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
     }
   };
 
-  // ── Success state ──────────────────────────────────────────────────────────
   if (succeeded) {
     return (
       <View style={styles.successBox}>
@@ -149,23 +163,16 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
     );
   }
 
-  // ── Card form ──────────────────────────────────────────────────────────────
   return (
     <View>
       <Text style={styles.label}>Card Details</Text>
-      <View style={styles.cardElementWrapper}>
-        <CardElement
+
+      {/* PaymentElement renders card number, expiry, CVC, and billing fields. */}
+      <View style={styles.paymentElementWrapper}>
+        <PaymentElement
           options={{
-            style: {
-              base: {
-                fontSize:        '16px',
-                color:           COLORS.text,
-                fontFamily:      'system-ui, sans-serif',
-                '::placeholder': { color: COLORS.textSecondary },
-              },
-              invalid: { color: COLORS.error },
-            },
-            hidePostalCode: true,
+            layout: 'tabs',
+            fields: { billingDetails: { address: 'never' } },
           }}
         />
       </View>
@@ -187,11 +194,10 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
         onPress={handlePay}
         disabled={processing || !stripe}
       >
-        {processing ? (
-          <ActivityIndicator size="small" color={COLORS.white} />
-        ) : (
-          <Ionicons name="card" size={20} color={COLORS.white} />
-        )}
+        {processing
+          ? <ActivityIndicator size="small" color={COLORS.white} />
+          : <Ionicons name="card" size={20} color={COLORS.white} />
+        }
         <Text style={styles.payBtnText}>
           {processing ? 'Processing…' : `Pay ${currency} ${amount.toFixed(2)}`}
         </Text>
@@ -201,6 +207,7 @@ function StripeInnerForm({ amount, currency, onSuccess }: InnerFormProps) {
 }
 
 // ─── Outer component — loads Stripe and wraps with <Elements> ─────────────────
+// Uses mode-based (deferred) Elements so no PaymentIntent is created on mount.
 
 interface StripePaymentFormProps {
   amount:    number;
@@ -213,7 +220,7 @@ export default function StripePaymentForm({ amount, currency, onSuccess }: Strip
   const [loadError,     setLoadError]     = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${getApiBaseUrl()}/api/payments/publishable-key`)
+    fetch('/api/payments/publishable-key')
       .then((r) => r.json())
       .then(({ publishableKey }) => {
         if (!publishableKey) throw new Error('No publishable key returned.');
@@ -243,8 +250,27 @@ export default function StripePaymentForm({ amount, currency, onSuccess }: Strip
     );
   }
 
+  // mode-based Elements: renders the PaymentElement immediately without a
+  // pre-created PaymentIntent. The intent is created on "Pay" click.
+  const elementsOptions = {
+    mode:     'payment' as const,
+    amount:   Math.round(amount * 100), // Stripe expects smallest currency unit
+    currency: currency.toLowerCase(),
+    appearance: {
+      theme: 'stripe' as const,
+      variables: {
+        colorPrimary:       COLORS.primary,
+        colorBackground:    COLORS.white,
+        colorText:          COLORS.text,
+        colorDanger:        COLORS.error,
+        fontFamily:         'system-ui, sans-serif',
+        borderRadius:       '8px',
+      },
+    },
+  };
+
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise} options={elementsOptions}>
       <StripeInnerForm amount={amount} currency={currency} onSuccess={onSuccess} />
     </Elements>
   );
@@ -260,7 +286,7 @@ const styles = StyleSheet.create({
     marginTop:    16,
     marginBottom: 6,
   },
-  cardElementWrapper: {
+  paymentElementWrapper: {
     backgroundColor:   COLORS.white,
     borderRadius:      12,
     borderWidth:       1.5,
@@ -283,8 +309,8 @@ const styles = StyleSheet.create({
     borderRadius:    8,
   },
   errorText: {
-    fontSize:  13,
-    color:     COLORS.error,
+    fontSize:   13,
+    color:      COLORS.error,
     flexShrink: 1,
   },
   securityRow: {
@@ -324,7 +350,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color:      COLORS.white,
   },
-  // ── Success styles ──────────────────────────────────────────────────────────
   successBox: {
     alignItems:      'center',
     backgroundColor: COLORS.white,
@@ -363,11 +388,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   successBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius:    12,
-    paddingVertical: 14,
+    backgroundColor:  COLORS.primary,
+    borderRadius:     12,
+    paddingVertical:  14,
     paddingHorizontal: 32,
-    marginTop:       8,
+    marginTop:        8,
   },
   successBtnText: {
     fontSize:   15,
