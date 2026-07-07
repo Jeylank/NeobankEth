@@ -34,6 +34,7 @@ import notificationsRouter from './routes/notifications';
 import agentPayoutRouter   from './routes/agentPayout';
 import dashboardRouter     from './routes/dashboard';
 import remittancesRouter   from './routes/remittances';
+import userApiRouter       from './routes/userApi';
 import { systemConfigService } from './services/systemConfigService';
 import { getStripeSync }    from './stripeClient';
 import { stripePaymentService } from './services/stripePaymentService';
@@ -144,6 +145,7 @@ app.use('/api/v1',           agentPayoutRouter);
 app.use(API_PREFIX,          dashboardRouter);
 app.use('/api/campaigns',    campaignsRouter);
 app.use('/api',              remittancesRouter);
+app.use('/api',              userApiRouter);
 
 // ─── Expo Web App — static files ─────────────────────────────────────────────
 // Serve the built Expo web bundle from /dist.  API routes are already mounted
