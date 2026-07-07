@@ -15,7 +15,8 @@
     "server:admin": "ts-node --transpile-only --project server/tsconfig.json server/index.ts",
     "test:risk": "jest server/tests/riskControls.test.ts --no-coverage",
     "test": "jest --no-coverage",
-    "test:load": "ts-node --transpile-only --project server/tsconfig.json server/tests/concurrentLoad.ts"
+    "test:load": "ts-node --transpile-only --project server/tsconfig.json server/tests/concurrentLoad.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.0",

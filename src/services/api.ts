@@ -1,14 +1,39 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
-// On web the app and API are co-located on the same origin, so we use a
-// relative base URL (empty string).  On native we need an absolute URL.
-const API_BASE_URL =
-  Platform.OS === 'web'
-    ? ''
-    : (process.env.EXPO_PUBLIC_API_URL || 'https://api.sumsuma.com');
+// ─── Base URL resolution ───────────────────────────────────────────────────────
+//
+// Web: the app is co-located with the API on the same origin, so relative paths
+//      ('') work without any configuration.
+//
+// Native (Android / iOS): the app is a standalone binary that must reach an
+//      explicit host.  Set EXPO_PUBLIC_API_BASE_URL in your .env / EAS secrets
+//      before building.  Example:
+//        EXPO_PUBLIC_API_BASE_URL=https://my-server.replit.dev
+//
+// If EXPO_PUBLIC_API_BASE_URL is absent on a native build, every request will
+// fail with a clear CONFIG_ERROR rather than an opaque "Network Error".
+
+const IS_WEB = Platform.OS === 'web';
+
+const NATIVE_BASE = IS_WEB ? '' : (process.env.EXPO_PUBLIC_API_BASE_URL ?? '');
+
+// Sentinel — truthy on native only when the env var is missing.
+const MISSING_NATIVE_CONFIG = !IS_WEB && !NATIVE_BASE;
+
+if (MISSING_NATIVE_CONFIG) {
+  console.error(
+    '[Sumsuma] EXPO_PUBLIC_API_BASE_URL is not set.\n' +
+    'The app cannot reach the backend on this native build.\n' +
+    'Set the variable before running `eas build`.',
+  );
+}
+
+const API_BASE_URL = IS_WEB ? '' : NATIVE_BASE;
+
+// ─── Axios instance ────────────────────────────────────────────────────────────
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -18,21 +43,54 @@ const api = axios.create({
   withCredentials: true,
 });
 
-api.interceptors.request.use(async (config) => {
+// ─── Request interceptor ──────────────────────────────────────────────────────
+// 1. Abort immediately with a CONFIG_ERROR when native config is missing — no
+//    network round-trip, no opaque "Network Error" in the UI.
+// 2. Attach Firebase auth token (all platforms).
+// 3. Attach X-API-Key on native when EXPO_PUBLIC_API_KEY is set.
+
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  if (MISSING_NATIVE_CONFIG) {
+    return Promise.reject(
+      Object.assign(new Error(
+        'EXPO_PUBLIC_API_BASE_URL is not configured. ' +
+        'Rebuild the app with this environment variable set.',
+      ), { code: 'CONFIG_ERROR' }),
+    );
+  }
+
+  // Firebase auth token
   const token = await SecureStore.getItemAsync('authToken');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.set('Authorization', `Bearer ${token}`);
   }
+
+  // API key — native only; web relies on same-origin cookies/session
+  if (!IS_WEB) {
+    const apiKey = process.env.EXPO_PUBLIC_API_KEY;
+    if (apiKey) {
+      config.headers.set('X-API-Key', apiKey);
+    }
+  }
+
   return config;
 });
+
+// ─── Response interceptor ────────────────────────────────────────────────────
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    if (error.code === 'CONFIG_ERROR') {
+      console.error('[Sumsuma] Config error — request cancelled:', error.message);
+    } else {
+      console.error('[Sumsuma] API Error:', error.response?.data ?? error.message);
+    }
     return Promise.reject(error);
-  }
+  },
 );
+
+// ─── API surface ──────────────────────────────────────────────────────────────
 
 export const authApi = {
   login: async (email: string, password: string) => {
