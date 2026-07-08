@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web:dev": "expo start --web --port 5000 --host lan",
     "build:web": "expo export --platform web",
+    "build": "npm run build:web",
     "web": "npm run build:web && npx serve dist -l 5000",
     "test:remittance": "ts-node --project scripts/tsconfig.json scripts/runRemittanceTests.ts",
     "worker:settlement": "ts-node --project scripts/tsconfig.json scripts/runSettlementWorker.ts",
