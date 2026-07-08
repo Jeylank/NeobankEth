@@ -27,6 +27,7 @@
 
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
+import { createBetaRiskAlert } from './betaRiskService';
 import { adminDb } from '../firebaseAdmin';
 
 // ─── Firestore collection keys ────────────────────────────────────────────────
@@ -85,6 +86,40 @@ export interface TimelineEvent {
   status:      string;
   note:        string;
   created_at:  string;
+}
+
+interface TransferRecord extends Record<string, unknown> {
+  status: TransferState;
+  assigned_agent_id?: string;
+  amount: number;
+  currency?: string;
+}
+
+export function hasSufficientAgentFloat(
+  agent: Pick<Agent, 'available_float'>,
+  amount: number,
+): boolean {
+  return agent.available_float >= amount;
+}
+
+export function requireVerifiedOtp(record: { verified?: boolean }): void {
+  if (!record.verified) {
+    throw new AgentPayoutError(
+      'OTP_NOT_VERIFIED',
+      'OTP has not been verified. Call verify-otp first.',
+      422,
+    );
+  }
+}
+
+export function requireUnpaidTransfer(status: TransferState): void {
+  if (status === 'PAID_OUT' || status === 'COMPLETED') {
+    throw new AgentPayoutError(
+      'DUPLICATE_PAYOUT',
+      `Transfer is already ${status} — duplicate payout blocked.`,
+      409,
+    );
+  }
 }
 
 // ─── Typed error codes (map to HTTP status in route layer) ───────────────────
@@ -261,7 +296,7 @@ export async function assignBestAgent(
   const eligible = agentSnap.docs
     .map(d => ({ id: d.id, ...(d.data() as Omit<Agent, 'id'>) }))
     .filter(a => !allExcluded.includes(a.id))
-    .filter(a => a.available_float >= amount)
+    .filter(a => hasSufficientAgentFloat(a, amount))
     .sort((a, b) => b.score - a.score);
 
   if (eligible.length === 0) {
@@ -707,9 +742,7 @@ export async function markPaid(
   }
 
   const record = otpDoc.data()!;
-  if (!record.verified) {
-    throw new AgentPayoutError('OTP_NOT_VERIFIED', 'OTP has not been verified. Call verify-otp first.', 422);
-  }
+  requireVerifiedOtp(record);
   if (!record.payout_token) {
     throw new AgentPayoutError('TOKEN_CONSUMED', 'Payout token has already been consumed.', 409);
   }
@@ -730,8 +763,9 @@ export async function markPaid(
     if (!txDoc.exists) {
       throw new AgentPayoutError('TRANSFER_NOT_FOUND', `Transfer ${transferId} not found.`, 404);
     }
-    const tx = txDoc.data()!;
+    const tx = txDoc.data()! as TransferRecord;
 
+    requireUnpaidTransfer(tx.status);
     if (tx.status === 'PAID_OUT' || tx.status === 'COMPLETED') {
       throw new AgentPayoutError(
         'DUPLICATE_PAYOUT',
@@ -772,6 +806,23 @@ export async function markPaid(
     // Debit agent float
     t.update(agentRef, { available_float: admin.firestore.FieldValue.increment(-amount) });
 
+    const payoutLedgerRef = adminDb.collection('sim_ledger').doc(`${transferId}_agent_payout`);
+    t.set(payoutLedgerRef, {
+      journalId: payoutLedgerRef.id,
+      transactionId: transferId,
+      type: 'AGENT_CASH_PAYOUT',
+      currency: tx.currency,
+      amount,
+      agentId,
+      agentFloatBefore: agent.available_float,
+      agentFloatAfter: agent.available_float - amount,
+      entries: [
+        { account: 'remittance:clearing', side: 'CREDIT', amount },
+        { account: `agent:${agentId}:cash`, side: 'DEBIT', amount },
+      ],
+      createdAt: admin.firestore.Timestamp.now(),
+    });
+
     // Mark transfer PAID_OUT
     t.update(txRef, {
       status:    'PAID_OUT',
@@ -808,6 +859,13 @@ export async function markPaid(
   );
   console.log(`[AgentPayout] Payout complete — transfer=${transferId} agent=${result.agent.id} amount=${result.tx.amount}`);
 
+  if (result.agent.available_float < 500) {
+    await createBetaRiskAlert('LOW_AGENT_FLOAT', result.agent.id, {
+      transactionId: transferId,
+      availableFloat: result.agent.available_float,
+      currency: result.tx.currency ?? null,
+    });
+  }
   return { transfer: result.tx, agent: result.agent };
 }
 

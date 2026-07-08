@@ -1,5 +1,5 @@
 module.exports = function(api) {
-  // api.caller() must be invoked before api.cache() — Babel enforces this order.
+  // api.caller() must be invoked before api.cache(); Babel enforces this order.
   const isWeb = api.caller(
     (caller) => !!(caller && caller.name === 'metro' && caller.platform === 'web')
   );
@@ -19,9 +19,6 @@ module.exports = function(api) {
           },
         },
       ],
-      // nativewind v2 babel plugin uses synchronous PostCSS which breaks on
-      // web builds. Skip it for web — styling is handled via CSS directly.
-      ...(!isWeb ? ['nativewind/babel'] : []),
     ],
   };
 };

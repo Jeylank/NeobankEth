@@ -17,12 +17,26 @@ import {
   QUOTE_TTL_MS, QUOTE_BUFFER_MS,
   DEFAULT_LIQUIDITY, REPLENISH_THRESHOLD, REPLENISH_TARGET,
   providers, selectProvider, tripProvider, resetAllProviders,
-  processRemittance, extractIdempotencyKey, checkIdempotency,
+  extractIdempotencyKey, checkIdempotency,
   createQuote, getWalletBalances, getLiquidityETB,
   getOrAgeTx, stripeTopUp, fullReset, resetLiquidityPool,
   resumeTransaction, type ResumeAction,
   seedSimulation, SEED_USERS, SEED_BALANCES_PER_CCY,
 } from '../services/simulationEngine';
+import { getAppMode, remittanceProvider } from '../services/remittance';
+import {
+  confirmSimulationPayment,
+  refundSimulationPayment,
+  type SimulatedPaymentOutcome,
+} from '../services/paymentConfirmationService';
+import { reconcileSimulationRemittances } from '../services/remittanceReconciliationService';
+import {
+  BetaLimitError,
+  createBetaRiskAlert,
+  enforceBetaInitiationLimits,
+  getBetaRiskSummary,
+  updateBetaControls,
+} from '../services/betaRiskService';
 import {
   getProviderLiquidityAll,
   PROVIDER_LIQUIDITY_DEFAULTS,
@@ -55,6 +69,65 @@ function requireApiKey(req: Request, res: Response, next: () => void): void {
   next();
 }
 
+interface RouteErrorDetails {
+  status: number;
+  error: string;
+  message: string;
+  retryable: boolean;
+  cause: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  return typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : undefined;
+}
+
+function isFirestoreCredentialError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes('could not load the default credentials')
+    || normalized.includes('application default credentials')
+    || normalized.includes('credential')
+    || normalized.includes('permission_denied')
+    || normalized.includes('unauthenticated')
+    || normalized.includes('the caller does not have permission');
+}
+
+function describeInitiateError(error: unknown): RouteErrorDetails {
+  const message = getErrorMessage(error);
+  const code = getErrorCode(error);
+  if (isFirestoreCredentialError(message) || code === '7' || code === '16') {
+    return {
+      status: 502,
+      error: 'FIRESTORE_UNAVAILABLE',
+      message: 'The transfer service could not reach Firestore. Please try again shortly.',
+      retryable: true,
+      cause: message,
+    };
+  }
+  return {
+    status: 502,
+    error: 'REMITTANCE_INITIATE_FAILED',
+    message: 'The transfer service could not initiate this remittance. Please try again.',
+    retryable: true,
+    cause: message,
+  };
+}
+
+function requestBodyShape(body: unknown): Record<string, string> {
+  if (!body || typeof body !== 'object') return {};
+  return Object.fromEntries(
+    Object.entries(body as Record<string, unknown>).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? 'array' : typeof value,
+    ]),
+  );
+}
+
 // ─── GET /api/v1/health ───────────────────────────────────────────────────────
 
 router.get('/health', (_req: Request, res: Response) => {
@@ -76,6 +149,10 @@ router.get('/health', (_req: Request, res: Response) => {
       'POST /api/v1/wallet/topup',
       'GET  /api/v1/wallet/:userId',
       'POST /api/v1/remittance/initiate',
+      'POST /api/v1/remittance/confirm-payment',
+      'POST /api/v1/remittance/refund',
+      'POST /api/v1/remittance/reconcile',
+      'GET  /api/v1/admin/beta-risk-summary',
       'GET  /api/v1/remittance/:txId',
       'POST /api/v1/campaign/contribute',
       'POST /api/v1/recurring/process',
@@ -186,18 +263,45 @@ router.get('/wallet/:userId', requireApiKey, readLimiter, async (req: Request, r
 // ─── POST /api/v1/remittance/initiate ─────────────────────────────────────────
 
 router.post('/remittance/initiate', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
+  const requestId =
+    (req.headers['x-request-id'] as string | undefined)
+    ?? `remit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
   // FIX B: Idempotency check runs FIRST, before any field validation.
   // A duplicate request with a missing/invalid field must still return the
   // cached response (HTTP 200), not a 400 validation error.
   const idempotencyKey = extractIdempotencyKey(req.headers as any, req.body ?? {});
   const cached = await checkIdempotency(idempotencyKey);
-  if (cached) { res.status(cached.status).json(cached.payload); return; }
+  if (cached) {
+    void createBetaRiskAlert('DUPLICATE_REQUEST', idempotencyKey ?? String(cached.payload.transactionId ?? 'unknown'), {
+      transactionId: cached.payload.transactionId ?? null,
+    });
+    res.status(cached.status).json(cached.payload);
+    return;
+  }
 
-  const { userId, recipientId, amount, currency = 'EUR', quoteId, metadata } = req.body ?? {};
+  const {
+    userId, recipientId, amount, currency = 'EUR', quoteId, metadata,
+    payout_method, recipient_city,
+  } = req.body ?? {};
   if (!userId || typeof userId !== 'string') { res.status(400).json({ error: 'INVALID_USER_ID', message: 'userId is required.' }); return; }
   if (!recipientId || typeof recipientId !== 'string') { res.status(400).json({ error: 'INVALID_RECIPIENT', message: 'recipientId is required.' }); return; }
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number.' }); return; }
   if (!FX_BASE_RATES[(currency as string).toUpperCase()]) { res.status(400).json({ error: 'UNSUPPORTED_CURRENCY', message: `Currency ${currency} is not supported.` }); return; }
+
+  try {
+    await enforceBetaInitiationLimits(userId, amount);
+  } catch (error) {
+    if (error instanceof BetaLimitError) {
+      res.status(error.code === 'BETA_PAUSED' ? 503 : 422).json({
+        error: error.code,
+        message: error.message,
+        ...error.details,
+      });
+      return;
+    }
+    throw error;
+  }
 
   // ── Fraud gate — runs BEFORE any wallet debit ──────────────────────────────
   const fraudCtx: FraudContext = {
@@ -232,12 +336,129 @@ router.post('/remittance/initiate', requireApiKey, writeLimiter, async (req: Req
     return;
   }
 
-  const result = await processRemittance({
+  const result = await remittanceProvider.initiate({
     userId, recipientId, amount,
     currency: (currency as string).toUpperCase(),
-    type: 'standard', quoteId, metadata, idempotencyKey,
+    type: 'standard', quoteId,
+    metadata: {
+      ...(metadata ?? {}),
+      ...(payout_method !== undefined ? { payout_method } : {}),
+      ...(recipient_city !== undefined ? { recipient_city } : {}),
+    },
+    idempotencyKey,
   });
   res.status(result.status).json(result.payload);
+  } catch (error: unknown) {
+    const details = describeInitiateError(error);
+    console.error('[SimAPI] /remittance/initiate failed:', {
+      requestId,
+      appMode: getAppMode(),
+      error: details.error,
+      cause: details.cause,
+      bodyShape: requestBodyShape(req.body),
+    });
+    res.status(details.status).json({
+      error: details.error,
+      message: details.message,
+      requestId,
+      retryable: details.retryable,
+    });
+  }
+});
+
+router.post('/remittance/confirm-payment', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
+  if (getAppMode() !== 'simulation') {
+    res.status(404).json({
+      error: 'SIMULATION_ONLY',
+      message: 'Payment confirmation simulation is not available in production mode.',
+    });
+    return;
+  }
+
+  const { transactionId, outcome = 'confirmed' } = req.body ?? {};
+  if (!transactionId || typeof transactionId !== 'string') {
+    res.status(400).json({ error: 'INVALID_TRANSACTION_ID', message: 'transactionId is required.' });
+    return;
+  }
+  if (outcome !== 'confirmed' && outcome !== 'failed') {
+    res.status(400).json({ error: 'INVALID_PAYMENT_OUTCOME', message: "outcome must be 'confirmed' or 'failed'." });
+    return;
+  }
+
+  try {
+    const result = await confirmSimulationPayment(
+      transactionId,
+      outcome as SimulatedPaymentOutcome,
+    );
+    res.status(result.status).json(result.payload);
+  } catch (err: any) {
+    console.error('[SimAPI] /remittance/confirm-payment error:', err.message);
+    res.status(500).json({ error: 'PAYMENT_CONFIRMATION_FAILED', message: err.message });
+  }
+});
+
+router.post('/remittance/refund', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
+  if (getAppMode() !== 'simulation') {
+    res.status(404).json({ error: 'SIMULATION_ONLY', message: 'Refund simulation is not available in production mode.' });
+    return;
+  }
+  const { transactionId } = req.body ?? {};
+  if (!transactionId || typeof transactionId !== 'string') {
+    res.status(400).json({ error: 'INVALID_TRANSACTION_ID', message: 'transactionId is required.' });
+    return;
+  }
+  try {
+    const result = await refundSimulationPayment(transactionId);
+    res.status(result.status).json(result.payload);
+  } catch (err: any) {
+    res.status(409).json({ error: 'REFUND_NOT_ALLOWED', message: err.message });
+  }
+});
+
+router.post('/remittance/reconcile', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
+  if (getAppMode() !== 'simulation') {
+    res.status(404).json({ error: 'SIMULATION_ONLY', message: 'Remittance reconciliation is not available in production mode.' });
+    return;
+  }
+  const { paymentPendingThresholdMs, agentPayoutSlaMs, recover = true } = req.body ?? {};
+  if (
+    (paymentPendingThresholdMs !== undefined && (!Number.isFinite(paymentPendingThresholdMs) || paymentPendingThresholdMs < 0))
+    || (agentPayoutSlaMs !== undefined && (!Number.isFinite(agentPayoutSlaMs) || agentPayoutSlaMs < 0))
+  ) {
+    res.status(400).json({ error: 'INVALID_THRESHOLD', message: 'Thresholds must be non-negative numbers.' });
+    return;
+  }
+  try {
+    const result = await reconcileSimulationRemittances({
+      paymentPendingThresholdMs,
+      agentPayoutSlaMs,
+      recover: recover !== false,
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: 'RECONCILIATION_FAILED', message: err.message });
+  }
+});
+
+router.get('/admin/beta-risk-summary', requireApiKey, readLimiter, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json(await getBetaRiskSummary());
+  } catch (err: any) {
+    res.status(500).json({ error: 'BETA_RISK_SUMMARY_FAILED', message: err.message });
+  }
+});
+
+router.post('/admin/beta-controls', requireApiKey, writeLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { paused, limits, updatedBy = 'api' } = req.body ?? {};
+  if (paused !== undefined && typeof paused !== 'boolean') {
+    res.status(400).json({ error: 'INVALID_PAUSED_STATE' });
+    return;
+  }
+  try {
+    res.json(await updateBetaControls({ paused, limits }, updatedBy));
+  } catch (err: any) {
+    res.status(500).json({ error: 'BETA_CONTROLS_UPDATE_FAILED', message: err.message });
+  }
 });
 
 // ─── POST /api/v1/campaign/contribute ────────────────────────────────────────
@@ -274,7 +495,7 @@ router.post('/campaign/contribute', requireApiKey, writeLimiter, async (req: Req
     return;
   }
 
-  const result = await processRemittance({
+  const result = await remittanceProvider.initiate({
     userId, recipientId: `campaign:${campaignId}`, amount,
     currency: (currency as string).toUpperCase(), type: 'campaign_contribution',
     quoteId, metadata: { campaignId, purpose, transactionCode: 'DONATION_CHARITY' }, idempotencyKey,
@@ -318,7 +539,7 @@ router.post('/recurring/process', requireApiKey, writeLimiter, async (req: Reque
     return;
   }
 
-  const result = await processRemittance({
+  const result = await remittanceProvider.initiate({
     userId, recipientId, amount,
     currency: (currency as string).toUpperCase(), type: 'recurring_support',
     quoteId, metadata: { scheduleId }, idempotencyKey,

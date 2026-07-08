@@ -39,6 +39,12 @@ const STATUS_CONFIG: Record<string, { color: string; icon: keyof typeof Ionicons
   completed:  { color: COLORS.success,       icon: 'checkmark-circle', label: 'Completed' },
   failed:     { color: COLORS.error,         icon: 'close-circle',     label: 'Failed' },
   cancelled:  { color: COLORS.textSecondary, icon: 'ban',              label: 'Cancelled' },
+  PAYMENT_PENDING:   { color: COLORS.warning, icon: 'card-outline',       label: 'Payment pending' },
+  FUNDS_RECEIVED:    { color: COLORS.info,    icon: 'wallet-outline',     label: 'Funds received' },
+  OTP_SENT:          { color: COLORS.info,    icon: 'key-outline',        label: 'OTP sent' },
+  READY_FOR_PAYOUT:  { color: COLORS.success, icon: 'cash-outline',       label: 'Ready for payout' },
+  RECOVERY_PENDING:  { color: COLORS.warning, icon: 'construct-outline',  label: 'Recovery pending' },
+  PAID_OUT:          { color: COLORS.success, icon: 'checkmark-circle',   label: 'Paid out' },
 };
 
 export default function RemittanceTrackingScreen() {
@@ -115,7 +121,7 @@ export default function RemittanceTrackingScreen() {
 
   const renderCard = (remittance: any) => {
     const statusConfig = getStatusConfig(remittance.status);
-    const isDone = ['completed', 'failed', 'cancelled'].includes(remittance.status);
+    const isDone = ['completed', 'failed', 'cancelled', 'PAID_OUT', 'COMPLETED'].includes(remittance.status);
 
     return (
       <View key={remittance.id} style={styles.remittanceCard}>

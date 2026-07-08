@@ -37,6 +37,7 @@ import SecuritySettingsScreen from '../screens/SecuritySettingsScreen';
 import FxMarketplaceScreen from '../screens/FxMarketplaceScreen';
 import TransferTrackingScreen from '../screens/TransferTrackingScreen';
 import TransferSuccessScreen from '../screens/TransferSuccessScreen';
+import PendingLiquidityScreen from '../screens/PendingLiquidityScreen';
 import RecipientsScreen from '../screens/RecipientsScreen';
 import PersonalInformationScreen from '../screens/PersonalInformationScreen';
 import AboutScreen from '../screens/AboutScreen';
@@ -182,6 +183,7 @@ export default function RootNavigator() {
           <Stack.Screen name="FxMarketplace" component={FxMarketplaceScreen} options={{ title: 'FX Marketplace' }} />
           <Stack.Screen name="TransferTracking" component={TransferTrackingScreen} options={{ headerShown: false }} />
           <Stack.Screen name="TransferSuccess" component={TransferSuccessScreen} options={{ headerShown: false, gestureEnabled: false }} />
+          <Stack.Screen name="PendingLiquidity" component={PendingLiquidityScreen} options={{ title: 'Pending Liquidity' }} />
           <Stack.Screen name="Recipients" component={RecipientsScreen} options={{ title: 'Recipients' }} />
           <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} options={{ title: 'Personal Information' }} />
           <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Sumsuma' }} />

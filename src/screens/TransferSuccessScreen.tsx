@@ -24,7 +24,55 @@ export default function TransferSuccessScreen() {
     receiveCurrency = 'ETB',
     deliveryTime   = '1–2 business days',
     txId           = 'demo-tx',
+    status         = 'PROCESSING',
+    otp,
   } = route.params ?? {};
+  const statusCopy: Record<string, { headline: string; detail: string }> = {
+    OTP_SENT: {
+      headline: 'OTP sent',
+      detail: otp ? `Payout OTP: ${otp}` : 'The recipient OTP is ready for verification.',
+    },
+    READY_FOR_PAYOUT: {
+      headline: 'Ready for payout',
+      detail: 'OTP verified. The agent can complete the cash payout.',
+    },
+    RECOVERY_PENDING: {
+      headline: 'Recovery in progress',
+      detail: 'This payout needs operational review. Your transfer remains tracked.',
+    },
+    FUNDS_RECEIVED: {
+      headline: 'Funds received',
+      detail: 'Payment is confirmed and payout processing can begin.',
+    },
+    AGENT_ASSIGNED: {
+      headline: 'Agent assigned',
+      detail: 'An agent has been assigned and payout preparation is in progress.',
+    },
+    PROCESSING: {
+      headline: 'Transfer processing',
+      detail: `Sending to ${recipientName}`,
+    },
+    PENDING_REVIEW: {
+      headline: 'Review pending',
+      detail: 'Your transfer is queued for review and has not been debited again.',
+    },
+    PAYMENT_CONFIRMING: {
+      headline: 'Payment confirming',
+      detail: 'Payment confirmation is still in progress.',
+    },
+    PAID_OUT: {
+      headline: 'Paid out',
+      detail: 'The recipient payout has been marked paid.',
+    },
+    COMPLETED: {
+      headline: 'Transfer complete',
+      detail: `Sent to ${recipientName}`,
+    },
+  };
+  const currentStatus = statusCopy[status] ?? {
+    headline: 'Money on the way!',
+    detail: `Sending to ${recipientName}`,
+  };
 
   const scaleAnim   = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -67,10 +115,9 @@ export default function TransferSuccessScreen() {
 
         {/* Message */}
         <Animated.View style={{ opacity: opacityAnim, transform: [{ translateY: slideAnim }] }}>
-          <Text style={s.headline}>Money on the way!</Text>
+          <Text style={s.headline}>{currentStatus.headline}</Text>
           <Text style={s.subHeadline}>
-            Sending to{' '}
-            <Text style={s.recipientName}>{recipientName}</Text>
+            {currentStatus.detail}
           </Text>
         </Animated.View>
 

@@ -15,12 +15,18 @@
       }
     },
     "preview": {
+      "environment": "preview",
       "distribution": "internal",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
       "ios": {
         "simulator": false
       },
       "env": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_APP_ENV": "preview"
       }
     },
     "production": {

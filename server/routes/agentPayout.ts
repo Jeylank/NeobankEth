@@ -46,13 +46,32 @@ const router = Router();
 
 // ─── Shared error handler ─────────────────────────────────────────────────────
 
+type AgentPayoutHttpError = {
+  code: string;
+  message: string;
+  httpStatus: number;
+};
+
+function isAgentPayoutHttpError(err: unknown): err is AgentPayoutHttpError {
+  if (err instanceof AgentPayoutError) return true;
+  if (!err || typeof err !== 'object') return false;
+
+  const candidate = err as Partial<AgentPayoutHttpError>;
+  return (
+    typeof candidate.code === 'string' &&
+    typeof candidate.message === 'string' &&
+    typeof candidate.httpStatus === 'number'
+  );
+}
+
 function handleError(
   res:     Response,
   err:     unknown,
   context: string,
 ): void {
-  if (err instanceof AgentPayoutError) {
-    console.error(`[AgentPayout] ${context}: [${err.code}] ${err.message}`);
+  if (isAgentPayoutHttpError(err)) {
+    const log = err.code === 'DUPLICATE_PAYOUT' ? console.warn : console.error;
+    log(`[AgentPayout] ${context}: [${err.code}] ${err.message}`);
     res.status(err.httpStatus).json({
       error:   err.code,
       message: err.message,

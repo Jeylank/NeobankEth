@@ -106,6 +106,41 @@ export interface SubscriptionInfo {
   customerId?:         string;
 }
 
+function isExpandedInvoice(
+  invoice: string | Stripe.Invoice | null,
+): invoice is Stripe.Invoice {
+  return typeof invoice === 'object' && invoice !== null && invoice.object === 'invoice';
+}
+
+function isExpandedPaymentIntent(
+  paymentIntent: string | Stripe.PaymentIntent | undefined,
+): paymentIntent is Stripe.PaymentIntent {
+  return (
+    typeof paymentIntent === 'object' &&
+    paymentIntent !== null &&
+    paymentIntent.object === 'payment_intent'
+  );
+}
+
+function getInvoiceClientSecret(invoice: Stripe.Invoice | null): string | undefined {
+  const confirmationSecret = invoice?.confirmation_secret?.client_secret;
+  if (confirmationSecret) return confirmationSecret;
+
+  const expandedPaymentIntent = invoice?.payments?.data
+    .map((invoicePayment) => invoicePayment.payment.payment_intent)
+    .find(isExpandedPaymentIntent);
+
+  return expandedPaymentIntent?.client_secret ?? undefined;
+}
+
+function getInvoiceSubscriptionDetails(
+  invoice: Stripe.Invoice,
+): Stripe.Invoice.Parent.SubscriptionDetails | null {
+  return invoice.parent?.type === 'subscription_details'
+    ? invoice.parent.subscription_details
+    : null;
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export const stripePaymentService = {
@@ -246,12 +281,13 @@ export const stripePaymentService = {
         payment_method_types: ['card'],
         save_default_payment_method: 'on_subscription',
       },
-      expand: ['latest_invoice.payment_intent'],
+      expand: ['latest_invoice.payments.data.payment.payment_intent'],
       metadata: { userId, app: 'sumsuma' },
     });
 
-    const invoice       = subscription.latest_invoice as Stripe.Invoice;
-    const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent | null;
+    const invoice = isExpandedInvoice(subscription.latest_invoice)
+      ? subscription.latest_invoice
+      : null;
 
     // Persist initial state — final status arrives via webhook.
     await stripeCustomerRef(userId).set(
@@ -267,7 +303,7 @@ export const stripePaymentService = {
 
     return {
       subscriptionId: subscription.id,
-      clientSecret:   paymentIntent?.client_secret ?? undefined,
+      clientSecret:   getInvoiceClientSecret(invoice),
       status:         subscription.status,
     };
   },
@@ -330,8 +366,9 @@ export const stripePaymentService = {
     let event: Stripe.Event;
     try {
       event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-    } catch (err: any) {
-      throw new Error(`Webhook signature verification failed: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Webhook signature verification failed: ${message}`);
     }
 
     switch (event.type) {
@@ -529,8 +566,9 @@ export const stripePaymentService = {
       return;
     }
 
-    const periodEnd = sub.current_period_end
-      ? Timestamp.fromMillis(sub.current_period_end * 1000)
+    const currentPeriodEnd = sub.items.data[0]?.current_period_end;
+    const periodEnd = currentPeriodEnd
+      ? Timestamp.fromMillis(currentPeriodEnd * 1000)
       : null;
 
     const priceId = (sub.items.data[0]?.price?.id) ?? undefined;
@@ -582,10 +620,11 @@ export const stripePaymentService = {
   },
 
   async _onInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-    if (!invoice.subscription) return;
+    const subscriptionDetails = getInvoiceSubscriptionDetails(invoice);
+    if (!subscriptionDetails?.subscription) return;
 
-    const userId = (invoice.subscription_details?.metadata?.userId)
-      ?? (invoice as any).metadata?.userId;
+    const userId = subscriptionDetails.metadata?.userId
+      ?? invoice.metadata?.userId;
 
     if (!userId) {
       // Try to resolve userId from the customer record.
@@ -630,7 +669,8 @@ export const stripePaymentService = {
   },
 
   async _onInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-    if (!invoice.subscription) return;
+    const subscriptionDetails = getInvoiceSubscriptionDetails(invoice);
+    if (!subscriptionDetails?.subscription) return;
 
     const customer = invoice.customer as string | undefined;
     if (!customer) return;

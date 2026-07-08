@@ -316,12 +316,11 @@ class FirestoreFamilyWalletService {
     if (this.shouldFallback(userId)) {
       try {
         await remittanceApi.initiateTransfer({
+          userId,
+          recipientId: member.id,
           amount: member.monthlyAmount,
-          fromCurrency: member.currency,
-          toCurrency: 'ETB',
-          beneficiaryId: 0,
-          description: `Family Support: ${member.name}${member.note ? ' - ' + member.note : ''}`,
-          payoutMethod: PAYOUT_METHOD_MAP[member.payoutMethod],
+          currency: member.currency,
+          payout_method: member.payoutMethod === 'cash_pickup' ? 'agent_cash' : PAYOUT_METHOD_MAP[member.payoutMethod],
         });
       } catch (transferError) {
         console.warn('Remittance API unavailable, recording locally:', transferError);
@@ -340,12 +339,11 @@ class FirestoreFamilyWalletService {
 
     try {
       await remittanceApi.initiateTransfer({
+        userId,
+        recipientId: member.id,
         amount: member.monthlyAmount,
-        fromCurrency: member.currency,
-        toCurrency: 'ETB',
-        beneficiaryId: 0,
-        description: `Family Support: ${member.name}${member.note ? ' - ' + member.note : ''}`,
-        payoutMethod: PAYOUT_METHOD_MAP[member.payoutMethod],
+        currency: member.currency,
+        payout_method: member.payoutMethod === 'cash_pickup' ? 'agent_cash' : PAYOUT_METHOD_MAP[member.payoutMethod],
       });
     } catch (error) {
       allocation.status = 'failed';

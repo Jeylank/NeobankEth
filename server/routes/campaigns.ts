@@ -16,12 +16,12 @@
 
 import { Router, Request, Response } from 'express';
 import {
-  processRemittance,
   extractIdempotencyKey,
   checkIdempotency,
   FX_BASE_RATES,
   SimError,
 } from '../services/simulationEngine';
+import { remittanceProvider } from '../services/remittance';
 
 const router = Router();
 
@@ -98,7 +98,7 @@ router.post('/:campaignId/contribute', requireApiKey, async (req: Request, res: 
   }
 
   // ── Delegate to shared engine ─────────────────────────────────────────────────
-  const result = await processRemittance({
+  const result = await remittanceProvider.initiate({
     userId,
     recipientId:     `campaign:${campaignId}`,
     amount,

@@ -14,12 +14,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { remittanceApi, beneficiariesApi, balanceApi } from '../services/api';
+import {
+  remittanceApi,
+  beneficiariesApi,
+  balanceApi,
+  type RemittanceApiResponse,
+} from '../services/api';
 import {
   getRecipients,
-  initiateTransferFirestore,
   getWalletBalanceFallback,
 } from '../services/remittanceFirestoreService';
+import { executeRemittanceFlow } from '../services/mobileRemittanceFlow';
+import { getAuth } from 'firebase/auth';
 import { requireBiometricConfirmation } from '../utils/security';
 import FeeBreakdownCard from '../components/FeeBreakdownCard';
 import DeliveryTimeBadge from '../components/DeliveryTimeBadge';
@@ -82,6 +88,7 @@ export default function RemittanceScreen() {
   const [selectedRecipientName, setSelectedRecipientName] = useState<string | null>(incomingRecipient?.name || null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [transferStatus, setTransferStatus] = useState<string | null>(null);
 
   const clearPrefill = () => {
     setShowPrefillBanner(false);
@@ -155,21 +162,37 @@ export default function RemittanceScreen() {
       payoutMethod?: string;
       quoteId?: string;
     }) => {
-      const recipientObj = beneficiariesData?.beneficiaries?.find((b: any) => b.id === payload.beneficiaryId);
-      try {
-        return await remittanceApi.initiateTransfer(payload);
-      } catch {
-        return await initiateTransferFirestore({
-          ...payload,
-          recipientName:   selectedRecipientName ?? recipientObj?.name ?? 'Recipient',
-          convertedAmount: parseFloat(convertedAmount),
-        });
-      }
+      const userId = getAuth().currentUser?.uid;
+      if (!userId) throw new Error('You must be signed in to send money.');
+      const backendPayoutMethod =
+        payload.payoutMethod === 'cash_pickup' ? 'agent_cash'
+          : payload.payoutMethod === 'bank_account' ? 'bank'
+            : 'mobile_money';
+
+      return executeRemittanceFlow(remittanceApi, {
+        userId,
+        recipientId: String(payload.beneficiaryId),
+        amount: payload.amount,
+        currency: payload.fromCurrency,
+        ...(payload.quoteId ? { quoteId: payload.quoteId } : {}),
+        payout_method: backendPayoutMethod,
+      }, pending => setTransferStatus(pending.status));
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: RemittanceApiResponse) => {
+      setTransferStatus(data.status);
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       const recipientObj = beneficiariesData?.beneficiaries?.find((b: any) => b.id === selectedBeneficiary);
+
+      if (data.status === 'PENDING_LIQUIDITY') {
+        navigation.replace('PendingLiquidity', {
+          transactionId: data.transactionId,
+          sourceCcy: fromCurrency,
+          amount: parseFloat(amount),
+        });
+        return;
+      }
+
       navigation.replace('TransferSuccess', {
         recipientName:   selectedRecipientName ?? recipientObj?.name ?? 'Your recipient',
         sentAmount:      parseFloat(amount),
@@ -177,14 +200,20 @@ export default function RemittanceScreen() {
         receiveAmount:   parseFloat(convertedAmount),
         receiveCurrency: toCurrency,
         deliveryTime:    '1–2 business days',
-        txId:            data?.txId ?? 'tx-' + Date.now(),
+        txId:            data.transactionId,
+        status:          data.status,
+        payoutMethod:    data.payout_method,
+        otp:             data.otp,
+        otpExpiresAt:    data.otpExpiresAt,
       });
       setAmount('');
       setDescription('');
       setSelectedBeneficiary(null);
     },
     onError: (error: any) => {
-      setSendError(error?.message || 'Something went wrong. Please try again.');
+      setTransferStatus(null);
+      const backendMessage = error?.response?.data?.message;
+      setSendError(backendMessage || error?.message || 'Something went wrong. Please try again.');
     },
   });
 
@@ -560,10 +589,21 @@ export default function RemittanceScreen() {
       {sendError && (
         <View style={styles.errorBanner}>
           <Ionicons name="alert-circle" size={16} color="#DC2626" />
-          <Text style={styles.errorBannerText}>{sendError}</Text>
-          <TouchableOpacity onPress={() => setSendError(null)}>
+          <View style={styles.errorBannerBody}>
+            <Text style={styles.errorBannerText}>{sendError}</Text>
+          </View>
+          <TouchableOpacity onPress={() => {
+            setSendError(null);
+          }}>
             <Ionicons name="close" size={16} color="#DC2626" />
           </TouchableOpacity>
+        </View>
+      )}
+
+      {transferStatus === 'PAYMENT_PENDING' && (
+        <View style={styles.errorBanner}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.errorBannerText}>Payment pending confirmation…</Text>
         </View>
       )}
 
@@ -952,10 +992,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   errorBannerText: {
-    flex: 1,
     fontSize: 13,
     color: '#DC2626',
     fontWeight: '500',
+  },
+  errorBannerBody: {
+    flex: 1,
   },
   modalOverlay: {
     flex: 1,

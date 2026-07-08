@@ -272,14 +272,13 @@ class MoneyRequestsService {
 
       try {
         const transferResult = await remittanceApi.initiateTransfer({
+          userId,
+          recipientId: request.requesterId,
           amount: request.amount,
-          fromCurrency: 'EUR',
-          toCurrency: request.currency,
-          beneficiaryId: 0,
-          description: `Family Request: ${request.requesterName} - ${request.purpose.replace('_', ' ')}`,
-          payoutMethod: 'mobile_wallet',
+          currency: 'EUR',
+          payout_method: 'mobile_money',
         });
-        transactionId = transferResult?.id?.toString() || `txn_${Date.now()}`;
+        transactionId = transferResult.transactionId;
 
         await addAuditLog(userId, 'payout_initiated_from_request', requestId, {
           transactionId,

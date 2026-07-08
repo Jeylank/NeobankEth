@@ -290,9 +290,24 @@ export interface SimTx {
   txId: string; userId: string; recipientId: string;
   amount: number; currency: string; destinationCurrency: string;
   rateUsed: number; destinationAmount: number;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status:
+    | 'PAYMENT_PENDING' | 'PAYMENT_CONFIRMING' | 'PAYMENT_FAILED' | 'REFUNDED'
+    | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+    | 'FUNDS_RECEIVED' | 'AGENT_ASSIGNED' | 'OTP_SENT'
+    | 'READY_FOR_PAYOUT' | 'PAID_OUT' | 'TIMED_OUT';
   type: string; provider?: string; quoteFreshness: string;
   metadata: Record<string, unknown>; createdAt: string; updatedAt: string;
+}
+
+export function shouldAutoCompleteTransaction(
+  status: SimTx['status'],
+  payoutMethod: unknown,
+  createdMs: number,
+  nowMs = Date.now(),
+): boolean {
+  return status === 'PROCESSING'
+    && payoutMethod !== 'agent_cash'
+    && nowMs - createdMs > 10_000;
 }
 
 export async function getOrAgeTx(txId: string): Promise<SimTx | undefined> {
@@ -320,7 +335,7 @@ export async function getOrAgeTx(txId: string): Promise<SimTx | undefined> {
   };
 
   // Simulate status progression: PROCESSING → COMPLETED after 10 s
-  if (txData.status === 'PROCESSING' && Date.now() - createdMs > 10_000) {
+  if (shouldAutoCompleteTransaction(txData.status, data.payout_method, createdMs)) {
     const now = admin.firestore.Timestamp.now();
     await adminDb.collection(COL.transactions).doc(txId).update({ status: 'COMPLETED', updatedAt: now });
     txData.status    = 'COMPLETED';
@@ -374,8 +389,10 @@ export interface RemittanceParams {
   userId: string; recipientId: string; amount: number; currency: string;
   type: string; quoteId?: string; metadata?: Record<string, unknown>;
   idempotencyKey?: string | null;
-  /** Bypass the quote/rate-lookup step and use this exact rate.
-   *  Used by PENDING_REQUOTE resume so the rate the user confirmed is the rate applied. */
+  /** Internal confirmation-phase controls. Public initiation leaves these unset. */
+  paymentConfirmed?: boolean;
+  existingTransactionId?: string;
+  /** Bypass quote lookup and use the rate already accepted for this transfer. */
   forcedRate?: number;
 }
 
@@ -446,6 +463,7 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   const {
     userId, recipientId, amount, currency, type,
     quoteId, metadata = {}, idempotencyKey, forcedRate,
+    paymentConfirmed = false, existingTransactionId,
   } = p;
   const sourceCcy = currency.toUpperCase();
   const destCcy   = 'ETB';
@@ -516,7 +534,7 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   if (forcedRate) {
     rateUsed       = forcedRate;
     quoteFreshness = 'locked';
-    console.info(`[SimEngine] Using forcedRate=${forcedRate} (confirmed from PENDING_REQUOTE resume)`);
+    console.info(`[SimEngine] Using accepted transfer rate=${forcedRate}`);
   } else if (quoteId) {
     const quoteDoc = await adminDb.collection(COL.quotes).doc(quoteId).get();
     if (quoteDoc.exists) {
@@ -659,7 +677,128 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
   // ── STEP 4: Firestore atomic transaction ──────────────────────────────────────
   // Reads: wallet, liquidity  (inside tx to prevent TOCTOU races)
   // Writes: transaction record (PENDING), wallet balance, liquidity, idempotency placeholder
-  const txId      = `tx_${randomUUID()}`;
+  // Initiation ends at the payment boundary. Nothing is debited and no payout
+  // provider or cash agent is contacted until confirmation succeeds.
+  if (!paymentConfirmed) {
+    const pendingTxId = `tx_${randomUUID()}`;
+    const pendingRef = adminDb.collection(COL.transactions).doc(pendingTxId);
+    const pendingWalletRef = adminDb.collection(COL.wallets).doc(userId);
+    const reservationLedgerRef = adminDb.collection('sim_ledger').doc(`${pendingTxId}_reservation`);
+    const pendingNow = admin.firestore.Timestamp.now();
+    const payload: Record<string, unknown> = {
+      transactionId: pendingTxId,
+      txId: pendingTxId,
+      userId,
+      recipientId,
+      amount,
+      currency: sourceCcy,
+      destinationCurrency: destCcy,
+      destinationAmount,
+      rateUsed,
+      quoteFreshness,
+      type,
+      status: 'PAYMENT_PENDING',
+      ...(metadata.payout_method ? { payout_method: metadata.payout_method } : {}),
+      message: 'Transfer created. Payment confirmation is required before payout begins.',
+    };
+
+    try {
+      await adminDb.runTransaction(async transaction => {
+        const [claimed, walletSnapshot] = await Promise.all([
+          idemRef ? transaction.get(idemRef) : Promise.resolve(null),
+          transaction.get(pendingWalletRef),
+        ]);
+        if (claimed?.exists) {
+          throw new SimDomainError('IDEMPOTENCY_CLAIMED', 'Idempotency key already claimed.');
+        }
+        const balances = walletSnapshot.exists
+          ? (walletSnapshot.data()!.balances as Record<string, number>)
+          : { ...DEFAULT_BALANCES };
+        const reservations = walletSnapshot.exists
+          ? (walletSnapshot.data()!.reservations as Record<string, number> | undefined) ?? {}
+          : {};
+        const balance = balances[sourceCcy] ?? 0;
+        const alreadyReserved = reservations[sourceCcy] ?? 0;
+        if (amount > balance - alreadyReserved) {
+          throw new SimDomainError('INSUFFICIENT_FUNDS', 'Available wallet balance is below the requested amount.', {
+            userBalance: balance - alreadyReserved,
+            requestedAmount: amount,
+            currency: sourceCcy,
+          });
+        }
+        transaction.set(pendingWalletRef, {
+          userId,
+          balances,
+          reservations: { ...reservations, [sourceCcy]: alreadyReserved + amount },
+          updatedAt: pendingNow,
+        }, { merge: true });
+        transaction.set(pendingRef, {
+          txId: pendingTxId,
+          userId,
+          recipientId,
+          amount,
+          currency: sourceCcy,
+          destinationCurrency: destCcy,
+          destinationAmount,
+          rateUsed,
+          quoteFreshness,
+          type,
+          metadata,
+          payout_method: metadata.payout_method ?? null,
+          recipient_city: metadata.recipient_city ?? null,
+          status: 'PAYMENT_PENDING',
+          paymentStatus: 'PENDING',
+          reservationStatus: 'RESERVED',
+          reservedAmount: amount,
+          createdAt: pendingNow,
+          updatedAt: pendingNow,
+        });
+        if (idemRef) {
+          transaction.set(idemRef, {
+            transactionId: pendingTxId,
+            status: 'PAYMENT_PENDING',
+            result: 'Transfer created, awaiting payment confirmation.',
+            payload,
+            rawKey,
+            createdAt: pendingNow,
+          });
+        }
+        transaction.set(reservationLedgerRef, {
+          journalId: reservationLedgerRef.id,
+          transactionId: pendingTxId,
+          type: 'WALLET_RESERVATION',
+          currency: sourceCcy,
+          amount,
+          entries: [
+            { account: `wallet:${userId}:available`, side: 'CREDIT', amount },
+            { account: `wallet:${userId}:reserved`, side: 'DEBIT', amount },
+          ],
+          createdAt: pendingNow,
+        });
+      });
+    } catch (error) {
+      if (error instanceof SimDomainError && error.code === 'IDEMPOTENCY_CLAIMED') {
+        const cached = await checkIdempotency(rawKey);
+        if (cached) return cached;
+      }
+      if (error instanceof SimDomainError && error.code === 'INSUFFICIENT_FUNDS') {
+        return {
+          ok: false,
+          status: 422,
+          payload: SimError.insufficientFunds(
+            error.details.userBalance as number,
+            error.details.requestedAmount as number,
+            error.details.currency as string,
+          ),
+        };
+      }
+      throw error;
+    }
+
+    return { ok: true, status: 201, payload };
+  }
+
+  const txId      = existingTransactionId ?? `tx_${randomUUID()}`;
   const walletRef = adminDb.collection(COL.wallets).doc(userId);
   const liqRef    = adminDb.collection(COL.liquidity).doc('pool');
   const txRef     = adminDb.collection(COL.transactions).doc(txId);
@@ -677,8 +816,9 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
         t.get(walletRef),
         t.get(liqRef),
         idemRef ? t.get(idemRef) : Promise.resolve(null),
+        existingTransactionId ? t.get(txRef) : Promise.resolve(null),
       ]);
-      const [walletDoc, liqDoc, idemDocInTx] = reads;
+      const [walletDoc, liqDoc, idemDocInTx, existingTxDoc] = reads;
 
       // If another concurrent request already claimed this key (PENDING or SUCCESS),
       // abort this transaction immediately — the winner's result will be replayed.
@@ -693,12 +833,16 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
       const balances = walletDoc.exists
         ? (walletDoc.data()!.balances as Record<string, number>)
         : { ...DEFAULT_BALANCES };
+      const reservations = walletDoc.exists
+        ? (walletDoc.data()!.reservations as Record<string, number> | undefined) ?? {}
+        : {};
       const userBalance = balances[sourceCcy] ?? 0;
+      const reservedAmount = reservations[sourceCcy] ?? 0;
 
       // Balance check (STEP 3 per spec — first guard)
       // FIX A: Throw SimDomainError so the catch block can type-check it and never
       // confuse it with a Stripe/Firestore infrastructure error.
-      if (amount > userBalance) {
+      if (amount > userBalance || (existingTransactionId && reservedAmount < amount)) {
         throw new SimDomainError('INSUFFICIENT_FUNDS', 'User balance is below the requested amount.', {
           userBalance, requestedAmount: amount, currency: sourceCcy,
         });
@@ -721,6 +865,10 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
 
       // Compute new balances
       const newBalances    = { ...balances, [sourceCcy]: userBalance - amount };
+      const newReservations = {
+        ...reservations,
+        [sourceCcy]: existingTransactionId ? reservedAmount - amount : reservedAmount,
+      };
       const newLiquidityETB = currentLiquidity - destinationAmount;
       walletBalanceAfter   = newBalances;
 
@@ -729,16 +877,41 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
         txId, userId, recipientId, amount,
         currency: sourceCcy, destinationCurrency: destCcy,
         rateUsed, destinationAmount,
-        status:        'PENDING',
+        status:        'FUNDS_RECEIVED',
         type,
         quoteFreshness,
         metadata,
+        paymentStatus: 'CONFIRMED',
+        paymentConfirmedAt: now,
+        reservationStatus: existingTransactionId ? 'CONVERTED' : 'NONE',
+        reservedAmount: 0,
         createdAt:     now,
         updatedAt:     now,
       });
 
       // b. Deduct wallet balance
-      t.set(walletRef, { userId, balances: newBalances, updatedAt: now });
+      t.set(walletRef, {
+        userId,
+        balances: newBalances,
+        reservations: newReservations,
+        updatedAt: now,
+      });
+
+      if (existingTransactionId && existingTxDoc?.exists) {
+        const debitLedgerRef = adminDb.collection('sim_ledger').doc(`${txId}_payment_debit`);
+        t.set(debitLedgerRef, {
+          journalId: debitLedgerRef.id,
+          transactionId: txId,
+          type: 'PAYMENT_CAPTURE',
+          currency: sourceCcy,
+          amount,
+          entries: [
+            { account: `wallet:${userId}`, side: 'CREDIT', amount },
+            { account: 'remittance:clearing', side: 'DEBIT', amount },
+          ],
+          createdAt: now,
+        });
+      }
 
       // c. Deduct liquidity pool
       t.set(liqRef, { availableETB: newLiquidityETB, updatedAt: now });

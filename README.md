@@ -14,6 +14,7 @@ A React Native mobile app for NeoBanker - Ethiopian Digital Banking platform, bu
 ## Prerequisites
 
 - Node.js 18+ installed
+- Java 21 installed and available on `PATH` (required by the Firestore emulator)
 - Expo Go app on your mobile device ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
 
 ## Quick Start
@@ -57,6 +58,40 @@ npx expo start
 1. Open the Expo Go app on your phone
 2. Scan the QR code displayed in the terminal
 3. The app will load on your device!
+
+## Firestore Emulator Tests
+
+Install the dependencies, then start the Firestore emulator:
+
+```bash
+npm run emulator:firestore
+```
+
+The emulator listens on `127.0.0.1:8080`. Keep that terminal open while
+running the integration tests in another terminal.
+
+On Windows PowerShell:
+
+```powershell
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"
+$env:RUN_FIRESTORE_EMULATOR_TESTS = "1"
+npm test -- agentCashFirestoreEmulator --runInBand
+```
+
+On Windows CMD:
+
+```bat
+set FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+set RUN_FIRESTORE_EMULATOR_TESTS=1
+npm test -- agentCashFirestoreEmulator --runInBand
+```
+
+Alternatively, run the cross-platform command below to start the emulator,
+run the `agentCashFirestoreEmulator` tests, and stop the emulator automatically:
+
+```bash
+npm run test:emulator
+```
 
 ## Project Structure
 

@@ -350,12 +350,11 @@ class RecurringSupportService {
 
       try {
         await remittanceApi.initiateTransfer({
+          userId,
+          recipientId: schedule.memberId,
           amount: schedule.amount,
-          fromCurrency: schedule.currency,
-          toCurrency: 'ETB',
-          beneficiaryId: 0,
-          description: `Recurring Support: ${schedule.memberName}${schedule.note ? ' - ' + schedule.note : ''}`,
-          payoutMethod: PAYOUT_METHOD_MAP[schedule.payoutMethod],
+          currency: schedule.currency,
+          payout_method: schedule.payoutMethod === 'cash_pickup' ? 'agent_cash' : PAYOUT_METHOD_MAP[schedule.payoutMethod],
         });
 
         execution.status = 'sent';

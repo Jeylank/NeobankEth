@@ -516,12 +516,13 @@ class FamilyCircleService {
 
     try {
       await remittanceApi.initiateTransfer({
+        userId,
+        recipientId: circle.id,
         amount: circle.totalTarget,
-        fromCurrency: circle.currency,
-        toCurrency: 'ETB',
-        beneficiaryId: 0,
-        description: `Family Circle Payout: ${circle.name} — ${circle.beneficiary.name}`,
-        payoutMethod: PAYOUT_METHOD_MAP[circle.beneficiary.payoutMethod] || 'mobile_wallet',
+        currency: circle.currency,
+        payout_method: circle.beneficiary.payoutMethod === 'cash_pickup'
+          ? 'agent_cash'
+          : PAYOUT_METHOD_MAP[circle.beneficiary.payoutMethod] || 'mobile_money',
       });
 
       const nextDate = new Date();

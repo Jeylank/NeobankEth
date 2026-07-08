@@ -89,7 +89,7 @@ export async function getStripePublishableKey(): Promise<string> {
 export async function getUncachableStripeClient(): Promise<Stripe> {
   const secretKey = await getStripeSecretKey();
   return new Stripe(secretKey, {
-    apiVersion: '2025-01-27.acacia',
+    apiVersion: '2026-02-25.clover',
   });
 }
 
@@ -112,11 +112,13 @@ export async function getWebhookSecret(): Promise<string> {
         'SELECT secret FROM stripe._managed_webhooks ORDER BY created DESC LIMIT 1',
       );
       if (result.rows.length > 0 && result.rows[0].secret) {
-        _cachedWebhookSecret = result.rows[0].secret;
-        return _cachedWebhookSecret;
+        const secret = result.rows[0].secret;
+        _cachedWebhookSecret = secret;
+        return secret;
       }
-    } catch (err: any) {
-      console.warn('[Stripe] Could not read webhook secret from DB:', err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[Stripe] Could not read webhook secret from DB:', message);
     } finally {
       await pool.end().catch(() => {});
     }

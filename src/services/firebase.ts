@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { 
+import {
   getAuth, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
@@ -39,18 +39,10 @@ import {
   getDownloadURL,
   uploadBytesResumable
 } from 'firebase/storage';
+import { firebaseConfig, isFirebaseConfigured } from '../config/firebaseConfig';
 
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-};
-
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  console.warn('Firebase configuration missing. Please set EXPO_PUBLIC_FIREBASE_* environment variables.');
+if (!isFirebaseConfigured) {
+  throw new Error('Firebase was initialized before its required public configuration was validated.');
 }
 
 const app = initializeApp(firebaseConfig);

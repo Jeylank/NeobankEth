@@ -13,6 +13,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { transactionsApi } from '../services/api';
 import type { Transaction } from '../types';
+import {
+  getApiErrorMessage,
+  getTransactionHistoryState,
+} from '../services/transactionHistory';
 import '../i18n';
 
 const COLORS = {
@@ -46,7 +50,7 @@ export default function TransactionsScreen() {
   const [selectedDateFilter, setSelectedDateFilter] = useState('all_time');
   const [showDateFilter, setShowDateFilter] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['transactions'],
     queryFn: () => transactionsApi.getAll(),
   });
@@ -92,6 +96,12 @@ export default function TransactionsScreen() {
     
     return filtered;
   }, [data?.transactions, selectedTypeFilter, selectedDateFilter]);
+
+  const historyState = getTransactionHistoryState(
+    isLoading,
+    isError,
+    filteredTransactions.length,
+  );
 
   const formatCurrency = (amount: string, currency = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -251,9 +261,18 @@ export default function TransactionsScreen() {
           </View>
         }
         ListEmptyComponent={
-          isLoading ? (
+          historyState === 'loading' ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+          ) : historyState === 'error' ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cloud-offline-outline" size={64} color={COLORS.red} />
+              <Text style={styles.errorTitle}>Transaction history unavailable</Text>
+              <Text style={styles.errorText}>{getApiErrorMessage(error)}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => void refetch()}>
+                <Text style={styles.retryButtonText}>Try again</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.emptyContainer}>
@@ -384,5 +403,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.gray,
     marginTop: 16,
+  },
+  errorTitle: {
+    marginTop: 16,
+    color: COLORS.text,
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  errorText: {
+    marginTop: 8,
+    maxWidth: 300,
+    color: COLORS.gray,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 18,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  retryButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

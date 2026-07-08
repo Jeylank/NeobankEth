@@ -277,12 +277,11 @@ class CampaignService {
 
     try {
       await remittanceApi.initiateTransfer({
+        userId: data.userId,
+        recipientId: data.campaignId,
         amount: data.amount,
-        fromCurrency: data.currency,
-        toCurrency: 'ETB',
-        beneficiaryId: 0,
-        description: `Support Campaign Contribution: ${data.campaignId}`,
-        payoutMethod: 'mobile_wallet',
+        currency: data.currency,
+        payout_method: 'mobile_money',
       });
 
       contribution.status = 'sent';

@@ -1,83 +1,16 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NavigationContainer } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider, useAuth } from './src/hooks/useAuth';
-import { ThemeProvider, useTheme } from './src/theme';
-import RootNavigator from './src/navigation/RootNavigator';
 import {
-  getAndRegisterPushToken,
-  setupNotificationTapHandler,
-  handleForegroundNotification,
-  setNotificationNavigationHandler,
-} from './src/services/pushNotifications';
+  isFirebaseConfigured,
+  invalidFirebaseConfig,
+} from './src/config/firebaseConfig';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
-}
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      retry: 2,
-    },
-  },
-});
-
-function PushNotificationBootstrap() {
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (!user?.uid || Platform.OS === 'web') return;
-
-    let cleanupTap: (() => void) | null = null;
-    let cleanupFg: (() => void) | null = null;
-
-    (async () => {
-      await getAndRegisterPushToken(user.uid);
-
-      cleanupTap = await setupNotificationTapHandler();
-
-      cleanupFg = await handleForegroundNotification((title, body, _data) => {
-        console.log('[Push] Foreground notification:', title, body);
-      });
-    })();
-
-    return () => {
-      cleanupTap?.();
-      cleanupFg?.();
-    };
-  }, [user?.uid]);
-
-  return null;
-}
-
-function AppContent() {
-  const { isDark, colors } = useTheme();
-
-  return (
-    <NavigationContainer
-      theme={{
-        dark: isDark,
-        colors: {
-          primary: colors.primary,
-          background: colors.background,
-          card: colors.surface,
-          text: colors.text,
-          border: colors.border,
-          notification: colors.error,
-        },
-      }}
-    >
-      <RootNavigator />
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-    </NavigationContainer>
-  );
 }
 
 export default function App() {
@@ -102,16 +35,31 @@ export default function App() {
     );
   }
 
+  if (!isFirebaseConfigured) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.setupContainer}>
+          <Text style={styles.setupTitle}>App setup required</Text>
+          <Text style={styles.setupText}>
+            This build is missing its Firebase connection settings. Ask the build
+            administrator to configure the preview environment and rebuild the app.
+          </Text>
+          <Text style={styles.setupDetails}>
+            Missing or invalid: {invalidFirebaseConfig.join(', ')}
+          </Text>
+          <StatusBar style="dark" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Firebase-dependent modules are loaded only after configuration validation.
+  const ConfiguredApp =
+    require('./src/components/ConfiguredApp').default as React.ComponentType;
+
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <PushNotificationBootstrap />
-            <AppContent />
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <ConfiguredApp />
     </SafeAreaProvider>
   );
 }
@@ -122,5 +70,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
+  },
+  setupContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#F9FAFB',
+  },
+  setupTitle: {
+    marginBottom: 12,
+    color: '#7F1D1D',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  setupText: {
+    color: '#374151',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  setupDetails: {
+    marginTop: 16,
+    color: '#6B7280',
+    fontSize: 13,
   },
 });

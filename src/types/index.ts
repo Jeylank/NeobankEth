@@ -10,8 +10,8 @@ export interface User {
 }
 
 export interface Transaction {
-  id: number;
-  userId: number;
+  id: number | string;
+  userId: number | string;
   type: 'deposit' | 'withdrawal' | 'transfer' | 'remittance' | 'payment';
   amount: string;
   currency: string;

@@ -1,39 +1,13 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
-// ─── Base URL resolution ───────────────────────────────────────────────────────
-//
-// Web: the app is co-located with the API on the same origin, so relative paths
-//      ('') work without any configuration.
-//
-// Native (Android / iOS): the app is a standalone binary that must reach an
-//      explicit host.  Set EXPO_PUBLIC_API_BASE_URL in your .env / EAS secrets
-//      before building.  Example:
-//        EXPO_PUBLIC_API_BASE_URL=https://my-server.replit.dev
-//
-// If EXPO_PUBLIC_API_BASE_URL is absent on a native build, every request will
-// fail with a clear CONFIG_ERROR rather than an opaque "Network Error".
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  'https://api.sumsuma.com';
 
-const IS_WEB = Platform.OS === 'web';
-
-const NATIVE_BASE = IS_WEB ? '' : (process.env.EXPO_PUBLIC_API_BASE_URL ?? '');
-
-// Sentinel — truthy on native only when the env var is missing.
-const MISSING_NATIVE_CONFIG = !IS_WEB && !NATIVE_BASE;
-
-if (MISSING_NATIVE_CONFIG) {
-  console.error(
-    '[Sumsuma] EXPO_PUBLIC_API_BASE_URL is not set.\n' +
-    'The app cannot reach the backend on this native build.\n' +
-    'Set the variable before running `eas build`.',
-  );
-}
-
-const API_BASE_URL = IS_WEB ? '' : NATIVE_BASE;
-
-// ─── Axios instance ────────────────────────────────────────────────────────────
+const EXPO_PUBLIC_API_KEY = process.env.EXPO_PUBLIC_API_KEY?.trim() ?? '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -43,54 +17,24 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// ─── Request interceptor ──────────────────────────────────────────────────────
-// 1. Abort immediately with a CONFIG_ERROR when native config is missing — no
-//    network round-trip, no opaque "Network Error" in the UI.
-// 2. Attach Firebase auth token (all platforms).
-// 3. Attach X-API-Key on native when EXPO_PUBLIC_API_KEY is set.
-
-api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  if (MISSING_NATIVE_CONFIG) {
-    return Promise.reject(
-      Object.assign(new Error(
-        'EXPO_PUBLIC_API_BASE_URL is not configured. ' +
-        'Rebuild the app with this environment variable set.',
-      ), { code: 'CONFIG_ERROR' }),
-    );
-  }
-
-  // Firebase auth token
+api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync('authToken');
   if (token) {
-    config.headers.set('Authorization', `Bearer ${token}`);
+    config.headers.Authorization = `Bearer ${token}`;
   }
-
-  // API key — native only; web relies on same-origin cookies/session
-  if (!IS_WEB) {
-    const apiKey = process.env.EXPO_PUBLIC_API_KEY;
-    if (apiKey) {
-      config.headers.set('X-API-Key', apiKey);
-    }
+  if (EXPO_PUBLIC_API_KEY) {
+    config.headers['X-API-Key'] = EXPO_PUBLIC_API_KEY;
   }
-
   return config;
 });
-
-// ─── Response interceptor ────────────────────────────────────────────────────
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.code === 'CONFIG_ERROR') {
-      console.error('[Sumsuma] Config error — request cancelled:', error.message);
-    } else {
-      console.error('[Sumsuma] API Error:', error.response?.data ?? error.message);
-    }
+    console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
-  },
+  }
 );
-
-// ─── API surface ──────────────────────────────────────────────────────────────
 
 export const authApi = {
   login: async (email: string, password: string) => {
@@ -180,16 +124,24 @@ export const remittanceApi = {
     return response.data;
   },
   initiateTransfer: async (data: {
+    userId: string;
+    recipientId: string;
     amount: number;
-    fromCurrency: string;
-    toCurrency: string;
-    beneficiaryId: number;
-    description?: string;
-    paymentMethod?: string;
-    payoutMethod?: string;
+    currency: string;
     quoteId?: string;
-  }) => {
-    const response = await api.post('/api/remittance/initiate', data);
+    payout_method: string;
+  }): Promise<RemittanceApiResponse> => {
+    const response = await api.post('/api/v1/remittance/initiate', data);
+    return response.data;
+  },
+  confirmPayment: async (
+    transactionId: string,
+    outcome: 'confirmed' | 'failed' = 'confirmed',
+  ): Promise<RemittanceApiResponse> => {
+    const response = await api.post('/api/v1/remittance/confirm-payment', {
+      transactionId,
+      outcome,
+    });
     return response.data;
   },
   getAll: async () => {
@@ -197,6 +149,37 @@ export const remittanceApi = {
     return response.data;
   },
 };
+
+export type RemittanceApiStatus =
+  | 'PAYMENT_PENDING'
+  | 'PAYMENT_CONFIRMING'
+  | 'PAYMENT_FAILED'
+  | 'PAYMENT_EXPIRED'
+  | 'PENDING_REVIEW'
+  | 'FUNDS_RECEIVED'
+  | 'AGENT_ASSIGNED'
+  | 'PROCESSING'
+  | 'OTP_SENT'
+  | 'READY_FOR_PAYOUT'
+  | 'RECOVERY_PENDING'
+  | 'PAID_OUT'
+  | 'COMPLETED'
+  | 'PENDING_LIQUIDITY'
+  | 'PENDING_REQUOTE'
+  | 'REFUNDED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'TIMED_OUT';
+
+export interface RemittanceApiResponse {
+  transactionId: string;
+  txId?: string;
+  status: RemittanceApiStatus;
+  payout_method?: string;
+  otp?: string;
+  otpExpiresAt?: string;
+  message?: string;
+}
 
 export const billsApi = {
   getAll: async () => {

@@ -26,7 +26,8 @@ import { Request, Response } from 'express';
 function keyGenerator(req: Request): string {
   const apiKey = req.headers['x-api-key'];
   if (apiKey && typeof apiKey === 'string' && apiKey.length > 0) return `apikey:${apiKey}`;
-  return `ip:${ipKeyGenerator(req)}`;
+  const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+  return `ip:${ipKeyGenerator(ip)}`;
 }
 
 // ─── Shared handler ───────────────────────────────────────────────────────────

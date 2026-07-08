@@ -62,6 +62,8 @@ export interface CityStats {
   lowFloat:   number;
 }
 
+type DashboardDocument = { id: string } & Record<string, unknown>;
+
 // ─── Transfers dashboard ──────────────────────────────────────────────────────
 
 export interface TransfersDashboard {
@@ -76,7 +78,9 @@ export interface TransfersDashboard {
 export async function getTransfersDashboard(): Promise<TransfersDashboard> {
   const now      = Date.now();
   const snap     = await adminDb.collection(AGENT_COL.txns).orderBy('updatedAt', 'desc').limit(200).get();
-  const allDocs  = snap.docs.map(d => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const allDocs = snap.docs.map<DashboardDocument>(
+    d => ({ id: d.id, ...(d.data() as Record<string, unknown>) }),
+  );
 
   // ── State summary ─────────────────────────────────────────────────────────
   const summary: Record<string, number> = {};
@@ -180,7 +184,9 @@ export interface AgentsDashboard {
 
 export async function getAgentsDashboard(): Promise<AgentsDashboard> {
   const snap   = await adminDb.collection(AGENT_COL.agents).get();
-  const agents = snap.docs.map(d => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const agents = snap.docs.map<DashboardDocument>(
+    d => ({ id: d.id, ...(d.data() as Record<string, unknown>) }),
+  );
 
   const byCity: Record<string, CityStats> = {};
   let totalFloat = 0;
@@ -244,8 +250,12 @@ export async function getAlertsDashboard(): Promise<AlertsDashboard> {
     adminDb.collection('fraud_decisions').where('decision', '==', 'PENDING_REVIEW').limit(50).get(),
   ]);
 
-  const txDocs    = txSnap.docs.map(d => ({ id: d.id, ...d.data() as Record<string, unknown> }));
-  const agentDocs = agentSnap.docs.map(d => ({ id: d.id, ...d.data() as Record<string, unknown> }));
+  const txDocs = txSnap.docs.map<DashboardDocument>(
+    d => ({ id: d.id, ...(d.data() as Record<string, unknown>) }),
+  );
+  const agentDocs = agentSnap.docs.map<DashboardDocument>(
+    d => ({ id: d.id, ...(d.data() as Record<string, unknown>) }),
+  );
 
   // ── Stale agent assignment alerts ─────────────────────────────────────────
   const staleByTransfer = new Map<string, number>();

@@ -77,6 +77,11 @@ export async function initiateTransferFirestore(data: {
   recipientName?: string;
   convertedAmount?: number;
 }): Promise<{ txId: string; status: string }> {
+  throw new Error(
+    'Local remittance creation is disabled. Transfers must be initiated and confirmed by the backend API.',
+  );
+  /*
+
   const user = getAuth().currentUser;
 
   // ── Risk Controls Layer ───────────────────────────────────────────────────
@@ -137,6 +142,7 @@ export async function initiateTransferFirestore(data: {
   }
 
   return { txId, status: 'pending' };
+  */
 }
 
 export async function getWalletBalanceFallback(): Promise<number> {
