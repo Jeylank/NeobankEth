@@ -2,10 +2,15 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
-export const API_BASE_URL =
+export function normalizeApiBaseUrl(rawUrl: string): string {
+  return rawUrl.replace(/\/api(?:\/v1)?\/?$/i, '');
+}
+
+export const API_BASE_URL = normalizeApiBaseUrl(
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   process.env.EXPO_PUBLIC_API_URL ||
-  'https://api.sumsuma.com';
+  'https://api.sumsuma.com',
+);
 
 const EXPO_PUBLIC_API_KEY = process.env.EXPO_PUBLIC_API_KEY?.trim() ?? '';
 

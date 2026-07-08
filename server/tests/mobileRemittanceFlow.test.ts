@@ -22,7 +22,7 @@ jest.mock('axios', () => {
 
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { remittanceApi } from '../../src/services/api';
+import { normalizeApiBaseUrl, remittanceApi } from '../../src/services/api';
 import { executeRemittanceFlow, type MobileRemittanceRequest } from '../../src/services/mobileRemittanceFlow';
 import { initiateTransferFirestore } from '../../src/services/remittanceFirestoreService';
 
@@ -63,6 +63,15 @@ describe('mobile remittance backend contract', () => {
       outcome: 'confirmed',
     });
     expect(confirmed.status).toBe('OTP_SENT');
+  });
+
+  it.each([
+    ['https://example.replit.app', 'https://example.replit.app'],
+    ['https://example.replit.app/api', 'https://example.replit.app'],
+    ['https://example.replit.app/api/v1', 'https://example.replit.app'],
+    ['https://example.replit.app/api/v1/', 'https://example.replit.app'],
+  ])('normalizes API base URL %s', (rawUrl, expectedUrl) => {
+    expect(normalizeApiBaseUrl(rawUrl)).toBe(expectedUrl);
   });
 
   it('cannot turn initiation failure into fake success', async () => {
