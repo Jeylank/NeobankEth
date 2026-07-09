@@ -129,17 +129,27 @@ function AdminRiskControlsContent() {
     queryFn: () => adminService.getRiskFlags(200),
   });
 
+  const {
+    data: riskQueue,
+    isLoading: riskQueueLoading,
+    refetch: refetchRiskQueue,
+  } = useQuery({
+    queryKey: ['admin-risk-queue'],
+    queryFn: () => adminService.getRiskQueue(100),
+  });
+
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-risk-summary'] });
     queryClient.invalidateQueries({ queryKey: ['admin-risk-metrics'] });
     queryClient.invalidateQueries({ queryKey: ['admin-risk-flags'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-risk-queue'] });
   };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchSummary(), refetchMetrics(), refetchFlags()]);
+    await Promise.all([refetchSummary(), refetchMetrics(), refetchFlags(), refetchRiskQueue()]);
     setRefreshing(false);
-  }, [refetchSummary, refetchMetrics, refetchFlags]);
+  }, [refetchSummary, refetchMetrics, refetchFlags, refetchRiskQueue]);
 
   const toggleMutation = useMutation({
     mutationFn: ({ key, enabled }: { key: string; enabled: boolean }) =>
@@ -218,6 +228,52 @@ function AdminRiskControlsContent() {
   const queueList   = [...frozenList, ...reviewList];
 
   const isLoading = summaryLoading || metricsLoading || flagsLoading;
+
+  const kycPendingList: any[] = riskQueue?.kycPending ?? [];
+  const fraudReviewList: any[] = riskQueue?.fraudReview ?? [];
+
+  const formatQueueDate = (value: any): string => {
+    if (!value) return '—';
+    const millis = value?.seconds ? value.seconds * 1000 : value?._seconds ? value._seconds * 1000 : value;
+    const d = new Date(millis);
+    return isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+  };
+
+  const shortenId = (id: string): string =>
+    id.length > 14 ? id.slice(0, 7) + '…' + id.slice(-5) : id;
+
+  const renderKycPendingRow = (item: any) => (
+    <View key={item.userId} style={styles.queueRow}>
+      <View style={styles.queueLeft}>
+        <View style={[styles.flagBadge, { backgroundColor: COLORS.amber + '20' }]}>
+          <Text style={[styles.flagBadgeText, { color: COLORS.amber }]}>{t('admin.adminRisk.kycPending')}</Text>
+        </View>
+        <View>
+          <Text style={styles.queueUid}>{shortenId(item.userId)}</Text>
+          <Text style={styles.queueDate}>
+            {item.documentType ? `${t('admin.adminRisk.documentType')}: ${item.documentType} · ` : ''}
+            {formatQueueDate(item.submittedAt)}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderFraudReviewRow = (item: any) => (
+    <View key={item.decisionId} style={styles.queueRow}>
+      <View style={styles.queueLeft}>
+        <View style={[styles.flagBadge, { backgroundColor: COLORS.purple + '20' }]}>
+          <Text style={[styles.flagBadgeText, { color: COLORS.purple }]}>{t('admin.adminRisk.fraudReview')}</Text>
+        </View>
+        <View>
+          <Text style={styles.queueUid}>{shortenId(item.userId ?? '—')}</Text>
+          <Text style={styles.queueDate}>
+            {t('admin.adminRisk.score')}: {item.score} · {t('admin.adminRisk.amount')}: {item.amount} {item.currency ?? ''} · {formatQueueDate(item.timestamp)}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
 
   const renderKillSwitch = ({ key, labelKey, icon, color }: typeof KILL_SWITCH_KEYS[0]) => {
     const enabled = systemControls[key] !== false;
@@ -422,6 +478,25 @@ function AdminRiskControlsContent() {
                 color={COLORS.green}
               />
             </View>
+          </View>
+
+          {/* ── Closed-Beta Readiness Queue (KYC + Fraud REVIEW) ──── */}
+          <View style={styles.card}>
+            <SectionHeader title={t('admin.adminRisk.betaReadinessQueue')} icon="checkmark-done-outline" />
+            <Text style={styles.cardSubtitle}>{t('admin.adminRisk.betaReadinessDesc')}</Text>
+            {riskQueueLoading ? (
+              <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 12 }} />
+            ) : kycPendingList.length === 0 && fraudReviewList.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Ionicons name="checkmark-circle-outline" size={32} color={COLORS.green} />
+                <Text style={styles.emptyText}>{t('admin.adminRisk.noBetaQueue')}</Text>
+              </View>
+            ) : (
+              <>
+                {kycPendingList.map(renderKycPendingRow)}
+                {fraudReviewList.map(renderFraudReviewRow)}
+              </>
+            )}
           </View>
 
           {/* ── Review Queue ──────────────────────────────── */}

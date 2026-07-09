@@ -412,4 +412,64 @@ router.get('/risk-summary', verifyAdmin, async (_req: Request, res: Response): P
   }
 });
 
+// ── Risk Queue (KYC + Fraud review, closed-beta readiness) ─────────────────────
+
+/**
+ * GET /api/admin/risk-queue
+ * Unified closed-beta review queue: users with PENDING KYC submissions and
+ * transactions the fraud engine flagged as REVIEW. Read-only — no mutations.
+ */
+router.get('/risk-queue', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limitParam = Math.min(parseInt((req.query.limit as string) ?? '100', 10), 500);
+
+    const [kycSnap, fraudSnap] = await Promise.all([
+      adminDb.collection('kyc_documents')
+        .where('status', '==', 'pending')
+        .limit(limitParam)
+        .get(),
+      adminDb.collection('fraud_decisions')
+        .where('decision', '==', 'REVIEW')
+        .orderBy('timestamp', 'desc')
+        .limit(limitParam)
+        .get()
+        .catch(() => ({ docs: [] } as any)),
+    ]);
+
+    const kycPending = kycSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        userId:        d.id,
+        documentType:  data.documentType ?? null,
+        fullName:      data.fullName ?? null,
+        submittedAt:   data.submittedAt ?? null,
+      };
+    });
+
+    const fraudReview = fraudSnap.docs.map((d: any) => {
+      const data = d.data();
+      return {
+        decisionId:     d.id,
+        userId:         data.userId ?? null,
+        transactionId:  data.transactionId ?? null,
+        amount:         data.amount ?? 0,
+        currency:       data.currency ?? null,
+        score:          data.score ?? 0,
+        rulesTriggered: data.rulesTriggered ?? [],
+        timestamp:      data.timestamp ?? null,
+      };
+    });
+
+    res.json({
+      kycPending,
+      fraudReview,
+      totals: { kycPending: kycPending.length, fraudReview: fraudReview.length },
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[/risk-queue GET]', err.message);
+    res.status(500).json({ error: 'Failed to fetch risk queue', detail: err.message });
+  }
+});
+
 export default router;

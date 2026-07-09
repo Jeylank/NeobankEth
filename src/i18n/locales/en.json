@@ -1008,7 +1008,15 @@
       "actionSuccess": "Action completed successfully",
       "actionError": "Action failed. Please try again.",
       "noQueue": "No users in the review queue",
-      "auditTrail": "Audit trail recorded for all actions"
+      "auditTrail": "Audit trail recorded for all actions",
+      "betaReadinessQueue": "Closed-Beta Readiness Queue",
+      "betaReadinessDesc": "Pending KYC submissions and transactions flagged for fraud review",
+      "kycPending": "KYC Pending",
+      "fraudReview": "Fraud Review",
+      "noBetaQueue": "Nothing pending review",
+      "documentType": "Document",
+      "amount": "Amount",
+      "score": "Score"
     }
   },
   "fxMarketplace": {

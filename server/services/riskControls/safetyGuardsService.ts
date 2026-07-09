@@ -32,6 +32,14 @@ const AUDIT_COL       = 'admin_action_logs';
 // KYC threshold: require verified KYC above this USD equivalent
 const KYC_THRESHOLD_USD = 500;
 
+export type KycStatus = 'NOT_STARTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+
+const KYC_STATUS_MAP: Record<string, KycStatus> = {
+  pending:  'PENDING',
+  verified: 'VERIFIED',
+  rejected: 'REJECTED',
+};
+
 export interface RiskFlag {
   userId:         string;
   isFrozen:       boolean;
@@ -107,6 +115,26 @@ export const safetyGuardsService = {
     }
   },
 
+  // ── KYC status ────────────────────────────────────────────────────────────
+
+  /**
+   * getKycStatus — canonical KYC status for a user.
+   * Normalizes the lowercase `kyc_documents.status` field into the
+   * NOT_STARTED / PENDING / VERIFIED / REJECTED enum used across the app.
+   * Absence of a kyc_documents doc means the user never started KYC.
+   */
+  async getKycStatus(userId: string): Promise<KycStatus> {
+    try {
+      const snap = await adminDb.collection(KYC_COL).doc(userId).get();
+      if (!snap.exists) return 'NOT_STARTED';
+      const raw = (snap.data()?.status ?? '') as string;
+      return KYC_STATUS_MAP[raw] ?? 'NOT_STARTED';
+    } catch (err: any) {
+      console.error('[SafetyGuards] getKycStatus error:', err.message);
+      return 'NOT_STARTED';
+    }
+  },
+
   // ── KYC check ─────────────────────────────────────────────────────────────
 
   async requireEnhancedKycIfNeeded(
@@ -122,17 +150,18 @@ export const safetyGuardsService = {
 
     if (usdEquivalent < KYC_THRESHOLD_USD) return;
 
-    const snap = await adminDb.collection(KYC_COL).doc(userId).get();
-    if (!snap.exists || snap.data()?.status !== 'verified') {
+    const status = await safetyGuardsService.getKycStatus(userId);
+    if (status !== 'VERIFIED') {
       await logBlockedOp('payout_blocked_by_safety_guard', userId, {
         reason: 'kyc_not_verified',
+        kycStatus: status,
         amount,
         currency,
       });
       throw new SafetyGuardError(
         'kyc_verification',
         'Identity verification is required for transfers above $500. Please complete KYC in the app.',
-        { userId, amount, currency },
+        { userId, amount, currency, kycStatus: status },
       );
     }
   },

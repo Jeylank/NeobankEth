@@ -50,9 +50,36 @@ import {
   forceInvalidateCache,
 } from '../services/riskConfig';
 import { getQuoteState } from '../services/quoteStateMachine';
+import { safetyGuardsService } from '../services/riskControls/safetyGuardsService';
+import { SafetyGuardError } from '../services/riskControls/errors';
 import { adminDb } from '../firebaseAdmin';
 
 const router = Router();
+
+// ── High-risk KYC gate ───────────────────────────────────────────────────────
+// A "high-risk" transfer is one the fraud engine did NOT clear as ALLOW
+// (i.e. REVIEW or BLOCK). Such transfers require a VERIFIED KYC status —
+// unverified users are hard-blocked rather than merely queued for review.
+// Returns true (and writes the response) if the request was blocked.
+async function blockIfHighRiskWithoutKyc(
+  userId: string,
+  fraud: { decision: 'ALLOW' | 'REVIEW' | 'BLOCK'; score: number; decisionId: string },
+  res: Response,
+): Promise<boolean> {
+  if (fraud.decision === 'ALLOW') return false;
+  const kycStatus = await safetyGuardsService.getKycStatus(userId);
+  if (kycStatus === 'VERIFIED') return false;
+
+  res.status(403).json({
+    error: 'KYC_REQUIRED',
+    message: 'Identity verification is required before this high-risk transaction can proceed.',
+    kycStatus,
+    fraudDecision: fraud.decision,
+    score: fraud.score,
+    decisionId: fraud.decisionId,
+  });
+  return true;
+}
 
 // ─── API Key Middleware ────────────────────────────────────────────────────────
 
@@ -325,6 +352,7 @@ router.post('/remittance/initiate', requireApiKey, writeLimiter, async (req: Req
     });
     return;
   }
+  if (await blockIfHighRiskWithoutKyc(userId, fraud, res)) return;
   if (fraud.decision === 'REVIEW') {
     res.status(202).json({
       status:   'PENDING_REVIEW',
@@ -334,6 +362,17 @@ router.post('/remittance/initiate', requireApiKey, writeLimiter, async (req: Req
       decisionId: fraud.decisionId,
     });
     return;
+  }
+
+  // ── Large-transfer KYC gate (amount-based, independent of fraud score) ──────
+  try {
+    await safetyGuardsService.requireEnhancedKycIfNeeded(userId, amount, (currency as string).toUpperCase());
+  } catch (err: any) {
+    if (err instanceof SafetyGuardError) {
+      res.status(403).json({ error: 'KYC_REQUIRED', message: err.message, ...err.details });
+      return;
+    }
+    throw err;
   }
 
   const result = await remittanceProvider.initiate({
@@ -490,6 +529,7 @@ router.post('/campaign/contribute', requireApiKey, writeLimiter, async (req: Req
     res.status(403).json({ error: 'FRAUD_BLOCKED', message: 'Contribution blocked by fraud risk controls.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
     return;
   }
+  if (await blockIfHighRiskWithoutKyc(userId, fraud, res)) return;
   if (fraud.decision === 'REVIEW') {
     res.status(202).json({ status: 'PENDING_REVIEW', message: 'Contribution queued for fraud review. Wallet not debited.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
     return;
@@ -534,6 +574,7 @@ router.post('/recurring/process', requireApiKey, writeLimiter, async (req: Reque
     res.status(403).json({ error: 'FRAUD_BLOCKED', message: 'Recurring payment blocked by fraud risk controls.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
     return;
   }
+  if (await blockIfHighRiskWithoutKyc(userId, fraud, res)) return;
   if (fraud.decision === 'REVIEW') {
     res.status(202).json({ status: 'PENDING_REVIEW', message: 'Recurring payment queued for fraud review. Wallet not debited.', score: fraud.score, rules: fraud.rulesTriggered, decisionId: fraud.decisionId });
     return;

@@ -9,13 +9,17 @@
 import { Router, Request, Response } from 'express';
 import { verifyUser, UserAuthRequest } from '../middleware/verifyUser';
 import { adminDb } from '../firebaseAdmin';
+import { safetyGuardsService } from '../services/riskControls/safetyGuardsService';
 
 const router = Router();
 
 router.get('/user/profile', verifyUser, async (req: Request, res: Response): Promise<void> => {
   const { userId, userEmail } = req as UserAuthRequest;
   try {
-    const snap = await adminDb.collection('users').doc(userId).get();
+    const [snap, kycStatus] = await Promise.all([
+      adminDb.collection('users').doc(userId).get(),
+      safetyGuardsService.getKycStatus(userId),
+    ]);
     const data = snap.exists ? snap.data()! : {};
 
     res.json({
@@ -27,6 +31,7 @@ router.get('/user/profile', verifyUser, async (req: Request, res: Response): Pro
       preferredCurrency: data.preferredCurrency ?? 'USD',
       language: data.language ?? 'en',
       role: data.role ?? 'user',
+      kycStatus,
     });
   } catch (err: any) {
     console.error('[userProfile] GET error:', err.message);

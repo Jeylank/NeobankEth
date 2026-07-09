@@ -400,6 +400,12 @@ export const adminService = {
     return response.data;
   },
 
+  /** getRiskQueue — closed-beta readiness queue: pending KYC + fraud REVIEW decisions */
+  async getRiskQueue(limit = 100): Promise<any> {
+    const response = await adminApi.get('/api/admin/risk-queue', { params: { limit } });
+    return response.data;
+  },
+
   async toggleKillSwitch(key: string, enabled: boolean, reason?: string): Promise<any> {
     const response = await adminApi.post(`/api/admin/system-controls/${key}`, { enabled, reason });
     return response.data;
