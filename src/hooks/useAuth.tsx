@@ -5,6 +5,7 @@ import { firebaseAuth, FirebaseUser } from '../services/firebase';
 import { SessionManager } from '../utils/security';
 import { authApi } from '../services/api';
 import { twoFactorService } from '../services/twoFactorService';
+import { adminService } from '../services/adminService';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -117,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await firebaseAuth.signIn(email, password);
       await SessionManager.recordActivity();
+      void adminService.logLogin('email');
     } finally {
       setIsLoading(false);
     }
@@ -152,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await firebaseUser.getIdToken();
       await secureStorage.setItemAsync('authToken', token);
       await fetchAdminRole();
+      void adminService.logLogin('phone');
     } finally {
       setIsLoading(false);
     }
@@ -166,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await secureStorage.setItemAsync('authToken', token);
     await SessionManager.recordActivity();
     await fetchAdminRole();
+    void adminService.logLogin('email');
     setPending2FA(false);
     setPending2FACode('');
     setPending2FAEmail('');

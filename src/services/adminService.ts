@@ -446,6 +446,30 @@ export const adminService = {
     return response.data;
   },
 
+  // ─── Audit Logs ──────────────────────────────────────────────────────────
+
+  /** getAuditLogs — unified, filterable audit trail */
+  async getAuditLogs(params: {
+    type?: string;
+    userId?: string;
+    q?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }): Promise<any> {
+    const response = await adminApi.get('/api/admin/audit-logs', { params });
+    return response.data;
+  },
+
+  /** logLogin — records a LOGIN audit event right after a successful sign-in. Best-effort; never throws. */
+  async logLogin(method: 'email' | 'phone' = 'email'): Promise<void> {
+    try {
+      await adminApi.post('/api/auth/log-login', { method });
+    } catch (err) {
+      console.warn('[adminService] logLogin failed (non-fatal):', err);
+    }
+  },
+
   async toggleKillSwitch(key: string, enabled: boolean, reason?: string): Promise<any> {
     const response = await adminApi.post(`/api/admin/system-controls/${key}`, { enabled, reason });
     return response.data;

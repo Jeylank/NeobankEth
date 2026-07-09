@@ -57,6 +57,7 @@ const linking = {
       AdminRiskControls: 'admin/beta-controls',
       AdminTransfers: 'admin/transfers',
       AdminUsers: 'admin/users',
+      AdminAuditLogs: 'admin/audit-logs',
     },
   },
 };
