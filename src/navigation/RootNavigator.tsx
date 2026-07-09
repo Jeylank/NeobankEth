@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
+import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { ActivityIndicator, View } from 'react-native';
 
 import AuthScreen from '../screens/AuthScreen';
@@ -84,6 +85,8 @@ const COLORS = {
 };
 
 function MainTabs() {
+  const unreadCount = useUnreadNotifications();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -121,7 +124,14 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Home' }} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          title: 'Home',
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+        }}
+      />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Remittance" component={RemittanceScreen} options={{ title: 'Send Money' }} />
       <Tab.Screen name="Savings" component={SavingsScreen} options={{ title: 'Savings Goals' }} />

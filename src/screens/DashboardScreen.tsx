@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { transactionsApi, savingsApi, exchangeRatesApi } from '../services/api';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
-import { getAuth } from 'firebase/auth';
-import { fetchNotificationsFromApi } from '../services/firestoreNotifications';
+import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import '../i18n';
 
 const PRIMARY   = '#006633';
@@ -76,25 +75,8 @@ export default function DashboardScreen() {
   const { user }       = useAuth();
   const [fxAmount, setFxAmount]               = useState('200');
   const [fxCurrency, setFxCurrency]           = useState<Currency>('EUR');
-  const [unreadCount, setUnreadCount]         = useState(0);
+  const unreadCount                           = useUnreadNotifications();
   const [refreshing, setRefreshing]           = useState(false);
-
-  useEffect(() => {
-    if (!user?.uid) return;
-    let cancelled = false;
-    const fetchCount = async () => {
-      try {
-        const currentUser = getAuth().currentUser;
-        if (!currentUser) return;
-        const token = await currentUser.getIdToken();
-        const notifs = await fetchNotificationsFromApi(token);
-        if (!cancelled) setUnreadCount(notifs.filter((n) => !n.read).length);
-      } catch { /* non-critical — badge stays at 0 */ }
-    };
-    fetchCount();
-    const iv = setInterval(fetchCount, 30_000);
-    return () => { cancelled = true; clearInterval(iv); };
-  }, [user?.uid]);
 
   const { data: ratesData, refetch: refetchRates } = useQuery({
     queryKey: ['exchange-rates'],
