@@ -52,6 +52,9 @@ const linking = {
   config: {
     screens: {
       AdminDashboard: 'admin',
+      AdminAgentPayouts: 'admin/agents',
+      AdminReconciliationOverview: 'admin/reconciliation',
+      AdminRiskControls: 'admin/beta-controls',
     },
   },
 };

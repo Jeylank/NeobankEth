@@ -142,7 +142,7 @@ function MainTabs() {
 }
 
 export default function RootNavigator() {
-  const { isAuthenticated, isLoading, pending2FA } = useAuth();
+  const { isAuthenticated, isLoading, pending2FA, isAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -154,6 +154,7 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator 
+      initialRouteName={isAuthenticated && isAdmin ? 'AdminDashboard' : undefined}
       screenOptions={{ 
         headerStyle: {
           backgroundColor: COLORS.primary,
