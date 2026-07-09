@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { authApi, balanceApi } from '../services/api';
 import { biometricService } from '../services/biometric';
 import { firebaseAuth } from '../services/firebase';
+import { showAlert } from '../utils/alert';
 
 const COLORS = {
   primary: '#006633',
@@ -139,7 +140,7 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = () => {
-    Alert.alert(
+    showAlert(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
