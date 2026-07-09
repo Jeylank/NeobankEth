@@ -412,6 +412,26 @@ export const adminService = {
     return response.data;
   },
 
+  // ─── Admin Transfers ─────────────────────────────────────────────────────
+
+  /** searchTransfers — search/filter transfers by txId, sender/recipient query, or status */
+  async searchTransfers(params: { txId?: string; q?: string; status?: string; limit?: number }): Promise<any> {
+    const response = await adminApi.get('/api/admin/transfers', { params });
+    return response.data;
+  },
+
+  /** getTransferDetail — full transfer detail: timeline, fraud history, KYC status */
+  async getTransferDetail(txId: string): Promise<any> {
+    const response = await adminApi.get(`/api/admin/transfers/${txId}`);
+    return response.data;
+  },
+
+  /** retryTransfer — retry reconciliation (agent reassignment or provider/quote resume) */
+  async retryTransfer(txId: string): Promise<any> {
+    const response = await adminApi.post(`/api/admin/transfers/${txId}/retry`);
+    return response.data;
+  },
+
   async toggleKillSwitch(key: string, enabled: boolean, reason?: string): Promise<any> {
     const response = await adminApi.post(`/api/admin/system-controls/${key}`, { enabled, reason });
     return response.data;

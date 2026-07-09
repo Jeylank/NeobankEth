@@ -55,6 +55,7 @@ const linking = {
       AdminAgentPayouts: 'admin/agents',
       AdminReconciliationOverview: 'admin/reconciliation',
       AdminRiskControls: 'admin/beta-controls',
+      AdminTransfers: 'admin/transfers',
     },
   },
 };

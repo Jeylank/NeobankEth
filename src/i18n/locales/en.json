@@ -996,6 +996,41 @@
         "closedBetaStatus": "Closed-Beta Status"
       }
     },
+    "transfersHub": "Admin Transfers",
+    "transfers": {
+      "title": "Transfers",
+      "detailTitle": "Transfer Detail",
+      "searchPlaceholder": "Search by transaction ID, sender, or recipient",
+      "loadError": "Failed to load transfers",
+      "noResults": "No transfers found",
+      "noTimeline": "No timeline events yet",
+      "noFraudData": "No fraud data",
+      "sender": "Sender",
+      "recipient": "Recipient",
+      "city": "Destination City",
+      "amount": "Amount",
+      "destinationAmount": "Destination Amount",
+      "createdAt": "Created",
+      "fraudScore": "Fraud Score",
+      "fraudDecision": "Fraud Decision",
+      "kyc": "KYC",
+      "riskSection": "Risk & Compliance",
+      "timeline": "Transfer Timeline",
+      "retryReconciliation": "Retry Reconciliation",
+      "retrySuccess": "Retry initiated successfully",
+      "retryFailed": "Retry failed",
+      "filters": {
+        "all": "All",
+        "processing": "Processing",
+        "agentAssigned": "Agent Assigned",
+        "otpSent": "OTP Sent",
+        "paidOut": "Paid Out",
+        "completed": "Completed",
+        "failed": "Failed",
+        "refunded": "Refunded",
+        "pendingLiquidity": "Pending Liquidity"
+      }
+    },
     "adminRisk": {
       "title": "Risk Controls Dashboard",
       "killSwitches": "Kill Switches",

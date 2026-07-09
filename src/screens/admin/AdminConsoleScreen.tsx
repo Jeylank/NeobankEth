@@ -140,6 +140,13 @@ const MENU_ITEMS = [
     color: '#006633',
     bg: '#ECFDF5',
   },
+  {
+    key: 'transfersHub',
+    screen: 'AdminTransfers',
+    icon: 'swap-horizontal-outline' as const,
+    color: '#006633',
+    bg: '#ECFDF5',
+  },
 ];
 
 function AdminConsoleContent() {

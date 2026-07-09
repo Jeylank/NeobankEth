@@ -33,6 +33,7 @@ import adminUsersRouter    from './routes/adminUsers';
 import notificationsRouter from './routes/notifications';
 import agentPayoutRouter   from './routes/agentPayout';
 import dashboardRouter     from './routes/dashboard';
+import adminTransfersRouter from './routes/adminTransfers';
 import transactionsRouter  from './routes/transactions';
 import userApiRouter       from './routes/userApi';
 import remittancesRouter   from './routes/remittances';
@@ -161,6 +162,7 @@ app.use('/api',              userProfileRouter);
 app.use('/api/v1',           simulationRouter);
 app.use('/api/v1',           agentPayoutRouter);
 app.use(API_PREFIX,          dashboardRouter);
+app.use(API_PREFIX,          adminTransfersRouter);
 app.use('/api/campaigns',    campaignsRouter);
 
 // ─── Static Web App (Expo dist) ───────────────────────────────────────────────

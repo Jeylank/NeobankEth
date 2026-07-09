@@ -73,6 +73,7 @@ import AdminSystemMonitorScreen from '../screens/admin/AdminSystemMonitorScreen'
 import AdminSchedulerRunsScreen from '../screens/admin/AdminSchedulerRunsScreen';
 import AdminRiskControlsScreen from '../screens/admin/AdminRiskControlsScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminTransfersScreen from '../screens/admin/AdminTransfersScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 
 const Stack = createNativeStackNavigator();
@@ -230,6 +231,7 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminSchedulerRuns" component={AdminSchedulerRunsScreen} options={{ title: 'Recurring Support Runs' }} />
           <Stack.Screen name="AdminRiskControls" component={AdminRiskControlsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AdminTransfers" component={AdminTransfersScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Manage Plan' }} />
         </>
       ) : (
