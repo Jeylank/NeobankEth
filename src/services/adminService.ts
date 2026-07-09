@@ -461,6 +461,12 @@ export const adminService = {
     return response.data;
   },
 
+  /** getBetaRiskSummary — single-call aggregate for the Beta Risk Summary dashboard */
+  async getBetaRiskSummary(): Promise<any> {
+    const response = await adminApi.get('/api/admin/dashboard/beta-risk-summary');
+    return response.data;
+  },
+
   /** logLogin — records a LOGIN audit event right after a successful sign-in. Best-effort; never throws. */
   async logLogin(method: 'email' | 'phone' = 'email'): Promise<void> {
     try {

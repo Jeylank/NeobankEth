@@ -1030,6 +1030,28 @@
         "ADMIN_ACTION": "Admin Action"
       }
     },
+    "betaRiskSummaryHub": "Beta Risk Summary",
+    "betaRisk": {
+      "title": "Beta Risk Summary",
+      "loadError": "Failed to load beta risk summary",
+      "totalBetaUsers": "Total Beta Users",
+      "activeToday": "Active Today",
+      "pendingKyc": "Pending KYC",
+      "fraudReview": "Fraud Review",
+      "blockedLast24h": "{{count}} blocked (24h)",
+      "blockedTransfers": "Blocked Transfers",
+      "failedTransfers": "Failed Transfers",
+      "reconciliationQueue": "Reconciliation Queue",
+      "mismatched": "{{count}} mismatched",
+      "liquidityWarnings": "Agent Liquidity Warnings",
+      "offlineAgents": "{{count}} offline",
+      "systemStatus": "System Status: {{status}}",
+      "firestoreStatus": "Firestore: {{status}}",
+      "uptime": "Uptime {{seconds}}s",
+      "recentAlerts": "Recent Alerts",
+      "alertCount": "{{count}} total",
+      "noAlerts": "No active alerts"
+    },
     "users": {
       "title": "Users",
       "detailTitle": "User Detail",

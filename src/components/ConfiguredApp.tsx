@@ -58,6 +58,7 @@ const linking = {
       AdminTransfers: 'admin/transfers',
       AdminUsers: 'admin/users',
       AdminAuditLogs: 'admin/audit-logs',
+      AdminBetaRiskSummary: 'admin/beta-risk-summary',
     },
   },
 };

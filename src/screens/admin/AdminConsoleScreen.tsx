@@ -161,6 +161,13 @@ const MENU_ITEMS = [
     color: '#006633',
     bg: '#ECFDF5',
   },
+  {
+    key: 'betaRiskSummaryHub',
+    screen: 'AdminBetaRiskSummary',
+    icon: 'shield-checkmark-outline' as const,
+    color: '#006633',
+    bg: '#ECFDF5',
+  },
 ];
 
 function AdminConsoleContent() {

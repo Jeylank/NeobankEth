@@ -32,6 +32,7 @@ import {
 } from '../services/dashboardService';
 import { AGENT_RESPONSE_TIMEOUT_MS, OTP_FLOW_TIMEOUT_MS, MAX_ASSIGNMENT_ATTEMPTS } from '../services/agentPayoutService';
 import { getBetaRiskSummary } from '../services/betaRiskService';
+import { getBetaRiskSummary as getBetaRiskDashboard } from '../services/betaRiskSummaryService';
 
 const router = Router();
 
@@ -197,6 +198,28 @@ router.get(
         },
       });
     } catch (err) { handleError(res, err, 'GET /dashboard/summary'); }
+  },
+);
+
+// ─── Beta Risk Summary (dedicated dashboard) ───────────────────────────────────
+
+/**
+ * GET /api/admin/dashboard/beta-risk-summary
+ *
+ * Single-call aggregate for the "Beta Risk Summary" admin screen:
+ * total beta users, active users today, pending KYC, fraud review, blocked
+ * transfers, failed transfers, reconciliation queue, agent liquidity
+ * warnings, Firestore/API health, and recent alerts. Read-only.
+ */
+router.get(
+  '/dashboard/beta-risk-summary',
+  requireAdminOrApiKey,
+  readLimiter,
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const data = await getBetaRiskDashboard();
+      res.json(data);
+    } catch (err) { handleError(res, err, 'GET /dashboard/beta-risk-summary'); }
   },
 );
 
