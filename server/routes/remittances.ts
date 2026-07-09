@@ -25,19 +25,20 @@ router.get('/remittances', verifyUser, async (req, res: Response): Promise<void>
     const snap = await adminDb
       .collection('remittances')
       .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(50)
       .get();
 
-    const remittances = snap.docs.map((doc) => ({
-      id:              doc.id,
-      ...doc.data(),
-      // Firestore Timestamps → ISO strings for JSON serialisation
-      createdAt:    doc.data().createdAt?.toDate?.()?.toISOString() ?? null,
-      processingAt: doc.data().processingAt?.toDate?.()?.toISOString() ?? null,
-      sentAt:       doc.data().sentAt?.toDate?.()?.toISOString() ?? null,
-      completedAt:  doc.data().completedAt?.toDate?.()?.toISOString() ?? null,
-    }));
+    const remittances = snap.docs
+      .map((doc) => ({
+        id:              doc.id,
+        ...doc.data(),
+        // Firestore Timestamps → ISO strings for JSON serialisation
+        createdAt:    doc.data().createdAt?.toDate?.()?.toISOString() ?? null,
+        processingAt: doc.data().processingAt?.toDate?.()?.toISOString() ?? null,
+        sentAt:       doc.data().sentAt?.toDate?.()?.toISOString() ?? null,
+        completedAt:  doc.data().completedAt?.toDate?.()?.toISOString() ?? null,
+      }))
+      .sort((a: any, b: any) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''))
+      .slice(0, 50);
 
     res.json({ remittances });
   } catch (err: any) {

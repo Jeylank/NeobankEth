@@ -143,14 +143,15 @@ router.get('/beneficiaries', verifyUser, async (req: Request, res: Response): Pr
     const snap = await adminDb
       .collection('beneficiaries')
       .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const beneficiaries = snap.docs.map((doc) => ({
-      id:            doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString() ?? null,
-    }));
+    const beneficiaries = snap.docs
+      .map((doc) => ({
+        id:            doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() ?? null,
+      }))
+      .sort((a: any, b: any) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''));
 
     res.json({ beneficiaries });
   } catch (err: any) {
