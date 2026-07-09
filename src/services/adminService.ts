@@ -406,6 +406,12 @@ export const adminService = {
     return response.data;
   },
 
+  /** getDashboardSummary — unified /admin dashboard cards: transfers, agents, KYC, alerts, volume, limits, beta status */
+  async getDashboardSummary(): Promise<any> {
+    const response = await adminApi.get('/api/admin/dashboard/summary');
+    return response.data;
+  },
+
   async toggleKillSwitch(key: string, enabled: boolean, reason?: string): Promise<any> {
     const response = await adminApi.post(`/api/admin/system-controls/${key}`, { enabled, reason });
     return response.data;

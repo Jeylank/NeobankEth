@@ -387,6 +387,110 @@ export async function getAlertsDashboard(): Promise<AlertsDashboard> {
   return { alerts, count: alerts.length, bySeverity, fetchedAt: new Date().toISOString() };
 }
 
+// ─── Unified summary (closed-beta admin dashboard cards) ──────────────────────
+
+export interface DashboardSummary {
+  transfers: {
+    total:            number;
+    pending:          number;
+    paymentPending:   number;
+    fundsReceived:    number;
+    otpSent:          number;
+    recoveryPending:  number;
+    paidOut:          number;
+    failed:           number;
+    refunds:          number;
+  };
+  agents: {
+    active:    number;
+    suspended: number;
+  };
+  kycPending:  number;
+  riskAlerts:  number;
+  dailyVolume: {
+    amount: number;
+    count:  number;
+    date:   string;
+  };
+  fetchedAt: string;
+}
+
+const RECOVERY_STATUSES = new Set(['PENDING_LIQUIDITY', 'PENDING_REQUOTE']);
+const FAILED_STATUSES   = new Set(['FAILED', 'TIMED_OUT', 'BLOCKED_FRAUD', 'CANCELLED', 'PAYMENT_FAILED', 'PAYMENT_EXPIRED']);
+const PAID_OUT_STATUSES = new Set(['PAID_OUT', 'COMPLETED']);
+const TERMINAL_STATUSES = new Set([
+  'COMPLETED', 'PAID_OUT', 'FAILED', 'TIMED_OUT', 'BLOCKED_FRAUD',
+  'CANCELLED', 'PAYMENT_FAILED', 'PAYMENT_EXPIRED', 'REFUNDED',
+]);
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  const now      = Date.now();
+  const dayStart = new Date(now);
+  dayStart.setUTCHours(0, 0, 0, 0);
+
+  const [txSnap, agentSnap, kycSnap, alertsData] = await Promise.all([
+    adminDb.collection(AGENT_COL.txns).get(),
+    adminDb.collection(AGENT_COL.agents).get(),
+    adminDb.collection('kyc_documents').where('status', '==', 'pending').get(),
+    getAlertsDashboard(),
+  ]);
+
+  const txDocs = txSnap.docs.map<DashboardDocument>(
+    d => ({ id: d.id, ...(d.data() as Record<string, unknown>) }),
+  );
+
+  let pending = 0, paymentPending = 0, fundsReceived = 0, otpSent = 0;
+  let recoveryPending = 0, paidOut = 0, failed = 0, refunds = 0;
+  let dailyAmount = 0, dailyCount = 0;
+
+  for (const tx of txDocs) {
+    const status = (tx.status as string) ?? 'UNKNOWN';
+    const amount = Number(tx.amount ?? 0);
+
+    if (status === 'PAYMENT_PENDING') paymentPending++;
+    if (status === 'FUNDS_RECEIVED')  fundsReceived++;
+    if (status === 'OTP_SENT')        otpSent++;
+    if (RECOVERY_STATUSES.has(status)) recoveryPending++;
+    if (PAID_OUT_STATUSES.has(status)) paidOut++;
+    if (FAILED_STATUSES.has(status))   failed++;
+    if (status === 'REFUNDED')         refunds++;
+    if (!TERMINAL_STATUSES.has(status)) pending++;
+
+    const createdMs = tsToMs(tx.createdAt) ?? tsToMs(tx.updatedAt);
+    if (createdMs !== null && createdMs >= dayStart.getTime()) {
+      dailyAmount += amount;
+      dailyCount++;
+    }
+  }
+
+  const agentDocs = agentSnap.docs.map(d => d.data() as Record<string, unknown>);
+  const active    = agentDocs.filter(a => a.status === 'online').length;
+  const suspended = agentDocs.length - active;
+
+  return {
+    transfers: {
+      total: txDocs.length,
+      pending,
+      paymentPending,
+      fundsReceived,
+      otpSent,
+      recoveryPending,
+      paidOut,
+      failed,
+      refunds,
+    },
+    agents: { active, suspended },
+    kycPending: kycSnap.size,
+    riskAlerts: alertsData.count,
+    dailyVolume: {
+      amount: dailyAmount,
+      count:  dailyCount,
+      date:   dayStart.toISOString().slice(0, 10),
+    },
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function tsToMs(val: unknown): number | null {

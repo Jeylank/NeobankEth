@@ -133,6 +133,13 @@ const MENU_ITEMS = [
     color: '#006633',
     bg: '#ECFDF5',
   },
+  {
+    key: 'dashboardHub',
+    screen: 'AdminDashboard',
+    icon: 'speedometer-outline' as const,
+    color: '#006633',
+    bg: '#ECFDF5',
+  },
 ];
 
 function AdminConsoleContent() {

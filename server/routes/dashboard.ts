@@ -26,10 +26,12 @@ import {
   getTransfersDashboard,
   getAgentsDashboard,
   getAlertsDashboard,
+  getDashboardSummary,
   LOW_FLOAT_THRESHOLD_ETB,
   STUCK_UNASSIGNED_THRESHOLD_MS,
 } from '../services/dashboardService';
 import { AGENT_RESPONSE_TIMEOUT_MS, OTP_FLOW_TIMEOUT_MS, MAX_ASSIGNMENT_ATTEMPTS } from '../services/agentPayoutService';
+import { getBetaRiskSummary } from '../services/betaRiskService';
 
 const router = Router();
 
@@ -162,6 +164,39 @@ router.get(
         },
       });
     } catch (err) { handleError(res, err, 'GET /dashboard/alerts'); }
+  },
+);
+
+// ─── Summary (closed-beta dashboard cards) ─────────────────────────────────────
+
+/**
+ * GET /api/admin/dashboard/summary
+ *
+ * Single-call aggregate for the closed-beta admin dashboard cards:
+ * transfer state counts, agent active/suspended counts, KYC pending count,
+ * risk alert count, today's transfer volume, platform limits, and
+ * closed-beta pause status. Read-only.
+ */
+router.get(
+  '/dashboard/summary',
+  requireAdminOrApiKey,
+  readLimiter,
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const [summary, betaRisk] = await Promise.all([
+        getDashboardSummary(),
+        getBetaRiskSummary(),
+      ]);
+      res.json({
+        ...summary,
+        platformLimits: (betaRisk as { limits: unknown }).limits,
+        closedBeta: {
+          paused:    (betaRisk as { paused: boolean }).paused,
+          exposure:  (betaRisk as { exposure: number }).exposure,
+          exposureRemaining: (betaRisk as { exposureRemaining: number }).exposureRemaining,
+        },
+      });
+    } catch (err) { handleError(res, err, 'GET /dashboard/summary'); }
   },
 );
 

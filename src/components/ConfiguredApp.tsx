@@ -47,11 +47,21 @@ function PushNotificationBootstrap() {
   return null;
 }
 
+const linking = {
+  prefixes: [],
+  config: {
+    screens: {
+      AdminDashboard: 'admin',
+    },
+  },
+};
+
 function AppContent() {
   const { isDark, colors } = useTheme();
 
   return (
     <NavigationContainer
+      linking={linking}
       theme={{
         dark: isDark,
         colors: {
