@@ -38,6 +38,7 @@
 import { randomUUID }   from 'crypto';
 import * as admin       from 'firebase-admin';
 import { adminDb }      from '../firebaseAdmin';
+import { notifyRemittanceEvent } from './notificationService';
 // NOTE: Stripe is NOT imported at module level — it is lazy-loaded inside
 // stripeTopUp() only. This prevents StripeConnectionError / StripeAuthError
 // from leaking into the remittance flow when Stripe is misconfigured.
@@ -341,6 +342,9 @@ export async function getOrAgeTx(txId: string): Promise<SimTx | undefined> {
     txData.status    = 'COMPLETED';
     txData.updatedAt = new Date(now.toMillis()).toISOString();
     void audit('TRANSACTION_COMPLETED', 'transaction', txId, { userId: txData.userId, type: txData.type });
+    void notifyRemittanceEvent({
+      userId: txData.userId, event: 'PAYOUT_COMPLETED', txId, amount: txData.amount, currency: txData.currency,
+    });
   }
 
   return txData;
@@ -795,6 +799,10 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
       throw error;
     }
 
+    void notifyRemittanceEvent({
+      userId, event: 'TRANSFER_CREATED', txId: pendingTxId, amount, currency: sourceCcy,
+    });
+
     return { ok: true, status: 201, payload };
   }
 
@@ -1169,6 +1177,7 @@ export async function processRemittance(p: RemittanceParams): Promise<Remittance
       `[SimEngine] PENDING_LIQUIDITY (${rollbackReason}): txId=${txId} queued. ` +
       `Attempts: ${providerAttempts.map(a => `${a.provider}=${a.reason ?? 'ok'}`).join(', ')}`
     );
+    void notifyRemittanceEvent({ userId, event: 'RECOVERY_PENDING', txId, amount, currency: sourceCcy });
     return {
       ok:      true,
       status:  202,

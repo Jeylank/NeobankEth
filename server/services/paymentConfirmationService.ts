@@ -4,6 +4,7 @@ import { startAgentCashPayout } from './agentCashRemittanceService';
 import { processRemittance, type RemittanceResult } from './simulationEngine';
 import type { RemittanceRequest } from './remittance';
 import { createBetaRiskAlert } from './betaRiskService';
+import { notifyRemittanceEvent } from './notificationService';
 
 export type SimulatedPaymentOutcome = 'confirmed' | 'failed';
 
@@ -111,8 +112,17 @@ export async function confirmSimulationPayment(
       amount: pendingData.amount,
       currency: pendingData.currency,
     });
+    void notifyRemittanceEvent({
+      userId: pendingData.userId, event: 'TRANSFER_FAILED', txId: transactionId,
+      amount: pendingData.amount, currency: pendingData.currency,
+    });
     return transactionPayload(transactionId, pendingData);
   }
+
+  void notifyRemittanceEvent({
+    userId: pendingData.userId, event: 'PAYMENT_CONFIRMED', txId: transactionId,
+    amount: pendingData.amount, currency: pendingData.currency,
+  });
 
   const request: RemittanceRequest = {
     userId: pendingData.userId,
@@ -200,6 +210,13 @@ export async function refundSimulationPayment(transactionId: string): Promise<Re
     });
     resultData = { ...data, status: 'REFUNDED', paymentStatus: 'REFUNDED' };
   });
+
+  if (resultData && !resultData.duplicate) {
+    void notifyRemittanceEvent({
+      userId: resultData.userId, event: 'TRANSFER_REFUNDED', txId: transactionId,
+      amount: resultData.amount, currency: resultData.currency,
+    });
+  }
 
   if (!resultData) {
     return {

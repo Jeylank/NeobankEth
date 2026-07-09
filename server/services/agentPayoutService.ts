@@ -28,6 +28,7 @@
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
 import { createBetaRiskAlert } from './betaRiskService';
+import { notifyRemittanceEvent } from './notificationService';
 import { adminDb } from '../firebaseAdmin';
 
 // ─── Firestore collection keys ────────────────────────────────────────────────
@@ -279,6 +280,9 @@ export async function assignBestAgent(
       transferId, 'FAILED',
       `No eligible agent responded after ${MAX_ASSIGNMENT_ATTEMPTS} attempts. Transfer failed.`,
     );
+    void notifyRemittanceEvent({
+      userId: tx.userId as string, event: 'TRANSFER_FAILED', txId: transferId, amount, currency,
+    });
     throw new AgentPayoutError(
       'MAX_ATTEMPTS_REACHED',
       `Transfer failed — exhausted ${MAX_ASSIGNMENT_ATTEMPTS} agent assignment attempts.`,
@@ -339,6 +343,10 @@ export async function assignBestAgent(
     `Attempt ${attempts + 1}/${MAX_ASSIGNMENT_ATTEMPTS}: Agent ${agent.full_name} (${agent.city}) assigned — score ${agent.score}, float ${agent.available_float} ${currency}. Response deadline: ${assignment.response_deadline}.`,
   );
   console.log(`[AgentPayout] Agent assigned — transfer=${transferId} agent=${agent.id} attempt=${attempts + 1}`);
+  void notifyRemittanceEvent({
+    userId: tx.userId as string, event: 'AGENT_ASSIGNED', txId: transferId,
+    amount, currency, agentName: agent.full_name,
+  });
   return { assignment, agent };
 }
 
@@ -615,6 +623,10 @@ export async function sendOtp(transferId: string): Promise<{
 
   await logTimeline(transferId, 'OTP_SENT', `OTP dispatched to recipient. Expires: ${expiresAt}`);
   console.log(`[AgentPayout] OTP generated — transfer=${transferId} expires=${expiresAt}`);
+  void notifyRemittanceEvent({
+    userId: reloaded.userId as string, event: 'OTP_SENT', txId: transferId,
+    amount: reloaded.amount as number | undefined, currency: reloaded.currency as string | undefined,
+  });
 
   return { otp, expiresAt, staleCheck };
 }
@@ -858,6 +870,10 @@ export async function markPaid(
     `Cash paid by agent ${result.agent.full_name} (${result.agent.city}). Float debited: ${result.tx.amount} ${result.tx.currency ?? ''}.`,
   );
   console.log(`[AgentPayout] Payout complete — transfer=${transferId} agent=${result.agent.id} amount=${result.tx.amount}`);
+  void notifyRemittanceEvent({
+    userId: result.tx.userId as string, event: 'PAYOUT_COMPLETED', txId: transferId,
+    amount: result.tx.amount, currency: result.tx.currency, agentName: result.agent.full_name,
+  });
 
   if (result.agent.available_float < 500) {
     await createBetaRiskAlert('LOW_AGENT_FLOAT', result.agent.id, {
