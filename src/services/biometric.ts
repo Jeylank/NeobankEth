@@ -1,5 +1,5 @@
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
+import { secureStorage } from '../utils/storage';
 
 const BIOMETRIC_ENABLED_KEY = 'biometricEnabled';
 const BIOMETRIC_CREDENTIALS_KEY = 'biometricCredentials';
@@ -47,25 +47,25 @@ export const biometricService = {
   },
 
   isEnabled: async (): Promise<boolean> => {
-    const enabled = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+    const enabled = await secureStorage.getItemAsync(BIOMETRIC_ENABLED_KEY);
     return enabled === 'true';
   },
 
   enable: async (credentials: BiometricCredentials): Promise<void> => {
-    await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
-    await SecureStore.setItemAsync(
+    await secureStorage.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
+    await secureStorage.setItemAsync(
       BIOMETRIC_CREDENTIALS_KEY, 
       JSON.stringify(credentials)
     );
   },
 
   disable: async (): Promise<void> => {
-    await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
-    await SecureStore.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+    await secureStorage.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
+    await secureStorage.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY);
   },
 
   getStoredCredentials: async (): Promise<BiometricCredentials | null> => {
-    const credentialsJson = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+    const credentialsJson = await secureStorage.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
     if (!credentialsJson) return null;
     
     try {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { secureStorage } from '../utils/storage';
 import type {
   AdminOverview,
   AdminPayout,
@@ -26,7 +26,7 @@ const adminApi = axios.create({
 });
 
 adminApi.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('authToken');
+  const token = await secureStorage.getItemAsync('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

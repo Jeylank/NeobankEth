@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { secureStorage } from '../utils/storage';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
 export function normalizeApiBaseUrl(rawUrl: string): string {
@@ -23,7 +23,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('authToken');
+  const token = await secureStorage.getItemAsync('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -52,7 +52,7 @@ export const authApi = {
   },
   logout: async () => {
     await api.post('/api/auth/logout');
-    await SecureStore.deleteItemAsync('authToken');
+    await secureStorage.deleteItemAsync('authToken');
   },
   getProfile: async (): Promise<User> => {
     const response = await api.get('/api/user/profile');
