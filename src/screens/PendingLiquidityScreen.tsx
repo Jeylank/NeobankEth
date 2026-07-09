@@ -20,6 +20,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import AnimatedPressable from '../components/AnimatedPressable';
+import { secureStorage } from '../utils/storage';
 
 // ─── Navigation types ────────────────────────────────────────────────────────
 
@@ -38,14 +39,20 @@ type PendingLiquidityRouteProp = RouteProp<
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const SIM_BASE = '/api/v1';
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY?.trim() ?? '';
 
 async function callResume(
   transactionId: string,
   action: 'retry' | 'cancel',
 ): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
+  const token = await secureStorage.getItemAsync('authToken');
   const res = await fetch(`${SIM_BASE}/remittance/resume`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(API_KEY ? { 'X-API-Key': API_KEY } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body:    JSON.stringify({ transactionId, action }),
   });
   const data = await res.json();
