@@ -1,7 +1,8 @@
 /**
  * server/routes/adminUsers.ts
  * ───────────────────────────
- * Admin user management — set / remove Firebase custom claims.
+ * Admin user management — set / remove Firebase custom claims, plus the
+ * Admin Users screen API (search, full profile detail).
  *
  * Routes
  * ──────
@@ -9,6 +10,8 @@
  *   POST /api/admin/users/promote     — grant admin claim (requires existing admin)
  *   POST /api/admin/users/demote      — revoke admin claim (requires existing admin)
  *   GET  /api/admin/users/:uid/claims — view current claims for a user (requires admin)
+ *   GET  /api/admin/users             — search users (uid/email/phone/name), risk + KYC summary
+ *   GET  /api/admin/users/:uid/detail — full profile: KYC, wallet, transfers, risk, verification history
  *
  * Bootstrap flow (first admin only)
  * ──────────────────────────────────
@@ -17,12 +20,27 @@
  *   Once the first admin is promoted, use that account for all future promotes.
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { adminAuth, adminDb }        from '../firebaseAdmin';
 import { verifyAdmin, AuthRequest }  from '../middleware/auth';
+import { requireApiKey }             from '../middleware/apiKeyAuth';
+import { readLimiter }               from '../middleware/rateLimiter';
 import { writeAuditLog }             from '../middleware/auditLog';
+import { searchUsers, getUserDetail } from '../services/adminUsersService';
 
 const router = Router();
+
+// ─── Auth: accept Firebase admin token OR simulation API key ─────────────────
+// Firebase tokens are used in production; API key is used for QA / simulation.
+
+function requireAdminOrApiKey(req: Request, res: Response, next: NextFunction): void {
+  const hasApiKey = Boolean(req.headers['x-api-key']);
+  if (hasApiKey) {
+    requireApiKey(req, res, next);
+  } else {
+    verifyAdmin(req, res, next);
+  }
+}
 
 // ─── Bootstrap (no admin token required — uses a shared secret) ───────────────
 
@@ -185,6 +203,54 @@ router.post('/users/demote', verifyAdmin, async (req: Request, res: Response): P
     res.status(500).json({ error: 'DEMOTION_FAILED', message: err.message });
   }
 });
+
+// ─── Admin Users screen: search ───────────────────────────────────────────────
+
+/**
+ * GET /api/admin/users
+ * Search users by uid, email, phone, or display name. Returns a summary per
+ * user: KYC status, account status (derived from risk flags), and latest
+ * fraud risk score.
+ */
+router.get(
+  '/users',
+  requireAdminOrApiKey,
+  readLimiter,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { q, limit } = req.query as Record<string, string | undefined>;
+      const data = await searchUsers({ query: q, limit: limit ? Number(limit) : undefined });
+      res.json({ ...data, fetchedAt: new Date().toISOString() });
+    } catch (err: any) {
+      console.error('[AdminUsers] GET /users error:', err.message);
+      res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+    }
+  },
+);
+
+/**
+ * GET /api/admin/users/:uid/detail
+ * Full profile: KYC document info, wallet balances, transfer counts,
+ * total sent/received, account status, risk score, and verification history.
+ */
+router.get(
+  '/users/:uid/detail',
+  requireAdminOrApiKey,
+  readLimiter,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const detail = await getUserDetail(req.params.uid);
+      if (!detail) {
+        res.status(404).json({ error: 'USER_NOT_FOUND', message: `User '${req.params.uid}' not found.` });
+        return;
+      }
+      res.json(detail);
+    } catch (err: any) {
+      console.error(`[AdminUsers] GET /users/${req.params.uid}/detail error:`, err.message);
+      res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+    }
+  },
+);
 
 // ─── View claims (existing admin required) ────────────────────────────────────
 

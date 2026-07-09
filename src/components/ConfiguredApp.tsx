@@ -56,6 +56,7 @@ const linking = {
       AdminReconciliationOverview: 'admin/reconciliation',
       AdminRiskControls: 'admin/beta-controls',
       AdminTransfers: 'admin/transfers',
+      AdminUsers: 'admin/users',
     },
   },
 };

@@ -432,6 +432,20 @@ export const adminService = {
     return response.data;
   },
 
+  // ─── Admin Users ─────────────────────────────────────────────────────────
+
+  /** searchUsers — search users by uid, email, phone, or display name */
+  async searchUsers(params: { q?: string; limit?: number }): Promise<any> {
+    const response = await adminApi.get('/api/admin/users', { params });
+    return response.data;
+  },
+
+  /** getUserDetail — full profile: KYC, wallet, transfers, risk, verification history */
+  async getUserDetail(uid: string): Promise<any> {
+    const response = await adminApi.get(`/api/admin/users/${uid}/detail`);
+    return response.data;
+  },
+
   async toggleKillSwitch(key: string, enabled: boolean, reason?: string): Promise<any> {
     const response = await adminApi.post(`/api/admin/system-controls/${key}`, { enabled, reason });
     return response.data;

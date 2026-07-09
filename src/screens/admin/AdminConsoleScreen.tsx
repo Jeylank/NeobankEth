@@ -147,6 +147,13 @@ const MENU_ITEMS = [
     color: '#006633',
     bg: '#ECFDF5',
   },
+  {
+    key: 'usersHub',
+    screen: 'AdminUsers',
+    icon: 'people-outline' as const,
+    color: '#006633',
+    bg: '#ECFDF5',
+  },
 ];
 
 function AdminConsoleContent() {
