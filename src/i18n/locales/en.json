@@ -842,6 +842,7 @@
   "admin": {
     "adminConsole": "Operations Console",
     "overview": "Overview",
+    "agentPayouts": "Agent Cash Payouts",
     "payoutMonitoring": "Payout Monitoring",
     "fraudAlerts": "Fraud Alerts",
     "supportTickets": "Support Tickets",

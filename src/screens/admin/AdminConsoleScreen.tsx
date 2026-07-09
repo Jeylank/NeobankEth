@@ -43,6 +43,13 @@ const MENU_ITEMS = [
     bg: '#EFF6FF',
   },
   {
+    key: 'agentPayouts',
+    screen: 'AdminAgentPayouts',
+    icon: 'wallet-outline' as const,
+    color: COLORS.green,
+    bg: '#ECFDF5',
+  },
+  {
     key: 'fraudAlerts',
     screen: 'AdminFraudAlerts',
     icon: 'warning-outline' as const,

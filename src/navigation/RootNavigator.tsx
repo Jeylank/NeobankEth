@@ -46,6 +46,7 @@ import TwoFactorSetupScreen from '../screens/TwoFactorSetupScreen';
 import AdminConsoleScreen from '../screens/admin/AdminConsoleScreen';
 import AdminOverviewScreen from '../screens/admin/AdminOverviewScreen';
 import AdminPayoutMonitoringScreen from '../screens/admin/AdminPayoutMonitoringScreen';
+import AdminAgentPayoutsScreen from '../screens/admin/AdminAgentPayoutsScreen';
 import AdminFraudAlertsScreen from '../screens/admin/AdminFraudAlertsScreen';
 import AdminSupportTicketsScreen from '../screens/admin/AdminSupportTicketsScreen';
 import AdminDisputesScreen from '../screens/admin/AdminDisputesScreen';
@@ -191,6 +192,7 @@ export default function RootNavigator() {
           <Stack.Screen name="AdminConsole" component={AdminConsoleScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminOverview" component={AdminOverviewScreen} options={{ title: 'Overview' }} />
           <Stack.Screen name="AdminPayoutMonitoring" component={AdminPayoutMonitoringScreen} options={{ title: 'Payout Monitoring' }} />
+          <Stack.Screen name="AdminAgentPayouts" component={AdminAgentPayoutsScreen} options={{ title: 'Agent Cash Payouts' }} />
           <Stack.Screen name="AdminFraudAlerts" component={AdminFraudAlertsScreen} options={{ title: 'Fraud Alerts' }} />
           <Stack.Screen name="AdminSupportTickets" component={AdminSupportTicketsScreen} options={{ title: 'Support Tickets' }} />
           <Stack.Screen name="AdminDisputes" component={AdminDisputesScreen} options={{ title: 'Disputes' }} />

@@ -840,6 +840,7 @@
     "tip4": "Seensa shakkisiisaadhaaf sochii seensaa keessan yeroo yerootti ilaalaa"
   },
   "admin": {
+    "agentPayouts": "Agent Cash Payouts",
     "adminConsole": "Konsoolii Hojii",
     "overview": "Ilaalacha Waliigalaa",
     "payoutMonitoring": "Hordoffii Kaffaltii",

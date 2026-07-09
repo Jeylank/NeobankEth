@@ -871,6 +871,50 @@ export async function markPaid(
 
 // ─── Transfer timeline query ──────────────────────────────────────────────────
 
+// ─── Agent-facing assignment list ──────────────────────────────────────────────
+
+export interface AgentAssignmentView {
+  assignment_id:     string;
+  transfer_id:       string;
+  assignment_status: AssignmentStatus;
+  transfer_status:   TransferState | string;
+  amount:            number | null;
+  currency:          string | null;
+  created_at:        string;
+  updated_at:        string;
+}
+
+/**
+ * listAssignmentsForAgent — all assignments for one agent (newest first),
+ * enriched with the current transfer status/amount for display purposes.
+ * Read-only; does not mutate transfer or assignment state.
+ */
+export async function listAssignmentsForAgent(agentId: string): Promise<AgentAssignmentView[]> {
+  const snap = await adminDb
+    .collection(AGENT_COL.assigns)
+    .where('agent_id', '==', agentId)
+    .get();
+
+  const rows = snap.docs.map((d: any) => ({ id: d.id, ...(d.data() as Omit<Assignment, 'id'>) }));
+
+  const views = await Promise.all(rows.map(async (row: Assignment): Promise<AgentAssignmentView> => {
+    const txDoc = await adminDb.collection(AGENT_COL.txns).doc(row.transfer_id).get();
+    const tx = txDoc.exists ? (txDoc.data() as Partial<TransferRecord>) : undefined;
+    return {
+      assignment_id:     row.id,
+      transfer_id:       row.transfer_id,
+      assignment_status: row.status,
+      transfer_status:   tx?.status ?? 'UNKNOWN',
+      amount:            tx?.amount ?? null,
+      currency:          tx?.currency ?? null,
+      created_at:        row.created_at,
+      updated_at:        row.updated_at,
+    };
+  }));
+
+  return views.sort((a: AgentAssignmentView, b: AgentAssignmentView) => b.created_at.localeCompare(a.created_at));
+}
+
 export async function getTimeline(transferId: string): Promise<TimelineEvent[]> {
   const snap = await adminDb
     .collection(AGENT_COL.timeline)

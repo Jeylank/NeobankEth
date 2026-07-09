@@ -37,6 +37,7 @@ import {
   verifyOtp,
   markPaid,
   getTimeline,
+  listAssignmentsForAgent,
   AGENT_RESPONSE_TIMEOUT_MS,
   MAX_ASSIGNMENT_ATTEMPTS,
   MAX_OTP_ATTEMPTS,
@@ -153,6 +154,23 @@ router.get('/agents/:id', requireApiKey, readLimiter, async (req: Request, res: 
     }
     res.json({ agent });
   } catch (err) { handleError(res, err, 'GET /agents/:id'); }
+});
+
+/**
+ * GET /api/v1/agents/:id/assignments
+ * All payout assignments for one agent (newest first), enriched with the
+ * current transfer status/amount. Powers the agent dashboard UI. Read-only.
+ */
+router.get('/agents/:id/assignments', requireApiKey, readLimiter, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const agent = await getAgent(req.params.id);
+    if (!agent) {
+      res.status(404).json({ error: 'AGENT_NOT_FOUND', message: `Agent ${req.params.id} not found.` });
+      return;
+    }
+    const assignments = await listAssignmentsForAgent(req.params.id);
+    res.json({ agent: { id: agent.id, full_name: agent.full_name, city: agent.city }, assignments, count: assignments.length });
+  } catch (err) { handleError(res, err, `GET /agents/${req.params.id}/assignments`); }
 });
 
 // ─── Assignment ───────────────────────────────────────────────────────────────
