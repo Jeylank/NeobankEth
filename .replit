@@ -53,6 +53,7 @@ build = ["npm", "run", "build:web"]
 [userenv.shared]
 ADMIN_API_PORT = "5000"
 EXPO_PUBLIC_API_BASE_URL = "https://08a9245b-5f48-44e1-8f97-7868b3994725-00-2rcx47a59k92i.spock.replit.dev"
+EXPO_PUBLIC_API_KEY = "hsim_fe20b92f2662c9f4477fd5d33d7b378c91db8f185e43e7b7"
 
 [userenv.development]
 DISABLE_MAINTENANCE_MODE = "true"
