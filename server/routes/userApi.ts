@@ -113,7 +113,7 @@ router.get('/transactions', verifyUser, async (req: Request, res: Response): Pro
       .limit(limit)
       .get();
 
-    const transactions = snap.docs.map((doc) => {
+    const transactions = snap.docs.map((doc: any) => {
       const d = doc.data();
       return {
         id:          doc.id,
@@ -146,7 +146,7 @@ router.get('/beneficiaries', verifyUser, async (req: Request, res: Response): Pr
       .get();
 
     const beneficiaries = snap.docs
-      .map((doc) => ({
+      .map((doc: any) => ({
         id:            doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate?.()?.toISOString() ?? null,

@@ -28,7 +28,7 @@ router.get('/remittances', verifyUser, async (req, res: Response): Promise<void>
       .get();
 
     const remittances = snap.docs
-      .map((doc) => ({
+      .map((doc: any) => ({
         id:              doc.id,
         ...doc.data(),
         // Firestore Timestamps → ISO strings for JSON serialisation

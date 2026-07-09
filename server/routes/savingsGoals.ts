@@ -18,7 +18,7 @@ const router = Router();
 
 const COLLECTION = 'savings_goals';
 
-function mapGoal(id: string, data: FirebaseFirestore.DocumentData) {
+function mapGoal(id: string, data: any) {
   return {
     id,
     userId: data.userId,
@@ -42,8 +42,8 @@ router.get('/savings-goals', verifyUser, async (req: Request, res: Response): Pr
       .get();
 
     const goals = snap.docs
-      .map((doc) => mapGoal(doc.id, doc.data()))
-      .sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''));
+      .map((doc: any) => mapGoal(doc.id, doc.data()))
+      .sort((a: any, b: any) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''));
 
     res.json({ goals });
   } catch (err: any) {
