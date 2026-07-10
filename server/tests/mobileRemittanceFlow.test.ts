@@ -22,7 +22,12 @@ jest.mock('axios', () => {
 
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { normalizeApiBaseUrl, remittanceApi } from '../../src/services/api';
+import {
+  buildFullRequestUrl,
+  getApiErrorMessage,
+  normalizeApiBaseUrl,
+  remittanceApi,
+} from '../../src/services/api';
 import { executeRemittanceFlow, type MobileRemittanceRequest } from '../../src/services/mobileRemittanceFlow';
 import { initiateTransferFirestore } from '../../src/services/remittanceFirestoreService';
 
@@ -37,7 +42,11 @@ const request: MobileRemittanceRequest = {
 
 const axiosClient = (axios.create as jest.Mock).mock.results[0].value as {
   post: jest.Mock;
+  interceptors: {
+    request: { use: jest.Mock };
+  };
 };
+const requestInterceptor = axiosClient.interceptors.request.use.mock.calls[0][0] as (config: any) => Promise<any>;
 
 describe('mobile remittance backend contract', () => {
   beforeEach(() => {
@@ -72,6 +81,44 @@ describe('mobile remittance backend contract', () => {
     ['https://example.replit.app/api/v1/', 'https://example.replit.app'],
   ])('normalizes API base URL %s', (rawUrl, expectedUrl) => {
     expect(normalizeApiBaseUrl(rawUrl)).toBe(expectedUrl);
+  });
+
+  it.each([
+    'https://08a9245b-5f48-44e1-8f97-7868b3994725-00-2rcx47a59k92i.spock.replit.dev',
+    'https://08a9245b-5f48-44e1-8f97-7868b3994725-00-2rcx47a59k92i.spock.replit.dev/api/v1',
+  ])('builds the exact native remittance initiation URL from %s', (baseUrl) => {
+    expect(buildFullRequestUrl(baseUrl, '/api/v1/remittance/initiate')).toBe(
+      'https://08a9245b-5f48-44e1-8f97-7868b3994725-00-2rcx47a59k92i.spock.replit.dev/api/v1/remittance/initiate',
+    );
+  });
+
+  it('keeps Send Money API errors safe for the user-facing error box', () => {
+    const details = getApiErrorMessage({
+      config: {
+        method: 'post',
+        baseURL: 'https://08a9245b-5f48-44e1-8f97-7868b3994725-00-2rcx47a59k92i.spock.replit.dev/api/v1',
+        url: '/api/v1/remittance/initiate',
+      },
+      response: {
+        status: 404,
+        data: {
+          error: 'Endpoint not found',
+          apiKey: 'secret-api-key',
+        },
+      },
+    });
+
+    expect(details).toBe('The transfer service is unavailable in this build. Please update the app or try again shortly.');
+    expect(details).not.toContain('Final URL');
+    expect(details).not.toContain('https://');
+    expect(details).not.toContain('Response body');
+    expect(details).not.toContain('secret-api-key');
+  });
+
+  it('uses the current Firebase user token when SecureStore has not caught up yet', async () => {
+    const config = await requestInterceptor({ headers: {} });
+
+    expect(config.headers.Authorization).toBe('Bearer firebase-current-user-token');
   });
 
   it('cannot turn initiation failure into fake success', async () => {

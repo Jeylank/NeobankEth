@@ -1,26 +1,61 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
-import { secureStorage } from '../utils/storage';
+import * as SecureStore from 'expo-secure-store';
+import { getAuth } from 'firebase/auth';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
 export function normalizeApiBaseUrl(rawUrl: string): string {
   return rawUrl.replace(/\/api(?:\/v1)?\/?$/i, '');
 }
 
-// On web, the same Express server serves both the static app and the API,
-// so requests should default to the current origin (relative URL) unless an
-// explicit override is provided. This avoids baking a stale dev-preview
-// domain into production web builds. Native builds still need an absolute
-// URL since there is no "current origin" on device.
-const explicitApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || '';
-
-export const API_BASE_URL = explicitApiUrl
-  ? normalizeApiBaseUrl(explicitApiUrl)
-  : Platform.OS === 'web'
-    ? (typeof window !== 'undefined' ? window.location.origin : '')
-    : 'https://api.sumsuma.com';
+export const API_BASE_URL = normalizeApiBaseUrl(
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  'https://api.sumsuma.com',
+);
 
 const EXPO_PUBLIC_API_KEY = process.env.EXPO_PUBLIC_API_KEY?.trim() ?? '';
+
+async function getAuthToken(): Promise<string | null> {
+  const storedToken = await SecureStore.getItemAsync('authToken');
+  if (storedToken) return storedToken;
+
+  try {
+    return await getAuth().currentUser?.getIdToken() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function buildFullRequestUrl(baseURL: string | undefined, path: string | undefined): string {
+  if (!path) return baseURL ?? '';
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalizedBase = normalizeApiBaseUrl(baseURL ?? API_BASE_URL).replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBase}${normalizedPath}`;
+}
+
+export function getApiErrorMessage(error: any): string {
+  const backendMessage = error?.response?.data?.message;
+  if (typeof backendMessage === 'string' && backendMessage.trim()) {
+    return backendMessage;
+  }
+
+  const status = error?.response?.status;
+  if (status === 401 || status === 403) {
+    return 'Your session could not be verified. Please sign in again and retry.';
+  }
+  if (status === 404) {
+    return 'The transfer service is unavailable in this build. Please update the app or try again shortly.';
+  }
+  if (typeof status === 'number' && status >= 500) {
+    return 'The transfer service is temporarily unavailable. Please try again shortly.';
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message;
+  }
+  return 'Something went wrong. Please try again.';
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -31,7 +66,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await secureStorage.getItemAsync('authToken');
+  const token = await getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -44,7 +79,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    console.error('API Error:', getApiErrorMessage(error));
     return Promise.reject(error);
   }
 );
@@ -60,7 +95,7 @@ export const authApi = {
   },
   logout: async () => {
     await api.post('/api/auth/logout');
-    await secureStorage.deleteItemAsync('authToken');
+    await SecureStore.deleteItemAsync('authToken');
   },
   getProfile: async (): Promise<User> => {
     const response = await api.get('/api/user/profile');
@@ -91,7 +126,7 @@ export const exchangeRatesApi = {
 };
 
 export const transactionsApi = {
-  getAll: async (): Promise<{ transactions: Transaction[] }> => {
+  getAll: async (): Promise<{ transactions: Transaction[]; count?: number }> => {
     const response = await api.get('/api/transactions');
     return response.data;
   },

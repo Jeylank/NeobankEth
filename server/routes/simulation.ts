@@ -101,7 +101,7 @@ interface RouteErrorDetails {
   error: string;
   message: string;
   retryable: boolean;
-  cause: string;
+  causeCategory: string;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -114,6 +114,14 @@ function getErrorCode(error: unknown): string | undefined {
     : undefined;
 }
 
+function getErrorName(error: unknown): string {
+  return error instanceof Error ? error.name : typeof error;
+}
+
+function getErrorStack(error: unknown): string | undefined {
+  return error instanceof Error ? error.stack : undefined;
+}
+
 function isFirestoreCredentialError(message: string): boolean {
   const normalized = message.toLowerCase();
   return normalized.includes('could not load the default credentials')
@@ -122,6 +130,17 @@ function isFirestoreCredentialError(message: string): boolean {
     || normalized.includes('permission_denied')
     || normalized.includes('unauthenticated')
     || normalized.includes('the caller does not have permission');
+}
+
+function isFirestoreConnectivityError(message: string, code: string | undefined): boolean {
+  const normalized = message.toLowerCase();
+  return code === '4'
+    || code === '14'
+    || normalized.includes('deadline exceeded')
+    || normalized.includes('unavailable')
+    || normalized.includes('etimedout')
+    || normalized.includes('econnreset')
+    || normalized.includes('enotfound');
 }
 
 function describeInitiateError(error: unknown): RouteErrorDetails {
@@ -133,7 +152,16 @@ function describeInitiateError(error: unknown): RouteErrorDetails {
       error: 'FIRESTORE_UNAVAILABLE',
       message: 'The transfer service could not reach Firestore. Please try again shortly.',
       retryable: true,
-      cause: message,
+      causeCategory: 'firestore_auth',
+    };
+  }
+  if (isFirestoreConnectivityError(message, code)) {
+    return {
+      status: 502,
+      error: 'FIRESTORE_UNAVAILABLE',
+      message: 'The transfer service could not reach Firestore. Please try again shortly.',
+      retryable: true,
+      causeCategory: 'firestore_connectivity',
     };
   }
   return {
@@ -141,7 +169,7 @@ function describeInitiateError(error: unknown): RouteErrorDetails {
     error: 'REMITTANCE_INITIATE_FAILED',
     message: 'The transfer service could not initiate this remittance. Please try again.',
     retryable: true,
-    cause: message,
+    causeCategory: 'unexpected_exception',
   };
 }
 
@@ -393,13 +421,18 @@ router.post('/remittance/initiate', requireApiKey, writeLimiter, async (req: Req
       requestId,
       appMode: getAppMode(),
       error: details.error,
-      cause: details.cause,
+      causeCategory: details.causeCategory,
+      exceptionName: getErrorName(error),
+      exceptionCode: getErrorCode(error),
+      exceptionMessage: getErrorMessage(error),
+      exceptionStack: getErrorStack(error),
       bodyShape: requestBodyShape(req.body),
     });
     res.status(details.status).json({
       error: details.error,
       message: details.message,
       requestId,
+      causeCategory: details.causeCategory,
       retryable: details.retryable,
     });
   }

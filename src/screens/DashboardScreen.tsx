@@ -84,8 +84,11 @@ export default function DashboardScreen() {
   });
 
   const { data: transactionsData, isLoading: txLoading, refetch: refetchTx } = useQuery({
-    queryKey: ['transactions', 'recent'],
+    queryKey: ['transactions', 'recent', user?.uid],
     queryFn: () => transactionsApi.getRecent(5),
+    enabled: !!user?.uid,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: savingsData, refetch: refetchSavings } = useQuery({
@@ -95,8 +98,11 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refetchTx(), refetchSavings(), refetchRates()]);
-    setRefreshing(false);
+    try {
+      await Promise.all([refetchTx(), refetchSavings(), refetchRates()]);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const getRate = (curr: string): number => {

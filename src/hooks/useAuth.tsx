@@ -5,7 +5,6 @@ import { firebaseAuth, FirebaseUser } from '../services/firebase';
 import { SessionManager } from '../utils/security';
 import { authApi } from '../services/api';
 import { twoFactorService } from '../services/twoFactorService';
-import { adminService } from '../services/adminService';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -36,8 +35,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pending2FAEmail, setPending2FAEmail] = useState('');
   const pendingFirebaseUser = useRef<FirebaseUser | null>(null);
   const skip2FACheck        = useRef(false);
+  const completedAuthUid = useRef<string | null>(null);
+  const authStateWaiter = useRef<{
+    uid: string;
+    resolve: () => void;
+    reject: (error: Error) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  } | null>(null);
 
   const appState = useRef(AppState.currentState);
+
+  const resolveAuthStateWaiter = (uid: string) => {
+    completedAuthUid.current = uid;
+    const waiter = authStateWaiter.current;
+    if (!waiter || waiter.uid !== uid) return;
+    clearTimeout(waiter.timeout);
+    authStateWaiter.current = null;
+    waiter.resolve();
+  };
+
+  const rejectAuthStateWaiter = (message: string) => {
+    const waiter = authStateWaiter.current;
+    if (!waiter) return;
+    clearTimeout(waiter.timeout);
+    authStateWaiter.current = null;
+    waiter.reject(new Error(message));
+  };
+
+  const waitForAuthSession = (uid: string): Promise<void> => {
+    if (completedAuthUid.current === uid) return Promise.resolve();
+    authStateWaiter.current?.reject(new Error('A newer sign-in attempt was started.'));
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (authStateWaiter.current?.uid === uid) {
+          authStateWaiter.current = null;
+          reject(new Error('Sign in took too long. Please try again.'));
+        }
+      }, 10_000);
+      authStateWaiter.current = { uid, resolve, reject, timeout };
+    });
+  };
 
   const fetchAdminRole = async () => {
     try {
@@ -58,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await secureStorage.setItemAsync('authToken', token);
           await SessionManager.recordActivity();
           await fetchAdminRole();
+          resolveAuthStateWaiter(firebaseUser.uid);
           setIsLoading(false);
           return;
         }
@@ -70,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPending2FACode(code);
           setPending2FAEmail(firebaseUser.email ?? '');
           setPending2FA(true);
+          resolveAuthStateWaiter(firebaseUser.uid);
           setIsLoading(false);
         } else {
           setUser(firebaseUser);
@@ -77,9 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await secureStorage.setItemAsync('authToken', token);
           await SessionManager.recordActivity();
           await fetchAdminRole();
+          resolveAuthStateWaiter(firebaseUser.uid);
           setIsLoading(false);
         }
       } else {
+        completedAuthUid.current = null;
+        rejectAuthStateWaiter('Sign in was not completed. Please try again.');
         setUser(null);
         setPending2FA(false);
         setPending2FACode('');
@@ -116,20 +158,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      await firebaseAuth.signIn(email, password);
-      await SessionManager.recordActivity();
-      void adminService.logLogin('email');
-    } finally {
+      const credential = await firebaseAuth.signIn(email, password);
+      await waitForAuthSession(credential.user.uid);
+    } catch (error) {
       setIsLoading(false);
+      throw error;
     }
   };
 
   const signUp = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      await firebaseAuth.signUp(email, password);
-    } finally {
+      const credential = await firebaseAuth.signUp(email, password);
+      await waitForAuthSession(credential.user.uid);
+    } catch (error) {
       setIsLoading(false);
+      throw error;
     }
   };
 
@@ -154,7 +198,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await firebaseUser.getIdToken();
       await secureStorage.setItemAsync('authToken', token);
       await fetchAdminRole();
-      void adminService.logLogin('phone');
     } finally {
       setIsLoading(false);
     }
@@ -169,7 +212,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await secureStorage.setItemAsync('authToken', token);
     await SessionManager.recordActivity();
     await fetchAdminRole();
-    void adminService.logLogin('email');
     setPending2FA(false);
     setPending2FACode('');
     setPending2FAEmail('');

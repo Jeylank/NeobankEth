@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ export default function AuthScreen() {
   const [verificationCode, setVerificationCode] = useState('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitInFlight = useRef(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricType, setBiometricType] = useState<string>('Biometric');
@@ -71,6 +72,8 @@ export default function AuthScreen() {
   };
 
   const handleBiometricLogin = async () => {
+    if (submitInFlight.current) return;
+    submitInFlight.current = true;
     setIsSubmitting(true);
     try {
       const credentials = await biometricService.authenticateAndGetCredentials();
@@ -82,6 +85,7 @@ export default function AuthScreen() {
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message || t('auth.biometricFailed'));
     } finally {
+      submitInFlight.current = false;
       setIsSubmitting(false);
     }
   };
@@ -102,6 +106,7 @@ export default function AuthScreen() {
   };
 
   const handleEmailSubmit = async () => {
+    if (submitInFlight.current) return;
     if (!email || !password) {
       Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
@@ -112,6 +117,7 @@ export default function AuthScreen() {
       return;
     }
 
+    submitInFlight.current = true;
     setIsSubmitting(true);
     try {
       if (isLogin) {
@@ -122,6 +128,7 @@ export default function AuthScreen() {
     } catch (error: any) {
       Alert.alert(t('common.error'), error.message || t('auth.authFailed'));
     } finally {
+      submitInFlight.current = false;
       setIsSubmitting(false);
     }
   };

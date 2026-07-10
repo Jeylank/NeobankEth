@@ -226,7 +226,28 @@ jest.mock('../services/agentPayoutService', () => ({
   checkAndReassignStaleAssignment: jest.fn(),
   scanStaleAssignments: jest.fn(),
   sendOtp: jest.fn(),
-  getTimeline: jest.fn(),
+  getTimeline: jest.fn(async (transferId: string) => {
+    const tx = mockTransactions.get(transferId);
+    if (!tx) return [];
+    const base = new Date(tx.createdMs).toISOString();
+    const events = [
+      { status: 'PAYMENT_PENDING', message: 'Transfer initiated.', created_at: base },
+    ];
+    if (['OTP_SENT', 'READY_FOR_PAYOUT', 'PAID_OUT'].includes(tx.status)) {
+      events.push(
+        { status: 'FUNDS_RECEIVED', message: 'Payment confirmed.', created_at: base },
+        { status: 'AGENT_ASSIGNED', message: 'Eligible agent selected.', created_at: base },
+        { status: 'OTP_SENT', message: 'OTP dispatched to recipient.', created_at: base },
+      );
+    }
+    if (['READY_FOR_PAYOUT', 'PAID_OUT'].includes(tx.status)) {
+      events.push({ status: 'READY_FOR_PAYOUT', message: 'OTP verified.', created_at: base });
+    }
+    if (tx.status === 'PAID_OUT') {
+      events.push({ status: 'PAID_OUT', message: 'Cash payout completed.', created_at: base });
+    }
+    return events;
+  }),
   verifyOtp: jest.fn(async (transferId: string, otp: string) => {
     const tx = mockTransactions.get(transferId);
     if (!tx || tx.otp !== otp) {
@@ -327,6 +348,42 @@ describe('simulation remittance HTTP flow', () => {
     expect(polled.status).toBe(200);
     expect(polled.body.status).toBe('OTP_SENT');
     expect(polled.body.status).not.toBe('COMPLETED');
+  });
+
+  it('loads transfer status and timeline by transfer ID for tracking', async () => {
+    const initiated = await initiateAgentCash();
+    const transactionId = initiated.body.transactionId;
+
+    const confirmed = await request(app)
+      .post('/api/v1/remittance/confirm-payment')
+      .set(auth)
+      .send({ transactionId, outcome: 'confirmed' });
+    expect(confirmed.body.status).toBe('OTP_SENT');
+
+    const tracked = await request(app)
+      .get(`/api/v1/remittance/${transactionId}`)
+      .set(auth);
+    expect(tracked.status).toBe(200);
+    expect(tracked.body).toMatchObject({
+      txId: transactionId,
+      status: 'OTP_SENT',
+      payoutMethod: 'agent_cash',
+    });
+
+    const timeline = await request(app)
+      .get(`/api/v1/transfers/${transactionId}/timeline`)
+      .set(auth);
+    expect(timeline.status).toBe(200);
+    expect(timeline.body).toMatchObject({
+      transfer_id: transactionId,
+      count: 4,
+    });
+    expect(timeline.body.events.map((event: { status: string }) => event.status)).toEqual([
+      'PAYMENT_PENDING',
+      'FUNDS_RECEIVED',
+      'AGENT_ASSIGNED',
+      'OTP_SENT',
+    ]);
   });
 
   it('verifies OTP, marks paid, and rejects duplicate mark-paid', async () => {
@@ -459,6 +516,7 @@ describe('simulation remittance HTTP flow', () => {
     expect(response.body).toMatchObject({
       error: 'FIRESTORE_UNAVAILABLE',
       message: 'The transfer service could not reach Firestore. Please try again shortly.',
+      causeCategory: 'firestore_auth',
       retryable: true,
     });
     expect(typeof response.body.requestId).toBe('string');

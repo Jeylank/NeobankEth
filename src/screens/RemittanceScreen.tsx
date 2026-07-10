@@ -18,6 +18,7 @@ import {
   remittanceApi,
   beneficiariesApi,
   balanceApi,
+  getApiErrorMessage,
   type RemittanceApiResponse,
 } from '../services/api';
 import {
@@ -212,8 +213,7 @@ export default function RemittanceScreen() {
     },
     onError: (error: any) => {
       setTransferStatus(null);
-      const backendMessage = error?.response?.data?.message;
-      setSendError(backendMessage || error?.message || 'Something went wrong. Please try again.');
+      setSendError(getApiErrorMessage(error));
     },
   });
 

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { transactionsApi } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 import type { Transaction } from '../types';
 import {
   getApiErrorMessage,
@@ -44,23 +45,32 @@ const DATE_FILTERS = [
   { id: 'this_month', labelKey: 'transactions.thisMonth' },
 ];
 
+const SHOW_TRANSACTION_DEBUG = process.env.EXPO_PUBLIC_APP_ENV === 'preview';
+
 export default function TransactionsScreen() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('all');
   const [selectedDateFilter, setSelectedDateFilter] = useState('all_time');
   const [showDateFilter, setShowDateFilter] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['transactions'],
+    queryKey: ['transactions', user?.uid],
     queryFn: () => transactionsApi.getAll(),
+    enabled: !!user?.uid,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const filteredTransactions = useMemo(() => {
@@ -102,6 +112,9 @@ export default function TransactionsScreen() {
     isError,
     filteredTransactions.length,
   );
+  const backendResponseCount = typeof data?.count === 'number'
+    ? data.count
+    : data?.transactions?.length ?? 0;
 
   const formatCurrency = (amount: string, currency = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -204,6 +217,11 @@ export default function TransactionsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <View style={styles.filtersContainer}>
+            {SHOW_TRANSACTION_DEBUG && (
+              <Text style={styles.debugText}>
+                Backend returned {backendResponseCount} transactions
+              </Text>
+            )}
             <View style={styles.filterRow}>
               <Text style={styles.filterLabel}>{t('transactions.filterByType')}:</Text>
               <FlatList
@@ -302,6 +320,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  debugText: {
+    marginBottom: 8,
+    color: COLORS.gray,
+    fontSize: 12,
   },
   filterLabel: {
     fontSize: 12,

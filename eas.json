@@ -26,7 +26,8 @@
       },
       "env": {
         "APP_ENV": "preview",
-        "EXPO_PUBLIC_APP_ENV": "preview"
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_API_BASE_URL": "https://08a9245b-5f48-44e1-8f97-7868b3994725-00-2rcx47a59k92i.spock.replit.dev"
       }
     },
     "production": {

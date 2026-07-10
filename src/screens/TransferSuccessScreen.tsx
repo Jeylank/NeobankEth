@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import AnimatedPressable from '../components/AnimatedPressable';
+import { buildMainTabReset } from '../navigation/transferSuccessNavigation';
 
 const PRIMARY  = '#006633';
 const WHITE    = '#FFFFFF';
@@ -165,7 +166,7 @@ export default function TransferSuccessScreen() {
         <AnimatedPressable
           style={s.sendAgainBtn}
           hapticStyle="medium"
-          onPress={() => navigation.navigate('Remittance')}
+          onPress={() => navigation.navigate('Main', { screen: 'Remittance' })}
         >
           <Ionicons name="send" size={18} color={WHITE} />
           <Text style={s.sendAgainBtnText}>Send Again</Text>
@@ -174,7 +175,7 @@ export default function TransferSuccessScreen() {
         <AnimatedPressable
           style={s.doneBtn}
           hapticStyle="none"
-          onPress={() => navigation.navigate('Dashboard')}
+          onPress={() => navigation.reset(buildMainTabReset('Dashboard'))}
         >
           <Text style={s.doneBtnText}>Done</Text>
         </AnimatedPressable>
