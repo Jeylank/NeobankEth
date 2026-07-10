@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { secureStorage } from '../utils/storage';
 import type { Transaction, SavingsGoal, Beneficiary, BalanceResponse, User } from '../types';
 
@@ -6,11 +7,18 @@ export function normalizeApiBaseUrl(rawUrl: string): string {
   return rawUrl.replace(/\/api(?:\/v1)?\/?$/i, '');
 }
 
-export const API_BASE_URL = normalizeApiBaseUrl(
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  process.env.EXPO_PUBLIC_API_URL ||
-  'https://api.sumsuma.com',
-);
+// On web, the same Express server serves both the static app and the API,
+// so requests should default to the current origin (relative URL) unless an
+// explicit override is provided. This avoids baking a stale dev-preview
+// domain into production web builds. Native builds still need an absolute
+// URL since there is no "current origin" on device.
+const explicitApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || '';
+
+export const API_BASE_URL = explicitApiUrl
+  ? normalizeApiBaseUrl(explicitApiUrl)
+  : Platform.OS === 'web'
+    ? (typeof window !== 'undefined' ? window.location.origin : '')
+    : 'https://api.sumsuma.com';
 
 const EXPO_PUBLIC_API_KEY = process.env.EXPO_PUBLIC_API_KEY?.trim() ?? '';
 

@@ -4,3 +4,4 @@
 - [NativeWind v2 web build fix](nativewind-web-build.md) — babel.config.js must skip nativewind/babel on web builds
 - [Unmounted route files](unmounted-routes.md) — this codebase has route files in server/routes/ that exist but aren't imported/mounted in server/index.ts; check both before debugging "Endpoint not found".
 - [Admin data aggregation pattern](admin-data-aggregation.md) — how admin screens (Transfers, Users) pull cross-collection Firestore data without composite indexes.
+- [Production API base URL must be relative on web](production-api-base-url.md) — shared EXPO_PUBLIC_API_BASE_URL baked dev domain into prod build, causing "Error/Retry" everywhere.
