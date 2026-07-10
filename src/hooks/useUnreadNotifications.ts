@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth';
-import { getUnreadCount } from '../services/firestoreNotifications';
+import { getUnreadCount, subscribeToUnreadChanges } from '../services/firestoreNotifications';
 
 /**
  * useUnreadNotifications — shared, real-time unread notification count.
@@ -19,7 +19,10 @@ export function useUnreadNotifications(): number {
       return;
     }
     const unsubscribe = getUnreadCount(user.uid, setUnreadCount);
-    return () => unsubscribe();
+    const unsubscribeImmediate = subscribeToUnreadChanges((change) => {
+      setUnreadCount((current) => change.type === 'clear' ? 0 : Math.max(0, current - 1));
+    });
+    return () => { unsubscribe(); unsubscribeImmediate(); };
   }, [user?.uid]);
 
   return unreadCount;

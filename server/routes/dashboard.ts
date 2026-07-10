@@ -51,9 +51,8 @@ function requireAdminOrApiKey(req: Request, res: Response, next: NextFunction): 
 // ─── Shared error handler ─────────────────────────────────────────────────────
 
 function handleError(res: Response, err: unknown, context: string): void {
-  const msg = (err as Error).message ?? 'Unexpected error';
-  console.error(`[Dashboard] ${context}: ${msg}`);
-  res.status(500).json({ error: 'INTERNAL_ERROR', message: msg });
+  console.error(`[Dashboard] ${context}: internal failure`);
+  res.status(500).json({ error: 'INTERNAL_ERROR', message: 'The request could not be completed.' });
 }
 
 // ─── Transfers ────────────────────────────────────────────────────────────────

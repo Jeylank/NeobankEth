@@ -90,6 +90,7 @@ export interface TimelineEvent {
 }
 
 interface TransferRecord extends Record<string, unknown> {
+  userId?: string;
   status: TransferState;
   assigned_agent_id?: string;
   amount: number;

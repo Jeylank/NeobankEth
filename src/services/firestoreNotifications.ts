@@ -24,6 +24,13 @@ export interface Notification {
 }
 
 const NOTIFICATIONS_COLLECTION = 'notifications';
+type UnreadChange = { type: 'decrement' } | { type: 'clear' };
+const unreadChangeListeners = new Set<(change: UnreadChange) => void>();
+export const subscribeToUnreadChanges = (listener: (change: UnreadChange) => void) => {
+  unreadChangeListeners.add(listener);
+  return () => unreadChangeListeners.delete(listener);
+};
+const emitUnreadChange = (change: UnreadChange) => unreadChangeListeners.forEach((listener) => listener(change));
 
 export const subscribeToNotifications = (
   userId: string,
@@ -114,24 +121,30 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
 };
 
 export const markNotificationAsRead = async (notificationId: string) => {
-  const notificationRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
-  return updateDoc(notificationRef, { read: true });
+  const user = getAuth().currentUser;
+  if (!user) throw new Error('User not authenticated');
+  const idToken = await user.getIdToken();
+  const res = await fetch(`/api/notifications/${encodeURIComponent(notificationId)}/read`, {
+    method: 'PATCH', headers: { 'Authorization': `Bearer ${idToken}` },
+  });
+  if (!res.ok) throw new Error('Unable to mark notification as read');
+  const result = await res.json();
+  emitUnreadChange({ type: 'decrement' });
+  return result;
 };
 
 export const markAllNotificationsAsRead = async (userId: string) => {
-  const notificationsRef = collection(db, NOTIFICATIONS_COLLECTION);
-  const q = query(
-    notificationsRef,
-    where('userId', '==', userId),
-    where('read', '==', false)
-  );
-  
-  const snapshot = await getDocs(q);
-  const updates = snapshot.docs.map((doc) => 
-    updateDoc(doc.ref, { read: true })
-  );
-  
-  return Promise.all(updates);
+  void userId;
+  const user = getAuth().currentUser;
+  if (!user) throw new Error('User not authenticated');
+  const idToken = await user.getIdToken();
+  const res = await fetch('/api/notifications/read-all', {
+    method: 'POST', headers: { 'Authorization': `Bearer ${idToken}` },
+  });
+  if (!res.ok) throw new Error('Unable to mark notifications as read');
+  const result = await res.json();
+  emitUnreadChange({ type: 'clear' });
+  return result;
 };
 
 export const deleteNotification = async (notificationId: string) => {

@@ -432,6 +432,16 @@ export const adminService = {
     return response.data;
   },
 
+  async moveTransferToRecovery(txId: string): Promise<any> {
+    const response = await adminApi.post(`/api/admin/transfers/${txId}/recovery`);
+    return response.data;
+  },
+
+  async refundTransfer(txId: string): Promise<any> {
+    const response = await adminApi.post(`/api/admin/transfers/${txId}/refund`);
+    return response.data;
+  },
+
   // ─── Admin Users ─────────────────────────────────────────────────────────
 
   /** searchUsers — search users by uid, email, phone, or display name */

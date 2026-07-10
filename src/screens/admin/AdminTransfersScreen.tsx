@@ -101,6 +101,26 @@ function AdminTransfersContent() {
     },
   });
 
+  const actionMutation = useMutation({
+    mutationFn: ({ txId, action }: { txId: string; action: 'recovery' | 'refund' }) =>
+      action === 'recovery' ? adminService.moveTransferToRecovery(txId) : adminService.refundTransfer(txId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-transfer-detail', selectedTxId] });
+      Alert.alert(t('common.success'));
+    },
+    onError: () => Alert.alert(t('common.error')),
+  });
+
+  const confirmAction = (txId: string, action: 'recovery' | 'refund') => Alert.alert(
+    action === 'recovery' ? 'Move to recovery' : 'Initiate refund',
+    'Confirm this admin action?',
+    [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.confirm'), style: 'destructive', onPress: () => actionMutation.mutate({ txId, action }) },
+    ],
+  );
+
   const results = data?.results ?? [];
 
   return (
@@ -249,6 +269,35 @@ function AdminTransfersContent() {
                 </View>
 
                 <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Payment &amp; payout operations</Text>
+                  <DetailRow label="Payment confirmation" value={detailQuery.data.paymentConfirmation?.status ?? '—'} />
+                  <DetailRow label="Confirmed at" value={detailQuery.data.paymentConfirmation?.confirmedAt ? new Date(detailQuery.data.paymentConfirmation.confirmedAt).toLocaleString() : '—'} />
+                  <DetailRow label="Agent" value={detailQuery.data.agentAssignment?.agentId ?? 'Unassigned'} />
+                  <DetailRow label="Assignment status" value={detailQuery.data.agentAssignment?.status ?? '—'} />
+                  <DetailRow label="OTP state" value={detailQuery.data.otpState?.status ?? 'NOT_SENT'} />
+                  <DetailRow label="OTP expires" value={detailQuery.data.otpState?.expiresAt ? new Date(detailQuery.data.otpState.expiresAt).toLocaleString() : '—'} />
+                  <DetailRow label="Reconciliation" value={detailQuery.data.reconciliation?.status ?? '—'} />
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Ledger entries</Text>
+                  {(detailQuery.data.ledgerEntries ?? []).length === 0 ? <Text style={styles.metaText}>No ledger entries</Text> :
+                    detailQuery.data.ledgerEntries.map((entry: any) => (
+                      <View key={entry.id} style={styles.timelineItem}>
+                        <Text style={styles.timelineStatus}>{entry.type ?? 'ENTRY'}</Text>
+                        <Text style={styles.metaText}>{formatAmount(entry.amount, entry.currency)}</Text>
+                      </View>
+                    ))}
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Reconciliation reports &amp; alerts</Text>
+                  {(detailQuery.data.reconciliation?.reports ?? []).map((report: any) => <Text key={report.id} style={styles.metaText}>{report.status ?? report.type}</Text>)}
+                  {(detailQuery.data.alerts ?? []).map((alert: any) => <Text key={alert.id} style={styles.metaText}>{alert.severity ?? 'info'} · {alert.message ?? alert.type}</Text>)}
+                  {(detailQuery.data.reconciliation?.reports ?? []).length === 0 && (detailQuery.data.alerts ?? []).length === 0 && <Text style={styles.metaText}>No reconciliation alerts</Text>}
+                </View>
+
+                <View style={styles.sectionCard}>
                   <View style={styles.sectionHeaderRow}>
                     <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
                     <Text style={styles.sectionTitle}>{t('admin.transfers.riskSection')}</Text>
@@ -293,7 +342,18 @@ function AdminTransfersContent() {
                   <TouchableOpacity
                     style={styles.retryActionBtn}
                     disabled={retryMutation.isPending}
-                    onPress={() => retryMutation.mutate(detailQuery.data.txId)}
+                    onPress={() => Alert.alert(
+                      t('admin.transfers.retryReconciliation'),
+                      t('admin.transfers.retryReconciliation'),
+                      [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        {
+                          text: t('common.confirm'),
+                          style: 'destructive',
+                          onPress: () => retryMutation.mutate(detailQuery.data.txId),
+                        },
+                      ],
+                    )}
                   >
                     {retryMutation.isPending ? (
                       <ActivityIndicator size="small" color={COLORS.white} />
@@ -303,6 +363,16 @@ function AdminTransfersContent() {
                         <Text style={styles.retryActionText}>{t('admin.transfers.retryReconciliation')}</Text>
                       </>
                     )}
+                  </TouchableOpacity>
+                )}
+                {['FUNDS_RECEIVED', 'OTP_SENT'].includes(detailQuery.data.status) && (
+                  <TouchableOpacity style={styles.retryActionBtn} disabled={actionMutation.isPending} onPress={() => confirmAction(detailQuery.data.txId, 'recovery')}>
+                    <Text style={styles.retryActionText}>Move to recovery</Text>
+                  </TouchableOpacity>
+                )}
+                {detailQuery.data.paymentConfirmation?.refundEligible && (
+                  <TouchableOpacity style={styles.retryActionBtn} disabled={actionMutation.isPending} onPress={() => confirmAction(detailQuery.data.txId, 'refund')}>
+                    <Text style={styles.retryActionText}>Initiate permitted refund</Text>
                   </TouchableOpacity>
                 )}
               </>

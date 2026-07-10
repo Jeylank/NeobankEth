@@ -51,6 +51,8 @@ const linking = {
   prefixes: [],
   config: {
     screens: {
+      AdminConsole: 'admin/console',
+      AdminOverview: 'admin/overview',
       AdminDashboard: 'admin',
       AdminAgentPayouts: 'admin/agents',
       AdminReconciliationOverview: 'admin/reconciliation',

@@ -132,15 +132,6 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // ─── TEMPORARY DEBUG ROUTE — remove after API key troubleshooting is done ─────
-app.get('/debug/api-key-check', (_req: Request, res: Response) => {
-  const expectedKey = process.env.SIMULATION_API_KEY ?? '';
-  res.json({
-    expectedKeyLength: expectedKey.length,
-    expectedFirst6: expectedKey.slice(0, 6),
-    envVarPresent: Boolean(process.env.SIMULATION_API_KEY),
-  });
-});
-
 // ─── Admin API Routes ─────────────────────────────────────────────────────────
 
 const API_PREFIX = '/api/admin';

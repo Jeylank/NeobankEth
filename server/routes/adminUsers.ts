@@ -219,11 +219,15 @@ router.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { q, limit } = req.query as Record<string, string | undefined>;
-      const data = await searchUsers({ query: q, limit: limit ? Number(limit) : undefined });
+      const parsedLimit = limit === undefined ? undefined : Number(limit);
+      if (limit !== undefined && (!Number.isInteger(parsedLimit) || parsedLimit! < 1 || parsedLimit! > 200)) {
+        res.status(400).json({ error: 'INVALID_LIMIT', message: 'limit must be an integer from 1 to 200.' }); return;
+      }
+      const data = await searchUsers({ query: q, limit: parsedLimit });
       res.json({ ...data, fetchedAt: new Date().toISOString() });
     } catch (err: any) {
-      console.error('[AdminUsers] GET /users error:', err.message);
-      res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+      console.error('[AdminUsers] GET /users: internal failure');
+      res.status(500).json({ error: 'INTERNAL_ERROR', message: 'The request could not be completed.' });
     }
   },
 );
@@ -239,6 +243,7 @@ router.get(
   readLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
+      if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(req.params.uid)) { res.status(400).json({ error: 'INVALID_ID', message: 'Invalid user ID.' }); return; }
       const detail = await getUserDetail(req.params.uid);
       if (!detail) {
         res.status(404).json({ error: 'USER_NOT_FOUND', message: `User '${req.params.uid}' not found.` });
@@ -246,8 +251,8 @@ router.get(
       }
       res.json(detail);
     } catch (err: any) {
-      console.error(`[AdminUsers] GET /users/${req.params.uid}/detail error:`, err.message);
-      res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+      console.error('[AdminUsers] GET user detail: internal failure');
+      res.status(500).json({ error: 'INTERNAL_ERROR', message: 'The request could not be completed.' });
     }
   },
 );

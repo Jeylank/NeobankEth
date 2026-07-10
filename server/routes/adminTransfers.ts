@@ -18,6 +18,8 @@ import {
   getTransferDetail,
   retryTransferReconciliation,
   TransferRetryError,
+  moveTransferToRecovery,
+  initiatePermittedRefund,
 } from '../services/adminTransfersService';
 
 const router = Router();
@@ -36,10 +38,13 @@ function handleError(res: Response, err: unknown, context: string): void {
     res.status(err.status).json({ error: 'RETRY_NOT_ELIGIBLE', message: err.message });
     return;
   }
-  const msg = (err as Error).message ?? 'Unexpected error';
-  console.error(`[AdminTransfers] ${context}: ${msg}`);
-  res.status(500).json({ error: 'INTERNAL_ERROR', message: msg });
+  console.error(`[AdminTransfers] ${context}: internal failure`);
+  res.status(500).json({ error: 'INTERNAL_ERROR', message: 'The request could not be completed.' });
 }
+
+const VALID_STATUSES = new Set(['PAYMENT_PENDING','PAYMENT_CONFIRMING','FUNDS_RECEIVED','AGENT_ASSIGNED','OTP_SENT','READY_FOR_PAYOUT','PAID_OUT','COMPLETED','FAILED','TIMED_OUT','REFUNDED','PENDING_LIQUIDITY','PENDING_REQUOTE','RECOVERY_PENDING','BLOCKED_FRAUD','PAYMENT_FAILED','PAYMENT_EXPIRED']);
+const VALID_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+function validId(value: string): boolean { return VALID_ID.test(value); }
 
 router.get(
   '/transfers',
@@ -48,11 +53,17 @@ router.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { txId, q, status, limit } = req.query as Record<string, string | undefined>;
+      const parsedLimit = limit === undefined ? undefined : Number(limit);
+      if (limit !== undefined && (!Number.isInteger(parsedLimit) || parsedLimit! < 1 || parsedLimit! > 200)) {
+        res.status(400).json({ error: 'INVALID_LIMIT', message: 'limit must be an integer from 1 to 200.' }); return;
+      }
+      if (status && !VALID_STATUSES.has(status)) { res.status(400).json({ error: 'INVALID_STATUS', message: 'Unsupported transfer status.' }); return; }
+      if (txId && !validId(txId)) { res.status(400).json({ error: 'INVALID_ID', message: 'Invalid transfer ID.' }); return; }
       const data = await searchTransfers({
         txId,
         query: q,
         status,
-        limit: limit ? Number(limit) : undefined,
+        limit: parsedLimit,
       });
       res.json({ ...data, fetchedAt: new Date().toISOString() });
     } catch (err) { handleError(res, err, 'GET /transfers'); }
@@ -65,6 +76,7 @@ router.get(
   readLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
+      if (!validId(req.params.txId)) { res.status(400).json({ error: 'INVALID_ID', message: 'Invalid transfer ID.' }); return; }
       const detail = await getTransferDetail(req.params.txId);
       if (!detail) {
         res.status(404).json({ error: 'TRANSFER_NOT_FOUND', message: `Transfer '${req.params.txId}' not found.` });
@@ -77,14 +89,29 @@ router.get(
 
 router.post(
   '/transfers/:txId/retry',
-  requireAdminOrApiKey,
+  verifyAdmin,
   writeLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
+      if (!validId(req.params.txId)) { res.status(400).json({ error: 'INVALID_ID', message: 'Invalid transfer ID.' }); return; }
       const result = await retryTransferReconciliation(req.params.txId);
       res.json({ ok: true, txId: req.params.txId, ...result });
     } catch (err) { handleError(res, err, `POST /transfers/${req.params.txId}/retry`); }
   },
 );
+
+router.post('/transfers/:txId/recovery', verifyAdmin, writeLimiter, async (req, res) => {
+  try {
+    if (!validId(req.params.txId)) { res.status(400).json({ error: 'INVALID_ID', message: 'Invalid transfer ID.' }); return; }
+    res.json({ ok: true, txId: req.params.txId, ...(await moveTransferToRecovery(req.params.txId)) });
+  } catch (err) { handleError(res, err, `POST /transfers/${req.params.txId}/recovery`); }
+});
+
+router.post('/transfers/:txId/refund', verifyAdmin, writeLimiter, async (req, res) => {
+  try {
+    if (!validId(req.params.txId)) { res.status(400).json({ error: 'INVALID_ID', message: 'Invalid transfer ID.' }); return; }
+    res.json({ ok: true, txId: req.params.txId, ...(await initiatePermittedRefund(req.params.txId)) });
+  } catch (err) { handleError(res, err, `POST /transfers/${req.params.txId}/refund`); }
+});
 
 export default router;

@@ -171,14 +171,21 @@ export async function getBetaRiskSummary(): Promise<BetaRiskSummary> {
     health,
     alertsData,
   ] = await Promise.all([
-    countUsers(),
+    countUsers().catch(() => ({ totalBetaUsers: 0, activeToday: 0 })),
     countKycPending(),
     countFraud(),
     countTransfers(),
     getReconciliationQueue(),
-    getAgentsDashboard(),
+    getAgentsDashboard().catch(() => ({
+      summary: { lowFloat: 0, offline: 0 },
+    } as Awaited<ReturnType<typeof getAgentsDashboard>>)),
     getFirestoreHealth(),
-    getAlertsDashboard(),
+    getAlertsDashboard().catch(() => ({
+      alerts: [],
+      count: 0,
+      bySeverity: { critical: 0, high: 0, medium: 0, low: 0 },
+      fetchedAt: new Date().toISOString(),
+    } as Awaited<ReturnType<typeof getAlertsDashboard>>)),
   ]);
 
   return {

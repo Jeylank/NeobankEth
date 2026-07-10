@@ -11,6 +11,8 @@ import { AGENT_COL, checkAndReassignStaleAssignment, getTimeline } from './agent
 import { FRAUD_COL } from './fraudEngine';
 import { safetyGuardsService } from './riskControls/safetyGuardsService';
 import { resumeTransaction } from './simulationEngine';
+import { refundSimulationPayment } from './paymentConfirmationService';
+import * as admin from 'firebase-admin';
 
 const TXN_COL = AGENT_COL.txns; // 'sim_transactions'
 
@@ -164,9 +166,14 @@ export async function searchTransfers(params: {
 }
 
 export interface TransferDetail extends TransferSummary {
-  raw:      Record<string, unknown>;
   timeline: Array<{ status: string; note: string; created_at: string }>;
   fraudHistory: Array<{ score: number; decision: string; rulesTriggered: string[]; createdAt: string | null }>;
+  ledgerEntries: Array<Record<string, unknown>>;
+  paymentConfirmation: { status: string | null; confirmedAt: string | null; refundEligible: boolean };
+  agentAssignment: Record<string, unknown> | null;
+  otpState: { status: 'NOT_SENT' | 'SENT' | 'VERIFIED' | 'CONSUMED'; expiresAt: string | null; verifiedAt: string | null };
+  reconciliation: { status: string | null; reports: Array<Record<string, unknown>> };
+  alerts: Array<Record<string, unknown>>;
 }
 
 export async function getTransferDetail(txId: string): Promise<TransferDetail | null> {
@@ -176,7 +183,7 @@ export async function getTransferDetail(txId: string): Promise<TransferDetail | 
   const data    = doc.data()!;
   const summary = toSummary(doc.id, data);
 
-  const [timelineRaw, fraudSnap, kycStatus] = await Promise.all([
+  const [timelineRaw, fraudSnap, kycStatus, ledgerSnap, assignmentSnap, otpDoc, reconciliationSnap, alertsSnap] = await Promise.all([
     getTimeline(txId).catch(() => []),
     // Avoid a composite index (transactionId + createdAt): filter only, sort in memory.
     adminDb.collection(FRAUD_COL.decisions)
@@ -184,6 +191,11 @@ export async function getTransferDetail(txId: string): Promise<TransferDetail | 
       .get()
       .catch(() => null),
     summary.senderId ? safetyGuardsService.getKycStatus(summary.senderId) : Promise.resolve('NOT_STARTED'),
+    adminDb.collection('sim_ledger').where('transactionId', '==', txId).get().catch(() => null),
+    adminDb.collection(AGENT_COL.assigns).where('transfer_id', '==', txId).get().catch(() => null),
+    adminDb.collection(AGENT_COL.otps).doc(txId).get().catch(() => null),
+    adminDb.collection('reconciliation_reports').where('transactionId', '==', txId).get().catch(() => null),
+    adminDb.collection('reconciliation_alerts').where('transactionId', '==', txId).get().catch(() => null),
   ]);
 
   const fraudHistory = (fraudSnap?.docs ?? [])
@@ -205,13 +217,38 @@ export async function getTransferDetail(txId: string): Promise<TransferDetail | 
     fraudScore:    latest?.score ?? null,
     fraudDecision: latest?.decision ?? null,
     kycStatus,
-    raw:      data,
     timeline: (timelineRaw as Array<{ status: string; note: string; created_at: string }>).map((t) => ({
       status:     t.status,
       note:       t.note,
       created_at: t.created_at,
     })),
     fraudHistory,
+    ledgerEntries: (ledgerSnap?.docs ?? []).map((d) => {
+      const row = d.data();
+      return { id: d.id, type: row.type ?? null, currency: row.currency ?? null, amount: row.amount ?? null, entries: row.entries ?? [], createdAt: toIso(row.createdAt) };
+    }),
+    paymentConfirmation: {
+      status: data.paymentStatus ?? null,
+      confirmedAt: toIso(data.paymentConfirmedAt),
+      refundEligible: data.status !== 'REFUNDED' && (data.reservationStatus === 'RESERVED' || data.paymentStatus === 'CONFIRMED'),
+    },
+    agentAssignment: (() => {
+      const rows = assignmentSnap?.docs ?? [];
+      if (!rows.length) return null;
+      const row = rows[rows.length - 1].data();
+      return { id: rows[rows.length - 1].id, agentId: row.agent_id ?? data.assigned_agent_id ?? null, status: row.status ?? null, assignedAt: row.assigned_at ?? null, responseDeadline: row.response_deadline ?? null, updatedAt: row.updated_at ?? null };
+    })(),
+    otpState: (() => {
+      if (!otpDoc?.exists) return { status: 'NOT_SENT' as const, expiresAt: null, verifiedAt: null };
+      const otp = otpDoc.data()!;
+      const status = otp.paid_at ? 'CONSUMED' : otp.verified_at || otp.payout_token ? 'VERIFIED' : 'SENT';
+      return { status, expiresAt: toIso(otp.expires_at ?? otp.expiresAt), verifiedAt: toIso(otp.verified_at) };
+    })(),
+    reconciliation: {
+      status: data.reconciliationStatus ?? data.recoveryAction ?? null,
+      reports: (reconciliationSnap?.docs ?? []).map((d) => ({ id: d.id, status: d.data().status ?? null, type: d.data().type ?? null, createdAt: toIso(d.data().createdAt) })),
+    },
+    alerts: (alertsSnap?.docs ?? []).map((d) => ({ id: d.id, type: d.data().type ?? null, severity: d.data().severity ?? null, status: d.data().status ?? null, message: d.data().message ?? null, createdAt: toIso(d.data().createdAt) })),
   };
 }
 
@@ -255,4 +292,29 @@ export async function retryTransferReconciliation(txId: string): Promise<Record<
 
   const result = await checkAndReassignStaleAssignment(txId);
   return { action: 'reassign', ...result };
+}
+
+const RECOVERY_ELIGIBLE = new Set(['FUNDS_RECEIVED', 'OTP_SENT']);
+
+export async function moveTransferToRecovery(txId: string): Promise<Record<string, unknown>> {
+  const ref = adminDb.collection(TXN_COL).doc(txId);
+  return adminDb.runTransaction(async transaction => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) throw new TransferRetryError('Transfer not found.', 404);
+    const status = snapshot.data()!.status as string;
+    if (status === 'RECOVERY_PENDING') return { action: 'recovery', status, duplicate: true };
+    if (!RECOVERY_ELIGIBLE.has(status)) throw new TransferRetryError('Transfer is not eligible for recovery.', 409);
+    transaction.update(ref, {
+      status: 'RECOVERY_PENDING', recoveryPreviousStatus: status,
+      recoveryReason: 'ADMIN_REQUESTED', recoveryFlaggedAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now(),
+    });
+    return { action: 'recovery', status: 'RECOVERY_PENDING', duplicate: false };
+  });
+}
+
+export async function initiatePermittedRefund(txId: string): Promise<Record<string, unknown>> {
+  const result = await refundSimulationPayment(txId);
+  if (!result.ok) throw new TransferRetryError('Transfer is not eligible for refund.', result.status);
+  return { action: 'refund', ...result.payload };
 }
