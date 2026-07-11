@@ -2,6 +2,35 @@
 
 A React Native mobile app for NeoBanker - Ethiopian Digital Banking platform, built with Expo.
 
+## Local Membership CRM Super Admin password reset
+
+Use [`reset_admin_password.py`](./reset_admin_password.py) only from a trusted local terminal when an existing active Membership CRM Super Admin cannot sign in. The utility never creates an administrator. It opens:
+
+```text
+%USERPROFILE%\Documents\Membership CRM\membership_crm.db
+```
+
+Before running it:
+
+1. Close the Membership CRM application so it is not writing to the database.
+2. Confirm the database path above is the intended local CRM database.
+3. Do not pass a password on the command line or place it in a shell script.
+
+Run from this repository with:
+
+```powershell
+python .\reset_admin_password.py
+```
+
+The utility lists only active `Super Admin` accounts by username and full name. Select the account number, then enter the new password twice; terminal input is hidden and the password must be at least eight characters. The script:
+
+- validates that the selected account already uses the CRM's PBKDF2-SHA256 format and inherits its iteration, salt-length, and digest-length parameters;
+- creates a timestamped SQLite safety backup under `%USERPROFILE%\Documents\Membership CRM\Backups` before changing the database;
+- updates exactly one existing active Super Admin in a transaction;
+- records a `LOCAL_PASSWORD_RESET` entry in `audit_log` without storing the plain-text password.
+
+If no active Super Admin exists, the script stops and does not create one. If the backup, hash verification, account revalidation, database update, or audit insert fails, the password update is rolled back. Keep the generated backup until the new password has been tested successfully.
+
 ## Features
 
 - **Dashboard**: View balance, quick actions, recent transactions

@@ -43,7 +43,7 @@
     },
     "android": {
       "package": "com.sumsuma.mobile",
-      "versionCode": 23,
+      "versionCode": 24,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#006633"

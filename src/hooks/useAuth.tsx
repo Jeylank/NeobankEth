@@ -5,12 +5,14 @@ import { firebaseAuth, FirebaseUser } from '../services/firebase';
 import { SessionManager } from '../utils/security';
 import { authApi } from '../services/api';
 import { twoFactorService } from '../services/twoFactorService';
+import { applyAdminRoleResult, resolveAdminRole } from './adminRole';
 
 interface AuthContextType {
   user: FirebaseUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isAdminLoading: boolean;
   pending2FA: boolean;
   pending2FACode: string;
   pending2FAEmail: string;
@@ -30,12 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,          setUser]          = useState<FirebaseUser | null>(null);
   const [isLoading,     setIsLoading]     = useState(true);
   const [isAdmin,       setIsAdmin]       = useState(false);
+  const [isAdminLoading, setIsAdminLoading] = useState(false);
   const [pending2FA,     setPending2FA]     = useState(false);
   const [pending2FACode,  setPending2FACode]  = useState('');
   const [pending2FAEmail, setPending2FAEmail] = useState('');
   const pendingFirebaseUser = useRef<FirebaseUser | null>(null);
   const skip2FACheck        = useRef(false);
   const completedAuthUid = useRef<string | null>(null);
+  const adminRoleRequest = useRef(0);
   const authStateWaiter = useRef<{
     uid: string;
     resolve: () => void;
@@ -76,12 +80,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const fetchAdminRole = async () => {
+  const fetchAdminRole = async (firebaseUser: FirebaseUser) => {
+    const request = ++adminRoleRequest.current;
+    setIsAdminLoading(true);
     try {
-      const profile = await authApi.getProfile();
-      setIsAdmin(profile.role === 'admin');
-    } catch {
-      setIsAdmin(false);
+      const resolved = await resolveAdminRole(firebaseUser, {
+        storeToken: (token) => secureStorage.setItemAsync('authToken', token),
+        getProfile: authApi.getProfile,
+      });
+      if (request === adminRoleRequest.current) {
+        setIsAdmin((current) => applyAdminRoleResult(current, resolved));
+      }
+    } finally {
+      if (request === adminRoleRequest.current) setIsAdminLoading(false);
     }
   };
 
@@ -91,10 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (skip2FACheck.current) {
           skip2FACheck.current = false;
           setUser(firebaseUser);
-          const token = await firebaseUser.getIdToken();
-          await secureStorage.setItemAsync('authToken', token);
           await SessionManager.recordActivity();
-          await fetchAdminRole();
+          await fetchAdminRole(firebaseUser);
           resolveAuthStateWaiter(firebaseUser.uid);
           setIsLoading(false);
           return;
@@ -112,14 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
         } else {
           setUser(firebaseUser);
-          const token = await firebaseUser.getIdToken();
-          await secureStorage.setItemAsync('authToken', token);
           await SessionManager.recordActivity();
-          await fetchAdminRole();
+          await fetchAdminRole(firebaseUser);
           resolveAuthStateWaiter(firebaseUser.uid);
           setIsLoading(false);
         }
       } else {
+        adminRoleRequest.current += 1;
         completedAuthUid.current = null;
         rejectAuthStateWaiter('Sign in was not completed. Please try again.');
         setUser(null);
@@ -130,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await secureStorage.deleteItemAsync('authToken');
         await SessionManager.clearSession();
         setIsAdmin(false);
+        setIsAdminLoading(false);
         setIsLoading(false);
       }
     });
@@ -179,10 +188,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setIsLoading(true);
+    adminRoleRequest.current += 1;
+    setIsAdmin(false);
+    setIsAdminLoading(false);
     try {
       await firebaseAuth.signOut();
       await secureStorage.deleteItemAsync('authToken');
-      setIsAdmin(false);
       setPending2FA(false);
       setPending2FACode('');
       pendingFirebaseUser.current = null;
@@ -195,9 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       setUser(firebaseUser);
-      const token = await firebaseUser.getIdToken();
-      await secureStorage.setItemAsync('authToken', token);
-      await fetchAdminRole();
+      await fetchAdminRole(firebaseUser);
     } finally {
       setIsLoading(false);
     }
@@ -206,16 +215,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completeTwoFactorLogin = async () => {
     const fbUser = pendingFirebaseUser.current;
     if (!fbUser) return;
-    skip2FACheck.current = true;
-    setUser(fbUser);
-    const token = await fbUser.getIdToken();
-    await secureStorage.setItemAsync('authToken', token);
-    await SessionManager.recordActivity();
-    await fetchAdminRole();
-    setPending2FA(false);
-    setPending2FACode('');
-    setPending2FAEmail('');
-    pendingFirebaseUser.current = null;
+    setIsLoading(true);
+    try {
+      skip2FACheck.current = true;
+      setUser(fbUser);
+      await SessionManager.recordActivity();
+      await fetchAdminRole(fbUser);
+      setPending2FA(false);
+      setPending2FACode('');
+      setPending2FAEmail('');
+      pendingFirebaseUser.current = null;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const verify2FACode = async (code: string): Promise<{ success: boolean; error?: string }> => {
@@ -251,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         isAdmin,
+        isAdminLoading,
         pending2FA,
         pending2FACode,
         pending2FAEmail,
